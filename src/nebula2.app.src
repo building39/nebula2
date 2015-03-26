@@ -1,0 +1,15 @@
+{application, nebula2, [
+	{description, "Nebula 2 CDMI Server"},
+	{vsn, "0.1.0"},
+	{id, "git"},
+	{modules, []},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+                cowboy,
+                lager
+	]},
+	{mod, {nebula2_app, []}},
+	{env, []}
+]}.
