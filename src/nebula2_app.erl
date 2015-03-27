@@ -7,10 +7,6 @@
 -export([stop/1]).
 
 -export([app_config/2,
-         riak_port/0,
-         riak_servers/0,
-         riak_pools_init/0,
-         riak_pools_max/0,
          riak_location/0
 ]).
 
@@ -32,26 +28,6 @@ stop(_State) ->
 -spec nebula_app:riak_location() -> string().
 riak_location() -> 
     app_config(riak_location, ?DEFAULT_RIAK_LOCATION).
-
-%% @doc Returns the initial number of riak worker pools.
--spec nebula_app:riak_pools_init() -> int.
-riak_pools_init() ->
-    app_config(riak_pools_init, ?DEFAULT_RIAK_POOLS_INIT).
-
-%% @doc Returns the maximum number of riak worker pools.
--spec nebula_app:riak_pools_max() -> int.
-riak_pools_max() ->
-    app_config(riak_pools_max, ?DEFAULT_RIAK_POOLS_MAX).
-
-%% @doc Returns the port that riak listens on.
--spec nebula_app:riak_port() -> integer().
-riak_port() ->
-    app_config(riak_port, ?DEFAULT_RIAK_PORT).
-
-%% @doc Returns the IP address or hostname that riak listens on.
--spec nebula_app:riak_server() -> [string()].
-riak_servers() ->
-    app_config(riak_servers, ?DEFAULT_RIAK_SERVERS).
 
 %% @doc Gets a configuration item from the environment.
 -spec nebula_app:app_config(string(), string()) -> string().

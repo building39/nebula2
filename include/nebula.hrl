@@ -43,7 +43,3 @@
 
 %% riak parameters
 -define(DEFAULT_RIAK_LOCATION, "US-TX").
--define(DEFAULT_RIAK_PORT, 8087).
--define(DEFAULT_RIAK_SERVERS, ["127.0.0.1"]).
--define(DEFAULT_RIAK_POOLS_INIT, 1).
--define(DEFAULT_RIAK_POOLS_MAX, 5).

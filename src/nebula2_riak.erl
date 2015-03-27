@@ -11,7 +11,25 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([ping/1]).
+-export([get/2,
+         ping/1]).
+
+%% @doc Get a value from riak by bucket type, bucket and key.
+-spec nebula_riak:get(object_oid()) -> {ok, json_value()}.
+get(Conn, Oid) ->
+    lager:info("Type: ~p Bucket: ~p Oid: ~p", [?BUCKET_TYPE, ?BUCKET_NAME, Oid]),
+    Response = case riakc_pb_socket:get(Conn,
+                                        {list_to_binary(?BUCKET_TYPE),
+                                         list_to_binary(?BUCKET_NAME)},
+                                         list_to_binary(Oid)) of
+                    {ok, Object} ->
+                        Contents = binary_to_list(riakc_obj:get_value(Object)),
+                        {ok, Contents};
+                    {error, Term} ->
+                        {error, Term}
+    end,
+    lager:info("Get response is ~p", [Response]),
+    Response.
 
 %% @doc Ping the riak cluster.
 -spec nebula_riak:ping(pid()) -> boolean().
