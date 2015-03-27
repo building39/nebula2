@@ -1,5 +1,7 @@
 PROJECT = nebula2
-DEPS = cowboy lager
+DEPS = lager cowboy riakc pooler
+dep_pooler = git git@github.com:seth/pooler.git 1.4.0
+dep_riakc = git git@github.com:basho/riak-erlang-client.git 2.1.0.1
 include erlang.mk
 
 # Turn on lager

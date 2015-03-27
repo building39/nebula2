@@ -8,5 +8,7 @@ start_link() ->
 	supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-	Procs = [],
-	{ok, {{one_for_one, 1, 5}, Procs}}.
+    io:format("Starting Nebula2...~n"),
+%%    PoolerSup = {pooler_sup, {pooler_sup, start_link, []},
+%%             permanent, infinity, supervisor, [pooler_sup]},
+    {ok, {{one_for_one, 1, 5}, []}}.

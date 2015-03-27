@@ -7,9 +7,10 @@
 	{applications, [
 		kernel,
 		stdlib,
-                cowboy,
-                lager
+		riakc,
+        cowboy
 	]},
+    {included_applications, [lager, pooler]},
 	{mod, {nebula2_app, []}},
 	{env, []}
 ]}.
