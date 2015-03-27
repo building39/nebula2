@@ -6,6 +6,8 @@
 -export([init/3]).
 -export([content_types_provided/2]).
 -export([get_html/2,
+         forbidden/2,
+         is_authorized/2,
          malformed_request/2,
          rest_init/2,
          service_available/2]).
@@ -22,11 +24,21 @@ rest_init(Req, _State) ->
 content_types_provided(Req, State) ->
     {[{{<<"text">>, <<"html">>, '*'}, get_html}], Req, State}.
 
+forbidden(Req, State) ->
+%% TODO: Check ACLs here
+    {false, Req, State}.
+%%    {true, Req, State}.
+    
 get_html(Req, State) ->
-    lager:debug("get_html...~p", [State]),
+    lager:debug("get_json...~p", [State]),
     
     pooler:return_member(riak_pool, State),
-    {<<"<html><body>This is REST!</body></html>">>, Req, State}.
+    {<<"{\"jsondoc\": \"number1\"}">>, Req, State}.
+
+is_authorized(Req, State) ->
+%% TODO: Check credentials here
+    {true, Req, State}.
+%%    {{false, "You suck!!!"}, Req, State}.
 
 %% Malformed request.
 %% There must be an X-CDMI-Specification-Version header, and it
