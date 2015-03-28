@@ -1,0 +1,30 @@
+{"capabilities": {
+        "cdmi_acl": "true",
+        "cdmi_atime": "true",
+        "cdmi_copy_domain": "false",
+        "cdmi_create_container": "true",
+        "cdmi_create_domain": "true",
+        "cdmi_create_queue": "false",
+        "cdmi_ctime": "true",
+        "cdmi_delete_container": "true",
+        "cdmi_delete_domain": "true",
+        "cdmi_delete_members": "true",
+        "cdmi_delete_summary": "true",
+        "cdmi_list_children": "true",
+        "cdmi_modify_metadata": "true",
+        "cdmi_mtime": "true",
+        "cdmi_read_metadata": "true",
+        "cdmi_size": "true",
+        "cdmi_versioning": "false",
+        "nebula_data_location": [
+           "{{ location }}"
+                                ],
+             },
+ "objectID": "{{ key }}",
+ "objectName": "domain/",
+ "objectType": "{{ content_type }}",
+ "parentID": "{{ parent_id }}",
+ "parentURI": "/cdmi_capabilities/",
+ "childrenrange": "",
+ "children": []
+}

@@ -1,0 +1,12 @@
+{
+  "cdmi_domainURI": "/cdmi_domains/system_domain",
+  "cdmi_summary_end": "1970-01-01T00:00:0000Z",
+  "cdmi_summary_reads": "0",
+  "cdmi_summary_start": "1970-01-01T00:00:0000Z",
+  "cdmi_summary_writes": "0",
+  "objectID": "{{ key }}",
+  "objectName": "current",
+  "objectType": "{{ content_type }}",
+  "parentURI": "/cdmi_domains/system_domain/cdmi_domain_summary/",
+  "parentID": "{{ parent_id }}"
+}

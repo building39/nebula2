@@ -7,7 +7,11 @@
 	{applications, [
 		kernel,
 		stdlib,
+		erlydtl,
 		riakc,
+		crc16,
+		uuid,
+		jsx,
         cowboy
 	]},
     {included_applications, [lager, pooler]},

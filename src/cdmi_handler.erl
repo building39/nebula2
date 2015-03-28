@@ -4,13 +4,19 @@
 -include("nebula.hrl").
   
 -export([init/3]).
--export([content_types_provided/2]).
--export([get_html/2,
+-export([content_types_accepted/2,
+         content_types_provided/2,
+         from_cdmi_capability/2,
+         from_cdmi_container/2,
+         from_cdmi_object/2,
          forbidden/2,
          is_authorized/2,
          malformed_request/2,
          rest_init/2,
-         service_available/2]).
+         service_available/2,
+         to_cdmi_capability/2,
+         to_cdmi_container/2,
+         to_cdmi_object/2]).
 
 init(_, _Req, _Opts) ->
     lager:debug("initing..."),
@@ -21,47 +27,74 @@ rest_init(Req, _State) ->
     lager:debug("PoolMember: ~p", [PoolMember]),
     {ok, Req, PoolMember}.
 
-content_types_provided(Req, State) ->
-    {[{{<<"text">>, <<"html">>, '*'}, get_html}], Req, State}.
+content_types_accepted(Req, Pid) ->
+    {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
+      {{<<"application">>, <<"cdmi-container">>, '*'}, from_cdmi_container},
+      {{<<"application">>, <<"cdmi-object">>, '*'}, from_cdmi_object}
+     ], Req, Pid}.
 
-forbidden(Req, State) ->
+content_types_provided(Req, Pid) ->
+    {[{{<<"application">>, <<"cdmi-capability">>, '*'}, to_cdmi_capability},
+      {{<<"application">>, <<"cdmi-container">>, '*'}, to_cdmi_container},
+      {{<<"application">>, <<"cdm-object">>, '*'}, to_cdmi_object}
+     ], Req, Pid}.
+
+forbidden(Req, Pid) ->
 %% TODO: Check ACLs here
-    {false, Req, State}.
-%%    {true, Req, State}.
+    {false, Req, Pid}.
+%%    {true, Req, Pid}.
     
-get_html(Req, State) ->
-    lager:debug("get_json...~p", [State]),
-    
-    pooler:return_member(riak_pool, State),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req, State}.
+from_cdmi_capability(Req, Pid) ->
+    lager:debug("from_cdmi_capability...~p", [Pid]),
+    {Path, _} = cowboy_req:path_info(Req),
+%%    Uri = string:substr(binary_to_list(Path), 6),
+    lager:debug("URI: ~p", [Path]),
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    lager:debug("Body: ~p", [Body]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req2, Pid}.
 
-is_authorized(Req, State) ->
+from_cdmi_container(Req, Pid) ->
+    lager:debug("from_cdmi_container...~p", [Pid]),
+    {Path, _} = cowboy_req:path_info(Req),
+%%    Uri = string:substr(binary_to_list(Path), 6),
+    lager:debug("URI: ~p", [Path]),
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    lager:debug("Body: ~p", [Body]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req2, Pid}.
+
+from_cdmi_object(Req, Pid) ->
+    lager:debug("from_cdmi_object...~p", [Pid]),
+    {Path, _} = cowboy_req:path(Req),
+%%    Uri = string:substr(binary_to_list(Path), 6),
+    
+    lager:debug("Get URI: ~p", [Path]),
+%%    Json = nebula2_riak:get(Pid, Uri),
+%%    lager:debug("Got Json: ~p", [Json]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+
+is_authorized(Req, Pid) ->
 %% TODO: Check credentials here
-    {true, Req, State}.
-%%    {{false, "You suck!!!"}, Req, State}.
+    {true, Req, Pid}.
+%%    {{false, "You suck!!!"}, Req, Pid}.
 
 %% Malformed request.
 %% There must be an X-CDMI-Specification-Version header, and it
 %% must request version 1.1
-malformed_request(Req, State) ->
-    lager:debug("In malformed_request..."),
+malformed_request(Req, Pid) ->
     CDMIVersion = cowboy_req:header(<<?VERSION_HEADER>>, Req, error),
-    lager:debug("Version header value: ~p", [CDMIVersion]),
     Valid = case CDMIVersion of
         {error, _} -> 
-            lager:debug("Malformed request - no cdmi version header"),
                 true;
         {BinaryVersion, _} ->
                 Version = binary_to_list(BinaryVersion),
-                lager:debug("Found an X-CDMI-Specification header: ~p", [Version]),
                 L = re:replace(Version, "\\s+", "", [global,{return,list}]),
-                lager:debug("L is ~p", [L]),
                 CDMIVersions = string:tokens(L, ","),
-                lager:debug("Acceptable Versions: ~p", [CDMIVersions]),
                 not lists:member(?CDMI_VERSION, CDMIVersions)
     end,
-    lager:debug("Malformed request: ~p", [Valid]),
-    {Valid, Req, State}.
+    {Valid, Req, Pid}.
                                           
 %% if pooler says no members, kick back a 503. I
 %% do this here because a 503 seems to me the most
@@ -69,12 +102,42 @@ malformed_request(Req, State) ->
 %% <b>currently</b> unavailable.
 service_available(Req, error_no_members) ->
     {false, Req, undefined};
-service_available(Req, Conn) ->
-    Available = case nebula2_riak:ping(Conn) of
-        true ->
-             lager:debug("Service available..."),
-             true;
-        _ -> lager:debug("Service unavailable..."),
-             false
+service_available(Req, Pid) ->
+    Available = case nebula2_riak:ping(Pid) of
+        true -> true;
+        _ -> false
     end,
-    {Available, Req, Conn}.
+    {Available, Req, Pid}.
+
+to_cdmi_capability(Req, Pid) ->
+    lager:debug("to_cdmi_capability...~p", [Pid]),
+    {Path, _} = cowboy_req:path(Req),
+    Uri = string:substr(binary_to_list(Path), 6),
+    
+    lager:debug("Get URI: ~p", [Uri]),
+%%    Json = nebula2_riak:get(Pid, Uri),
+%%    lager:debug("Got Json: ~p", [Json]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+
+to_cdmi_container(Req, Pid) ->
+    lager:debug("to_cdmi_container...~p", [Pid]),
+    {Path, _} = cowboy_req:path(Req),
+    Uri = string:substr(binary_to_list(Path), 6),
+    
+    lager:debug("Get URI: ~p", [Uri]),
+%%    Json = nebula2_riak:get(Pid, Uri),
+%%    lager:debug("Got Json: ~p", [Json]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+
+to_cdmi_object(Req, Pid) ->
+    lager:debug("to_cdmi_object...~p", [Pid]),
+    {Path, _} = cowboy_req:path(Req),
+    Uri = string:substr(binary_to_list(Path), 6),
+    
+    lager:debug("Get URI: ~p", [Uri]),
+%%    Json = nebula2_riak:get(Pid, Uri),
+%%    lager:debug("Got Json: ~p", [Json]),
+    pooler:return_member(riak_pool, Pid),
+    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.

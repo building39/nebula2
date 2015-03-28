@@ -1,0 +1,32 @@
+{"capabilities": {
+        "cdmi_dataobjects": "true",
+        "cdmi_domains": "true",
+        "cdmi_export_webdav": "false",
+        "cdmi_notification": "false",
+        "cdmi_object_access_by_ID": "false",
+        "cdmi_object_copy_from_local": "false",
+        "cdmi_object_move_from_ID": "false",
+        "cdmi_object_move_from_local": "false",
+        "cdmi_query": "true",
+        "cdmi_queues": "false",
+        "cdmi_security_access_control": "false",
+        "cdmi_security_data_integrity": "false",
+        "cdmi_security_encryption": "false",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+        "nebula_modified_by": ""
+    },
+ "objectID": "{{ key }}",
+ "objectName": "cdmi_capabilities/",
+ "objectType": "{{ content_type }}",
+ "parentID": "{{ parent_id }}",
+ "parentURI": "/",
+ "childrenrange": "0-3",
+ "children": [
+              "container/",
+              "dataobject/",
+              "domain/",
+              "queue/",
+             ]
+}

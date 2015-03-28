@@ -1,0 +1,15 @@
+{
+  "cdmi_domainURI": "/cdmi_domains/system_domain",
+  "cdmi_summary_bytesaverage": "0",
+  "cdmi_summary_bytesmax": "0",
+  "cdmi_summary_bytesmin": "0",
+  "cdmi_summary_end": "1970-01-01T00:00:0000Z",
+  "cdmi_summary_reads": "0",
+  "cdmi_summary_start": "1970-01-01T00:00:0000Z",
+  "cdmi_summary_writes": "0",
+  "objectID": "{{ key }}",
+  "objectName": "cumulative",
+  "objectType": "{{ content_type }}",
+  "parentURI": "/cdmi_domains/system_domain/cdmi_domain_summary/",
+  "parentID": "{{ parent_id }}"
+}

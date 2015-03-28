@@ -1,0 +1,51 @@
+{
+    "capabilitiesURI": "/cdmi_capabilities/dataobject/member/",
+    "completionStatus": "Complete",
+    "domainURI": "/cdmi_domains/system_domain/",
+    "metadata": {
+        "cdmi_acl": [
+            {
+                "aceflags": "0x0",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0xb",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x80",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x83",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            }
+        ],
+        "cdmi_atime": "{{ tstamp }}",
+        "cdmi_ctime": "{{ tstamp }}",
+        "cdmi_mtime": "{{ tstamp }}",
+        "cdmi_owner": "administrator",
+        "cdmi_size": "346",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+        "nebula_modified_by": "administrator"
+    },
+    "mimetype": "application/csp.mezeo-member+json",
+    "objectID": "{{ key }}",
+    "objectName": "administrator",
+    "objectType": "application/cdmi-object",
+    "parentID": "{{ parent_id }}",
+    "parentURI": "/cdmi_domains/system_domain/cdmi_domain_members/",
+    "value": "{\"cdmi_member_principal\": \"administrator\", \"cdmi_member_enabled\": \"true\", \"cdmi_member_credentials\": \"\", \"cdmi_member_name\": \"Administrator Account\", \"cdmi_member_privileges\": [ \"cross_domain\", \"administrator\" ], \"nebula_email_address\": \"admin@localhost\", \"cdmi_member_groups\": [], \"cdmi_member_type\": \"user\"}",
+    "valuerange": "0-345",
+    "valuetransferencoding": "utf-8"
+}

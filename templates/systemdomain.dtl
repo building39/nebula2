@@ -1,0 +1,58 @@
+{
+    "capabilitiesURI": "/cdmi_capabilities/domain/",
+    "completionStatus": "Complete",
+    "domainURI": "/cdmi_domains/system_domain/",
+    "metadata": {
+        "cdmi_acl": [
+            {
+                "aceflags": "0x0",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0xb",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x80",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x83",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            }
+        ],
+        "cdmi_atime": "{{ tstamp }}",
+        "cdmi_ctime": "{{ tstamp }}",
+        "cdmi_domain_enabled": "true",
+        "cdmi_mtime": "{{ tstamp }}",
+        "cdmi_owner": "administrator",
+        "cdmi_size": "491",
+        "cdmi_versions_count_provided": "0",
+        "nebula_bandwidth_allocation": "-1",
+        "nebula_bandwidth_consumption": "{\"public\": {\"out\": 0, \"in\": 0}, \"private\": {\"out\": 0, \"in\": 0}}",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+        "nebula_modified_by": "",
+        "nebula_storage_allocation": "0",
+        "nebula_storage_used": "0"
+    },
+    "objectID": "{{ key }}",
+    "objectName": "system_domain/",
+    "objectType": "application/cdmi-domain",
+    "parentID": "{{ parent_uri }}",
+    "parentURI": "/cdmi_domains/",
+    "children": [
+        "cdmi_domain_members/",
+        "cdmi_domain_summary/"
+    ],
+    "childrenrange": "0-1",
+}

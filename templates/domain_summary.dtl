@@ -1,0 +1,54 @@
+{
+    "capabilitiesURI": "/cdmi_capabilities/domain/summary/",
+    "completionStatus": "Complete",
+    "domainURI": "/cdmi_domains/system_domain/",
+    "metadata": {
+        "cdmi_acl": [
+            {
+                "aceflags": "0x0",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0xb",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x80",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            },
+            {
+                "aceflags": "0x83",
+                "acemask": "0x1f07ff",
+                "acetype": "0x0",
+                "identifier": "ADMINISTRATOR@"
+            }
+        ],
+        "cdmi_atime": "{{ tstamp }}",
+        "cdmi_ctime": "{{ tstamp }}",
+        "cdmi_mtime": "{{ tstamp }}",
+        "cdmi_owner": "administrator",
+        "cdmi_versions_count_provided": "0",
+        "nebula_data_location": [
+            "{{ location }}"
+        ]
+    },
+    "objectID": "{{ key }}",
+    "objectName": "cdmi_domain_summary/",
+    "objectType": "application/cdmi-container",
+    "parentID": "{{ parent_id }}",
+    "parentURI": "/cdmi_domains/system_domain/",
+    "children": [
+        "cumulative",
+        "current",
+        "daily/",
+        "monthly/",
+        "yearly/"
+    ],
+    "childrenrange": "0-5",
+}

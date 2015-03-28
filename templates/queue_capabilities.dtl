@@ -1,0 +1,25 @@
+{"capabilities": {
+        "cdmi_acl": "true",
+        "cdmi_atime": "true",
+        "cdmi_ctime": "false",
+        "cdmi_delete_queue": "false",
+        "cdmi_modify_metadata": "false",
+        "cdmi_modify_value": "false",
+        "cdmi_move_queue": "false",
+        "cdmi_mtime": "true",
+        "cdmi_read_metadata": "false",
+        "cdmi_read_value": "false",
+        "cdmi_size": "false",
+        "cdmi_versioning": "false",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+    },
+ "objectID": "{{ key }}",
+ "objectName": "queue/",
+ "objectType": "{{ content_type }}",
+ "parentID": "{{ parent_id }}",
+ "parentURI": "/cdmi_capabilities/",
+ "childrenrange": "",
+ "children": []
+}

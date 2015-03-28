@@ -1,0 +1,25 @@
+{"capabilities": {
+        "cdmi_acl": "true",
+        "cdmi_atime": "true",
+        "cdmi_ctime": "true",
+        "cdmi_delete_dataobject": "true",
+        "cdmi_modify_metadata": "true",
+        "cdmi_modify_value": "true",
+        "cdmi_mtime": "true",
+        "cdmi_read_metadata": "true",
+        "cdmi_read_value": "true",
+        "cdmi_size": "true",
+        "cdmi_versioning": "false",
+        "cdmi_write_metadata": "true",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+    },
+ "objectID": "{{ key }}",
+ "objectName": "member/",
+ "objectType": "{{ content_type }}",
+ "parentID": "{{ parent_id }}",
+ "parentURI": "/cdmi_capabilities/dataobject/",
+ "childrenrange": "",
+ "children": []
+}
