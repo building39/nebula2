@@ -118,7 +118,7 @@ to_cdmi_capability(Req, Pid) ->
 %%    Json = nebula2_riak:get(Pid, Uri),
 %%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+    {<<"{\"jsondoc\": \"capability\"}">>, Req, Pid}.
 
 to_cdmi_container(Req, Pid) ->
     lager:debug("to_cdmi_container...~p", [Pid]),
@@ -126,10 +126,10 @@ to_cdmi_container(Req, Pid) ->
     Uri = string:substr(binary_to_list(Path), 6),
     
     lager:debug("Get URI: ~p", [Uri]),
-%%    Json = nebula2_riak:get(Pid, Uri),
-%%    lager:debug("Got Json: ~p", [Json]),
+    Json = nebula2_riak:search(Pid, Uri),
+    lager:debug("Got from Search: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+    {<<"{\"jsondoc\": \"container\"}">>, Req, Pid}.
 
 to_cdmi_object(Req, Pid) ->
     lager:debug("to_cdmi_object...~p", [Pid]),
@@ -140,4 +140,4 @@ to_cdmi_object(Req, Pid) ->
 %%    Json = nebula2_riak:get(Pid, Uri),
 %%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req, Pid}.
+    {<<"{\"jsondoc\": \"object\"}">>, Req, Pid}.
