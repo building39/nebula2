@@ -138,11 +138,10 @@ to_cdmi_container(Req, Pid) ->
     Response = case nebula2_riak:search(Pid, Uri) of
                    {ok, Json}            -> {list_to_binary(Json), Req, Pid};
                    {error, Status} -> 
-                       lager:debug("Get error: ~p ~p", [Status]),
+                       lager:error("Get error: Status: ~p URI: ~p", [Status, Uri]),
                        {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
                end,
     pooler:return_member(riak_pool, Pid),
-    lager:debug("Response: ~p", [Response]),
     Response.
 
 to_cdmi_object(Req, Pid) ->
@@ -151,7 +150,5 @@ to_cdmi_object(Req, Pid) ->
     Uri = string:substr(binary_to_list(Path), 6),
     
     lager:debug("Get URI: ~p", [Uri]),
-%%    Json = nebula2_riak:get(Pid, Uri),
-%%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
     {<<"{\"jsondoc\": \"object\"}">>, Req, Pid}.

@@ -22,7 +22,6 @@
 get(Pid, []) ->
     get(Pid, "/");
 get(Pid, Oid) ->
-    lager:info("Type: ~p Bucket: ~p Oid: ~p", [?BUCKET_TYPE, ?BUCKET_NAME, Oid]),
     Response = case riakc_pb_socket:get(Pid,
                                         {list_to_binary(?BUCKET_TYPE),
                                          list_to_binary(?BUCKET_NAME)},
@@ -33,7 +32,6 @@ get(Pid, Oid) ->
                     {error, Term} ->
                         {error, Term}
     end,
-    lager:info("Get response is ~p", [Response]),
     Response.
 
 %% @doc Ping the riak cluster.
@@ -121,9 +119,5 @@ execute_search(Pid, Predicate) ->
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
 fetch(Pid, Data) ->
     [{<<?CDMI_INDEX>>, Results}] = Data,
-    lager:debug("fetching document from Pid ~p Data ~p", [Pid, Results]),
     ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
-    lager:debug("fetching document with objectid ~p", [ObjectId]),
-    Document = nebula2_riak:get(Pid, ObjectId),
-    lager:debug("Got document: ~p", [Document]),
-    Document.
+    nebula2_riak:get(Pid, ObjectId).
