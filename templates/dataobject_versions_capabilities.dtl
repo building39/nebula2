@@ -1,15 +1,20 @@
-{"capabilities": {
+{
+    "capabilities": {
         "cdmi_read_metadata": "true",
         "cdmi_read_value": "true",
         "nebula_data_location": [
             "{{ location }}"
         ]
     },
- "objectID": "{{ key }}",
- "objectName": "versions/",
- "objectType": "{{ content_type }}",
- "parentID": "{{ parent_id }}",
- "parentURI": "/cdmi_capabilities/dataobject/",
- "childrenrange": "",
- "children": []
+    "children": [],
+    "childrenrange": "",
+    "metadata": {
+        "nebula_objectName": "versions/",
+        "nebula_parentURI": "root/cdmi_capabilities/dataobject/"
+    },
+    "objectID": "{{ key }}",
+    "objectName": "versions/",
+    "objectType": "{{ content_type }}",
+    "parentID": "{{ parent_id }}",
+    "parentURI": "/cdmi_capabilities/dataobject/"
 }

@@ -1,5 +1,9 @@
 {
     "capabilitiesURI": "/cdmi_capabilities/container/permanent/",
+    "children": [
+        "storage_subsystems/"
+    ],
+    "childrenrange": "0-0",
     "completionStatus": "Complete",
     "domainURI": "/cdmi_domains/system_domain/",
     "metadata": {
@@ -28,7 +32,7 @@
                 "acetype": "0x0",
                 "identifier": "ADMINISTRATOR@"
             }
-                    ],
+        ],
         "cdmi_atime": "{{ tstamp }}",
         "cdmi_ctime": "{{ tstamp }}",
         "cdmi_mtime": "{{ tstamp }}",
@@ -38,15 +42,13 @@
         "nebula_data_location": [
             "{{ location }}"
         ],
-        "nebula_modified_by": ""
+        "nebula_modified_by": "",
+        "nebula_objectName": "system_configuration/",
+        "nebula_parentURI": "root/"
     },
     "objectID": "{{ key }}",
     "objectName": "system_configuration/",
     "objectType": "application/cdmi-container",
     "parentID": "{{ parent_id }}",
-    "parentURI": "/",
-    "children": [
-        "storage_subsystems/"
-    ],
-    "childrenrange": "0-0"
+    "parentURI": "/"
 }

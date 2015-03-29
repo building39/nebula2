@@ -1,4 +1,5 @@
-{"capabilities": {
+{
+    "capabilities": {
         "cdmi_modify_metadata": "true",
         "cdmi_modify_value": "true",
         "cdmi_modify_value_range": "true",
@@ -7,13 +8,17 @@
         "cdmi_read_value_range": "true",
         "nebula_data_location": [
             "{{ location }}"
-        ],
+        ]
     },
- "objectID": "{{ key }}",
- "objectName": "permanent/",
- "objectType": "{{ content_type }}",
- "parentID": "{{ parent_id }}",
- "parentURI": "/cdmi_capabilities/dataobject/configuration/",
- "childrenrange": "",
- "children": []
+    "children": [],
+    "childrenrange": "",
+    "metadata": {
+        "nebula_objectName": "permanent/",
+        "nebula_parentURI": "root/cdmi_capabilities/dataobject/configuration/"
+    },
+    "objectID": "{{ key }}",
+    "objectName": "permanent/",
+    "objectType": "{{ content_type }}",
+    "parentID": "{{ parent_id }}",
+    "parentURI": "/cdmi_capabilities/dataobject/configuration/"
 }

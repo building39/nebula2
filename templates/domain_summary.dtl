@@ -1,5 +1,13 @@
 {
     "capabilitiesURI": "/cdmi_capabilities/domain/summary/",
+    "children": [
+        "cumulative",
+        "current",
+        "daily/",
+        "monthly/",
+        "yearly/"
+    ],
+    "childrenrange": "0-5",
     "completionStatus": "Complete",
     "domainURI": "/cdmi_domains/system_domain/",
     "metadata": {
@@ -36,19 +44,13 @@
         "cdmi_versions_count_provided": "0",
         "nebula_data_location": [
             "{{ location }}"
-        ]
+        ],
+        "nebula_objectName": "cdmi_domain_summary/",
+        "nebula_parentURI": "root/cdmi_domains/system_domain/"
     },
     "objectID": "{{ key }}",
     "objectName": "cdmi_domain_summary/",
     "objectType": "application/cdmi-container",
     "parentID": "{{ parent_id }}",
-    "parentURI": "/cdmi_domains/system_domain/",
-    "children": [
-        "cumulative",
-        "current",
-        "daily/",
-        "monthly/",
-        "yearly/"
-    ],
-    "childrenrange": "0-5",
+    "parentURI": "/cdmi_domains/system_domain/"
 }

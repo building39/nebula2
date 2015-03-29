@@ -37,7 +37,9 @@
         "nebula_data_location": [
             "{{ location }}"
         ],
-        "nebula_modified_by": "administrator"
+        "nebula_modified_by": "administrator",
+        "nebula_objectName": "administrator",
+        "nebula_parentURI": "root/cdmi_domains/system_domain/cdmi_domain_members/"
     },
     "mimetype": "application/csp.mezeo-member+json",
     "objectID": "{{ key }}",

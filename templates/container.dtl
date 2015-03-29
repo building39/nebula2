@@ -1,19 +1,23 @@
 {
-  "capabilitiesURI": "{{ capabilities_uri }}",
-  "completionStatus": "Complete",
-  "domainURI": "{{ domain_uri }}",
-  "metadata": {
-    "cdmi_atime": "{{ access_time }}",
-    "cdmi_ctime": "{{ create_time }}",
-    "cdmi_mtime": "{{ modify_time }}",
-    "cdmi_owner": "{{ owner }}",
-    "cdmi_size":  "{{ size }}",
-    "nebula_data_location": [ {{ location }} ],
-    "nebula_modified_by": "{{ modified_by }}"
-  }
-  "objectID":   "{{ key }}",
-  "objectName": "{{ name }}",
-  "objectType": "application/cdmi-container",
-  "parentID":   "{{ parent_key }}",
-  "parentURI":  "{{ parent_uri }}",
+    "capabilitiesURI": "{{ capabilities_uri }}",
+    "completionStatus": "Complete",
+    "domainURI": "{{ domain_uri }}",
+    "metadata": {
+        "cdmi_atime": "{{ access_time }}",
+        "cdmi_ctime": "{{ create_time }}",
+        "cdmi_mtime": "{{ modify_time }}",
+        "cdmi_owner": "{{ owner }}",
+        "cdmi_size": "{{ size }}",
+        "nebula_data_location": [
+            "{{ location }}"
+        ],
+        "nebula_modified_by": "{{ modified_by }}",
+        "nebula_objectName": "{{ name }}",
+        "nebula_parentURI": "root/{{ parent_uri }}"
+    },
+    "objectID": "{{ key }}",
+    "objectName": "{{ name }}",
+    "objectType": "application/cdmi-container",
+    "parentID": "{{ parent_key }}",
+    "parentURI": "{{ parent_uri }}"
 }

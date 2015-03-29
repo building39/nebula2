@@ -1,5 +1,10 @@
 {
     "capabilitiesURI": "/cdmi_capabilities/domain/",
+    "children": [
+        "cdmi_domain_members/",
+        "cdmi_domain_summary/"
+    ],
+    "childrenrange": "0-1",
     "completionStatus": "Complete",
     "domainURI": "/cdmi_domains/system_domain/",
     "metadata": {
@@ -42,6 +47,8 @@
             "{{ location }}"
         ],
         "nebula_modified_by": "",
+        "nebula_objectName": "system_domain/",
+        "nebula_parentURI": "root/cdmi_domains/",
         "nebula_storage_allocation": "0",
         "nebula_storage_used": "0"
     },
@@ -49,10 +56,5 @@
     "objectName": "system_domain/",
     "objectType": "application/cdmi-domain",
     "parentID": "{{ parent_uri }}",
-    "parentURI": "/cdmi_domains/",
-    "children": [
-        "cdmi_domain_members/",
-        "cdmi_domain_summary/"
-    ],
-    "childrenrange": "0-1",
+    "parentURI": "/cdmi_domains/"
 }
