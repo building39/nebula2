@@ -126,10 +126,10 @@ to_cdmi_container(Req, Pid) ->
     Uri = string:substr(binary_to_list(Path), 6),
     
     lager:debug("Get URI: ~p", [Uri]),
-    Json = nebula2_riak:search(Pid, Uri),
+    {ok, Json} = nebula2_riak:search(Pid, Uri),
     lager:debug("Got from Search: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"container\"}">>, Req, Pid}.
+    {list_to_binary(Json), Req, Pid}.
 
 to_cdmi_object(Req, Pid) ->
     lager:debug("to_cdmi_object...~p", [Pid]),

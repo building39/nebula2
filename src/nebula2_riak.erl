@@ -84,31 +84,47 @@ put(Pid, Oid, Data) ->
 -spec nebula2_riak:search(pid(),
                          search_predicate() %% Search predicate
                         ) -> {ok, string()}.
+search(Pid, []) ->
+   search(Pid, "/");
+search(Pid, "/") ->
+    Predicate = "metadata.nebula_objectName:root/", 
+    execute_search(Pid, Predicate);
 search(Pid, Path) ->
     Tokens = string:tokens(Path, "/"),
     Name = case string:right(Path, 1) of
-                "/" -> lists:last(Tokens) ++ "/";
-                _   -> lists:last(Tokens)
-    end,
+            "/" -> lists:last(Tokens) ++ "/";
+            _   -> lists:last(Tokens)
+           end,
     Parent = "/" ++ string:join(lists:droplast(Tokens), "/") ++ "/",
-    Predicate = "objectName:" ++ Name ++ " AND parentURI:\\" ++ Parent,
-    lager:info("Searching ~p For: ~p", [?CDMI_INDEX, Predicate]),
-    {ok, Results} = riakc_pb_socket:search(Pid,
-                                           list_to_binary(?CDMI_INDEX),
-                                           list_to_binary(Predicate)),
-    lager:info("Search result: ~p", [Results]),
-    Docs = Results#search_results.docs,
-    lager:info("Search Doc: ~p", [Docs]),
-    [{_, List}|_] = Docs,
-    Dict = dict:from_list(List),
-    Response = case dict:find(<<"objectID">>, Dict) of
-                {ok, ObjectID} ->
-                    {ok, binary_to_list(ObjectID)};
-                {error, Term} ->
-                    {error, Term}
-    end,
-    Response.
-
+    Predicate = "metadata.nebula_objectName:" ++ Name ++ " AND metadata.nebula_parentURI:root" ++ Parent,
+    execute_search(Pid, Predicate).
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%% @doc Execute a search.
+-spec nebula2_riak:execute_search(pid(),
+                                  search_predicate() %% Search predicate
+                                 ) -> {ok, string()}.
+execute_search(Pid, Predicate) ->
+    P = list_to_binary(Predicate),
+    I = list_to_binary(?CDMI_INDEX),
+    lager:info("Searching ~p For: ~p", [I, P]),
+    {ok, {search_results, [{<<?CDMI_INDEX>>, Results}], _, NumFound}} = riakc_pb_socket:search(Pid, I, P),
+    lager:info("Search result: ~p", [Results]),
+    Response = case NumFound of
+                    0 -> {notfound, []}; %% Return 404
+                    1 -> fetch(Pid, Results);
+                    _ -> {error, []} %% Something's funky - return 503
+    end,
+    Response.
+
+%% @doc Fetch document.
+-spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
+fetch(Pid, Data) ->
+    lager:debug("fetching document from Pid ~p Data ~p", [Pid, Data]),
+    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
+    lager:debug("fetching document with objectid ~p", [ObjectId]),
+    Document = nebula2_riak:get(Pid, ObjectId),
+    lager:debug("Got document: ~p", [Document]),
+    Document.
