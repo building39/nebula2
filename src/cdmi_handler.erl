@@ -12,6 +12,7 @@
          forbidden/2,
          is_authorized/2,
          malformed_request/2,
+         resource_exists/2,
          rest_init/2,
          service_available/2,
          to_cdmi_capability/2,
@@ -95,7 +96,18 @@ malformed_request(Req, Pid) ->
                 not lists:member(?CDMI_VERSION, CDMIVersions)
     end,
     {Valid, Req, Pid}.
-                                          
+
+%% Does the resource exist?
+resource_exists(Req, Pid) ->
+    {Path, _} = cowboy_req:path(Req),
+    Uri = string:substr(binary_to_list(Path), 6),
+    Response = case nebula2_riak:search(Pid, Uri) of
+                   {ok, _Json}      -> true;
+                   {error, _Status} -> pooler:return_member(riak_pool, Pid),
+                                       false
+               end,
+    {Response, Req, Pid}.
+    
 %% if pooler says no members, kick back a 503. I
 %% do this here because a 503 seems to me the most
 %% appropriate response if database connections are
@@ -121,15 +133,17 @@ to_cdmi_capability(Req, Pid) ->
     {<<"{\"jsondoc\": \"capability\"}">>, Req, Pid}.
 
 to_cdmi_container(Req, Pid) ->
-    lager:debug("to_cdmi_container...~p", [Pid]),
     {Path, _} = cowboy_req:path(Req),
     Uri = string:substr(binary_to_list(Path), 6),
-    
-    lager:debug("Get URI: ~p", [Uri]),
-    {ok, Json} = nebula2_riak:search(Pid, Uri),
-    lager:debug("Got from Search: ~p", [Json]),
+    Response = case nebula2_riak:search(Pid, Uri) of
+                   {ok, Json}            -> {list_to_binary(Json), Req, Pid};
+                   {error, Status} -> 
+                       lager:debug("Get error: ~p ~p", [Status]),
+                       {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
+               end,
     pooler:return_member(riak_pool, Pid),
-    {list_to_binary(Json), Req, Pid}.
+    lager:debug("Response: ~p", [Response]),
+    Response.
 
 to_cdmi_object(Req, Pid) ->
     lager:debug("to_cdmi_object...~p", [Pid]),

@@ -107,23 +107,22 @@ search(Pid, Path) ->
                                   search_predicate() %% Search predicate
                                  ) -> {ok, string()}.
 execute_search(Pid, Predicate) ->
-    P = list_to_binary(Predicate),
-    I = list_to_binary(?CDMI_INDEX),
-    lager:info("Searching ~p For: ~p", [I, P]),
-    {ok, {search_results, [{<<?CDMI_INDEX>>, Results}], _, NumFound}} = riakc_pb_socket:search(Pid, I, P),
-    lager:info("Search result: ~p", [Results]),
+    {ok, {search_results, Results, _, NumFound}} = riakc_pb_socket:search(Pid,
+                                                                          list_to_binary(?CDMI_INDEX),
+                                                                          list_to_binary(Predicate)),
     Response = case NumFound of
-                    0 -> {notfound, []}; %% Return 404
+                    0 -> {error, 404}; %% Return 404
                     1 -> fetch(Pid, Results);
-                    _ -> {error, []} %% Something's funky - return 503
+                    _ -> {error, 500} %% Something's funky - return 500
     end,
     Response.
 
 %% @doc Fetch document.
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
 fetch(Pid, Data) ->
-    lager:debug("fetching document from Pid ~p Data ~p", [Pid, Data]),
-    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
+    [{<<?CDMI_INDEX>>, Results}] = Data,
+    lager:debug("fetching document from Pid ~p Data ~p", [Pid, Results]),
+    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
     lager:debug("fetching document with objectid ~p", [ObjectId]),
     Document = nebula2_riak:get(Pid, ObjectId),
     lager:debug("Got document: ~p", [Document]),
