@@ -124,17 +124,12 @@ service_available(Req, Pid) ->
     {Available, Req, Pid}.
 
 to_cdmi_capability(Req, Pid) ->
-    lager:debug("to_cdmi_capability...~p", [Pid]),
-    {Path, _} = cowboy_req:path(Req),
-    Uri = string:substr(binary_to_list(Path), 6),
-    
-    lager:debug("Get URI: ~p", [Uri]),
-%%    Json = nebula2_riak:get(Pid, Uri),
-%%    lager:debug("Got Json: ~p", [Json]),
-    pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"capability\"}">>, Req, Pid}.
+    to_cdmi_object(Req, Pid).
 
 to_cdmi_container(Req, Pid) ->
+    to_cdmi_object(Req, Pid).
+
+to_cdmi_object(Req, Pid) ->
     {Path, _} = cowboy_req:path(Req),
     Uri = string:substr(binary_to_list(Path), 6),
     Response = case nebula2_riak:search(Pid, Uri) of
@@ -145,12 +140,3 @@ to_cdmi_container(Req, Pid) ->
                end,
     pooler:return_member(riak_pool, Pid),
     Response.
-
-to_cdmi_object(Req, Pid) ->
-    lager:debug("to_cdmi_object...~p", [Pid]),
-    {Path, _} = cowboy_req:path(Req),
-    Uri = string:substr(binary_to_list(Path), 6),
-    
-    lager:debug("Get URI: ~p", [Uri]),
-    pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"object\"}">>, Req, Pid}.

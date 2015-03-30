@@ -3,7 +3,7 @@
 
 -module(nebula2_bootstrap).
 
--include("include/nebula.hrl").
+-include("nebula.hrl").
 
 %% ====================================================================
 %% API functions

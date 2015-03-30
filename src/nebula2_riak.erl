@@ -1,7 +1,6 @@
 %% @author mmartin
 %% @doc @todo Add description to nebula2_riak.
 
-
 -module(nebula2_riak).
 -compile([{parse_transform, lager_transform}]).
 
@@ -104,28 +103,36 @@ search(Pid, Uri) ->
                                   search_predicate()  %% URI.
                                  ) -> {ok, string()}.
 execute_search(Pid, Uri) ->
-    lager:info("executing the search."),
     Tokens = string:tokens(Uri, "/"),
     Name = case string:right(Uri, 1) of
             "/" -> lists:last(Tokens) ++ "/";
             _   -> lists:last(Tokens)
            end,
+    ParentUri = case string:join(lists:droplast(Tokens), "/") of
+                    [] -> "root/";
+                    PU -> "root/" ++  PU ++ "/"
+                end,
     Query = case Uri of
                     "root/" ->
                         "metadata.nebula_objectName: root/";
                      _  ->
                         "metadata.nebula_objectName:" ++ 
                             Name ++ 
-                            " AND metadata.nebula_parentURI:root" ++
-                            "/" ++ string:join(lists:droplast(Tokens), "/") ++ "/"
+                            " AND metadata.nebula_parentURI:" ++ ParentUri
                 end,
     {ok, {search_results, Results, _, NumFound}} = riakc_pb_socket:search(Pid,
                                                                           list_to_binary(?CDMI_INDEX),
                                                                           list_to_binary(Query)),
+    lager:info("Search Uri: ~p", [Uri]),
+    lager:info("Query: ~p", [Query]),
+    lager:info("Tokens: ~p", [Tokens]),
     Response = case NumFound of
-                    0 -> {error, 404}; %% Return 404
-                    1 -> fetch(Pid, Results);
-                    _ -> {error, 500} %% Something's funky - return 500
+                    0 ->
+                        {error, 404}; %% Return 404
+                    1 ->
+                        fetch(Pid, Results);
+                    _ ->
+                        {error, 500} %% Something's funky - return 500
     end,
     {ok, _R} = mcd:set(?MEMCACHE, Uri, Response, ?MEMCACHE_EXPIRY),
     Response.
