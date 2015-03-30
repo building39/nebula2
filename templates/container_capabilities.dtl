@@ -28,7 +28,7 @@
             "{{ location }}"
         ],
         "nebula_objectName": "container/",
-        "nebula_parentURI": "root/{{ parent_uri }}"
+        "nebula_parentURI": "root/cdmi_capabilities/"
     },
     "objectID": "{{ key }}",
     "objectName": "container/",

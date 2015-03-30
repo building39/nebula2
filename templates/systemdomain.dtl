@@ -55,6 +55,6 @@
     "objectID": "{{ key }}",
     "objectName": "system_domain/",
     "objectType": "application/cdmi-domain",
-    "parentID": "{{ parent_uri }}",
+    "parentID": "{{ parent_id }}",
     "parentURI": "/cdmi_domains/"
 }

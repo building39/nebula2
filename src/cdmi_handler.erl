@@ -25,7 +25,6 @@ init(_, _Req, _Opts) ->
 
 rest_init(Req, _State) ->
     PoolMember = pooler:take_member(riak_pool),
-    lager:debug("PoolMember: ~p", [PoolMember]),
     {ok, Req, PoolMember}.
 
 content_types_accepted(Req, Pid) ->
@@ -87,13 +86,13 @@ is_authorized(Req, Pid) ->
 malformed_request(Req, Pid) ->
     CDMIVersion = cowboy_req:header(<<?VERSION_HEADER>>, Req, error),
     Valid = case CDMIVersion of
-        {error, _} -> 
-                true;
+        {error, _} ->
+            true;
         {BinaryVersion, _} ->
-                Version = binary_to_list(BinaryVersion),
-                L = re:replace(Version, "\\s+", "", [global,{return,list}]),
-                CDMIVersions = string:tokens(L, ","),
-                not lists:member(?CDMI_VERSION, CDMIVersions)
+            Version = binary_to_list(BinaryVersion),
+            L = re:replace(Version, "\\s+", "", [global,{return,list}]),
+            CDMIVersions = string:tokens(L, ","),
+            not lists:member(?CDMI_VERSION, CDMIVersions)
     end,
     {Valid, Req, Pid}.
 
@@ -104,7 +103,7 @@ resource_exists(Req, Pid) ->
     Response = case nebula2_riak:search(Pid, Uri) of
                    {ok, _Json}      ->
                        true;
-                   {error, _Status} -> 
+                   {error, _Status} ->
                        pooler:return_member(riak_pool, Pid),
                        false
                end,

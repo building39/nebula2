@@ -27,7 +27,7 @@
         ],
         "nebula_modified_by": "",
         "nebula_objectName": "cdmi_capabilities/",
-        "nebula_parentURI": "root/{{ parent_uri }}"
+        "nebula_parentURI": "root/"
     },
     "objectID": "{{ key }}",
     "objectName": "cdmi_capabilities/",
