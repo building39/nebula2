@@ -37,7 +37,7 @@ content_types_accepted(Req, Pid) ->
 content_types_provided(Req, Pid) ->
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, to_cdmi_capability},
       {{<<"application">>, <<"cdmi-container">>, '*'}, to_cdmi_container},
-      {{<<"application">>, <<"cdm-object">>, '*'}, to_cdmi_object}
+      {{<<"application">>, <<"cdmi-object">>, '*'}, to_cdmi_object}
      ], Req, Pid}.
 
 forbidden(Req, Pid) ->
