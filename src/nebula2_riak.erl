@@ -83,12 +83,15 @@ put(Pid, Oid, Data) ->
                          search_predicate() %% Search predicate
                         ) -> {ok, string()}.
 search(Pid, []) ->
-   search(Pid, "/");
-search(Pid, Path) ->
-    Response = case mcd:get(?MEMCACHE, Path) of
-                    {error, notfound} -> execute_search(Pid, Path);
-                    {ok, Doc} -> lager:info("Got a memcache hit"),
-                                 Doc
+    search(Pid, "root/");
+search(Pid, "/") ->
+   search(Pid, "root/");
+search(Pid, Uri) ->
+    Response = case mcd:get(?MEMCACHE, Uri) of
+                    {error, notfound} ->
+                        execute_search(Pid, Uri);
+                    {ok, Doc} -> 
+                        Doc
     end,
     Response.
 
@@ -98,30 +101,33 @@ search(Pid, Path) ->
 
 %% @doc Execute a search.
 -spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
-                                  search_predicate()  %% Search predicate.
+                                  search_predicate()  %% URI.
                                  ) -> {ok, string()}.
-execute_search(Pid, Path) ->
-    Tokens = string:tokens(Path, "/"),
-    Name = case string:right(Path, 1) of
+execute_search(Pid, Uri) ->
+    lager:info("executing the search."),
+    Tokens = string:tokens(Uri, "/"),
+    Name = case string:right(Uri, 1) of
             "/" -> lists:last(Tokens) ++ "/";
             _   -> lists:last(Tokens)
            end,
-    Parent = "/" ++ string:join(lists:droplast(Tokens), "/") ++ "/",
-    Predicate = case Path of
-                    "/" ->
+    Query = case Uri of
+                    "root/" ->
                         "metadata.nebula_objectName: root/";
                      _  ->
-                        "metadata.nebula_objectName:" ++ Name ++ " AND metadata.nebula_parentURI:root" ++ Parent
+                        "metadata.nebula_objectName:" ++ 
+                            Name ++ 
+                            " AND metadata.nebula_parentURI:root" ++
+                            "/" ++ string:join(lists:droplast(Tokens), "/") ++ "/"
                 end,
     {ok, {search_results, Results, _, NumFound}} = riakc_pb_socket:search(Pid,
                                                                           list_to_binary(?CDMI_INDEX),
-                                                                          list_to_binary(Predicate)),
+                                                                          list_to_binary(Query)),
     Response = case NumFound of
                     0 -> {error, 404}; %% Return 404
                     1 -> fetch(Pid, Results);
                     _ -> {error, 500} %% Something's funky - return 500
     end,
-    {ok, _R} = mcd:set(?MEMCACHE, Path, Response, ?MEMCACHE_EXPIRY),
+    {ok, _R} = mcd:set(?MEMCACHE, Uri, Response, ?MEMCACHE_EXPIRY),
     Response.
 
 %% @doc Fetch document.

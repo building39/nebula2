@@ -102,9 +102,11 @@ resource_exists(Req, Pid) ->
     {Path, _} = cowboy_req:path(Req),
     Uri = string:substr(binary_to_list(Path), 6),
     Response = case nebula2_riak:search(Pid, Uri) of
-                   {ok, _Json}      -> true;
-                   {error, _Status} -> pooler:return_member(riak_pool, Pid),
-                                       false
+                   {ok, _Json}      ->
+                       true;
+                   {error, _Status} -> 
+                       pooler:return_member(riak_pool, Pid),
+                       false
                end,
     {Response, Req, Pid}.
     
