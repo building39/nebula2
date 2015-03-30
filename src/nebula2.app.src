@@ -14,7 +14,7 @@
 		jsx,
         cowboy
 	]},
-    {included_applications, [lager, pooler]},
+    {included_applications, [lager, pooler, mcd]},
 	{mod, {nebula2_app, []}},
 	{env, []}
 ]}.

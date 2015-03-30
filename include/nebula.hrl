@@ -20,15 +20,17 @@
 -type response()         :: {term()|integer(), headers(), string()}.
 -type search_predicate() :: string().
 
--define(BUCKET_TYPE, "cdmi").
--define(BUCKET_NAME, "cdmi").
--define(CDMI_INDEX, "cdmi_idx").
+-define(DEFAULT_LOCATION, "US-TX").
 -define(CDMI_VERSION, "1.1").
 -define(FUZZCAT_SNMP_NUMBER, "045241").
 -define(HEX_REGEXP, "[0-9a-f]*").
 -define(OID_LENGTH, 48).
 -define(OID_SUFFIX, "00" ++ ?FUZZCAT_SNMP_NUMBER ++ "0048").
 -define(UUID_LENGTH, 32).
+
+%% Memcached parameters
+-define(MEMCACHE, nebula_memcache).
+-define(MEMCACHE_EXPIRY, 60).   %% Expire after 60 seconds.
 
 %% Header macros.
 -define(ACCEPT_HEADER, "accept").
@@ -42,4 +44,6 @@
 -define(CONTENT_TYPE_CDMI_DOMAIN,     "application/cdmi-domain").
 
 %% riak parameters
--define(DEFAULT_RIAK_LOCATION, "US-TX").
+-define(BUCKET_TYPE, "cdmi").
+-define(BUCKET_NAME, "cdmi").
+-define(CDMI_INDEX, "cdmi_idx").

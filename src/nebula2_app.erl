@@ -19,6 +19,7 @@ start(_Type, _Args) ->
     ),
     lager:start(),
     application:start(pooler),
+    mcd:start_link(?MEMCACHE, ["localhost", 11211]),
     nebula2_sup:start_link().
 
 stop(_State) ->
@@ -27,7 +28,7 @@ stop(_State) ->
 %% @doc Returns the geographical location configured for nebula.
 -spec nebula_app:riak_location() -> string().
 riak_location() -> 
-    app_config(riak_location, ?DEFAULT_RIAK_LOCATION).
+    app_config(riak_location, ?DEFAULT_LOCATION).
 
 %% @doc Gets a configuration item from the environment.
 -spec nebula_app:app_config(string(), string()) -> string().
