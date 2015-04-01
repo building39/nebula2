@@ -6,7 +6,7 @@
     "childrenrange": "",
     "metadata": {
         "nebula_objectName": "{{ name }}",
-        "nebula_parentURI": "root/cdmi_domains/system_domain/cdmi_domain_summary"
+        "nebula_parentURI": "root/cdmi_domains/system_domain/cdmi_domain_summary/"
     },
     "objectID": "{{ key }}",
     "objectName": "{{ name }}",
