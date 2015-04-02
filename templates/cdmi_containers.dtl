@@ -1,0 +1,34 @@
+{% extends "/data/git/nebula2/templates/cdmi_base.dtl" %}
+{% block container %}
+{% autoescape off %}
+    {% if objectID|length > 0 %}
+        , "objectID": "{{ objectID }}"
+    {% endif %}
+    "metadata":
+        {% if metadata|length > 0 %}
+          {
+              "{{ metadata|join:"\", \"" }}"
+          },
+        {% else %}
+          "",
+        {% endif %}
+    "capabilitiesURI": "{{ capabilitiesURI }}",
+    "completionStatus": "{{ completionStatus }}",
+    "domainURI": "{{ domainURI }}",
+    {% if children|length > 0 %}
+        "children": [
+            "{{ children|join:"\", \"" }}"
+        ],
+        "childrenrange": "{{ childrenrange }}"
+    {% endif %}
+    {% if percentComplete|length > 0 %}
+        , "percentComplete": "{{ percentComplete }}"
+    {% endif %}
+    {% if exports|length > 0 %}
+        , "exports": "{{ exports }}"
+    {% endif %}
+    {% if snapshots|length > 0 %}
+        , "snapshots": "{{ snapshots }}"
+    {% endif %}
+{% endautoescape %}
+{% endblock %}

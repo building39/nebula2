@@ -1,0 +1,22 @@
+{% extends "/data/git/nebula2/templates/cdmi_base.dtl" %}
+{% block domain %}
+    "metadata": [
+        {% for md in metadata %}
+            {{ md }}
+            {% if md|length > 0 %}
+                ,
+            {% endif %}
+        {% endfor %}
+    ],
+    "children": [
+        {% for child in children %}
+            {{ child }}
+            {% if child|length > 0 %}
+                ,
+            {% endif %}
+        {% endfor %}
+    ],
+    "childrenrange": "{{ childrenrange }}",
+    "capabilitiesURI": "{{ capabilitiesURI }}",
+    "domainURI": "{{ domainURI }}"
+{% endblock %}

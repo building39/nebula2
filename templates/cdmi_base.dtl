@@ -1,0 +1,15 @@
+{
+    "objectName": "{{ objectName }}",
+    "objectType": "{{ objectType }}",
+    {% if parentID|length > 0 %}
+        "parentID": "{{ parentID }}",
+    {% endif %}
+    {% if parentURI|length > 0 %}
+        "parentURI": "{{ parentURI }}",
+    {% endif %}
+    {% block capabilities %} {% endblock %}
+    {% block container %} {% endblock %}
+    {% block dataobject %} {% endblock %}
+    {% block domain %} {% endblock %}
+    {% block queue %} {% endblock %}
+}

@@ -1,0 +1,14 @@
+{% extends "/data/git/nebula2/templates/cdmi_base.dtl" %}
+{% block capabilities %}
+    "capabilities": {
+    },
+    "children": [
+        {% for child in children %}
+            {{ child }}
+            {% if child|length > 0 %}
+                ,
+            {% endif %}
+        {% endfor %}
+    ],
+    "childrenrange": "{{ childrenrange }}"
+{% endblock %}
