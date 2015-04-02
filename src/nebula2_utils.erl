@@ -12,6 +12,7 @@
          beginswith/2,
          get_content_type/1,
          get_headers/1,
+         get_name_and_parent/1,
          get_query_string/1,
          get_time/0,
          make_key/0
@@ -39,6 +40,20 @@ get_headers(Info) ->
 %%    lager:info("Got request headers: ~p", Dict),
     Dict.
 
+%% @doc Get the object name and parent URI.
+-spec nebula2_utils:get_name_and_parent(string()) -> {string(), string()}.
+get_name_and_parent(Uri) ->
+    Tokens = string:tokens(Uri, "/"),
+    Name = case string:right(Uri, 1) of
+            "/" -> lists:last(Tokens) ++ "/";
+            _   -> lists:last(Tokens)
+           end,
+    ParentUri = case string:join(lists:droplast(Tokens), "/") of
+                    [] -> "root/";
+                    PU -> "root/" ++  PU ++ "/"
+                end,
+    {Name, ParentUri}.
+    
 %% @doc Get the query parameters for the request.
 -spec nebula2_utils:get_query_string(info()) -> dict:dict().
 get_query_string(Info) ->

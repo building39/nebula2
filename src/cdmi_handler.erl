@@ -4,7 +4,8 @@
 -include("nebula.hrl").
   
 -export([init/3]).
--export([content_types_accepted/2,
+-export([allowed_methods/2,
+         content_types_accepted/2,
          content_types_provided/2,
          from_cdmi_capability/2,
          from_cdmi_container/2,
@@ -31,7 +32,11 @@ rest_init(Req, _State) ->
     PoolMember = pooler:take_member(riak_pool),
     {ok, Req, {PoolMember, []}}.
 
+allowed_methods(Req, State) ->
+    {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
+
 content_types_accepted(Req, State) ->
+    lager:info("content_types_accepted"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
       {{<<"application">>, <<"cdmi-container">>, '*'}, from_cdmi_container},
       {{<<"application">>, <<"cdmi-object">>, '*'}, from_cdmi_object}
@@ -61,13 +66,52 @@ from_cdmi_capability(Req, State) ->
 
 from_cdmi_container(Req, State) ->
     {Pid, _Opts} = State,
-    lager:debug("from_cdmi_container...~p", [Pid]),
     {Path, _} = cowboy_req:path_info(Req),
-    lager:debug("URI: ~p", [Path]),
+    Uri = case Path of
+              [] -> "root/";
+              U  -> "root/" ++ U
+          end,
+    lager:info("URI: ~p", [Uri]),
     {ok, Body, Req2} = cowboy_req:body(Req),
-    lager:debug("Body: ~p", [Body]),
+    {Name, ParentUri} = nebula2_utils:get_name_and_parent(Uri),
+    IdxObjectName = case Name of
+                           "/" -> "root/";
+                           N   -> N
+                    end,
+    Eterm = maps:from_list(jsx:decode(Body)),
+    Tstamp = list_to_binary(nebula2_utils:get_time()),
+    Location = list_to_binary(nebula2_app:riak_location()),
+    Metadata = [{<<"cdmi_atime">>, Tstamp},
+                {<<"cdmi_ctime">>, Tstamp},
+                {<<"cdmi_mtime">>, Tstamp},
+                {<<"cdmi_versions_count_provided">>, <<"0">>},
+                {<<"nebula_data_location">>, [Location]},
+                {<<"nebula_modified_by">>, <<"">>},
+                {<<"nebula_objectName">>, list_to_binary(IdxObjectName)},
+                {<<"nebula_parentUri">>, list_to_binary(ParentUri)}
+               ],
+    Oid = nebula2_utils:make_key(),
+    Eterm2 = maps:update(<<"metadata">>, Metadata, Eterm),
+    Eterm3 = maps:put(<<"objectID">>, list_to_binary(Oid), Eterm2),
+    lager:info("from_cdmi_container Eterm: ~p", [Eterm]),
+    lager:info("Eterm2: ~p", [Eterm3]),
+    {ok, Data} = cdmi_containers_dtl:render([
+                                 {objectType, "application/cdmi-container"},
+                                 {objectId, Oid},
+                                 {objectName, Name},
+                                 {parentID, ""},
+                                 {parentURI, ""},
+                                 {metadata, Metadata},
+                                 {capabilitiesURI, "/cdmi"},
+                                 {location, Location},
+                                 {tstamp, Tstamp} ]),
+    lager:info("Data: ~p", [Data]),
+%    Response = case nebula2_riak:put(Pid, Oid, Name, Data) of
+%                   {ok, _Oid} ->
+%                        RespBody = jsx:encode(maps:to_list(Eterm2)),
+%                        Req3 = cowboy_req:set_resp_body(RespBody, Req2)
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req2, State}.
+    {true, Req2, State}.
 
 from_cdmi_domain(Req, State) ->
     {<<"{\"jsondoc\": \"domain\"}">>, Req, State}.
@@ -82,7 +126,7 @@ from_cdmi_object(Req, State) ->
 %%    Json = nebula2_riak:get(Pid, Uri),
 %%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req, State}.
+    {<<"{\"jsondoc\": \"number3\"}">>, Req, State}.
 
 is_authorized(Req, State) ->
 %% TODO: Check credentials here

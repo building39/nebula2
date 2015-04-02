@@ -12,7 +12,7 @@
 %% ====================================================================
 -export([get/2,
          post/3,
-         put/3,
+         put/4,
          ping/1,
          search/2]).
 
@@ -59,23 +59,32 @@ post(Pid, Oid, Data) ->
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),
-                      object_oid(),              %% ObjectID
-                      binary()                   %% Data to store
+                      string(),              %% Object
+                      object_oid(),          %% Oid
+                      binary()               %% Data to store
                      ) -> {ok, object_oid()}.
-put(Pid, Oid, Data) ->
+put(Pid, ObjectName, Oid, Data) ->
+    case search(Pid, ObjectName) of
+        {error, 404} ->
+            do_put(Pid, Oid, Data);
+        {error, E} ->
+            {error, E};
+        {ok, _} ->
+            {error, 409}
+    end.
+
+do_put(Pid, Oid, Data) ->
     Object = riakc_obj:new({list_to_binary(?BUCKET_TYPE),
                             list_to_binary(?BUCKET_NAME)},
                             list_to_binary(Oid),
                             Data,
                             list_to_binary("application/json")),
-    lager:debug("Riak Object: ~p", [Object]),
-    Response = case riakc_pb_socket:put(Pid, Object) of
-                    ok ->
-                        {ok, Oid};
-                    {error, Term} ->
-                        {error, Term}
-    end,
-    {Response, Oid}.
+    case riakc_pb_socket:put(Pid, Object) of
+        ok ->
+            {ok, Oid};
+        {error, Term} ->
+            {error, Term}
+    end.
 
 %% @doc Search an index for objects.
 -spec nebula2_riak:search(pid(),
@@ -103,15 +112,7 @@ search(Pid, Uri) ->
                                   search_predicate()  %% URI.
                                  ) -> {ok, string()}.
 execute_search(Pid, Uri) ->
-    Tokens = string:tokens(Uri, "/"),
-    Name = case string:right(Uri, 1) of
-            "/" -> lists:last(Tokens) ++ "/";
-            _   -> lists:last(Tokens)
-           end,
-    ParentUri = case string:join(lists:droplast(Tokens), "/") of
-                    [] -> "root/";
-                    PU -> "root/" ++  PU ++ "/"
-                end,
+    {Name, ParentUri} = nebula2_utils:get_name_and_parent(Uri),
     Query = case Uri of
                     "root/" ->
                         "metadata.nebula_objectName: root/";
@@ -125,7 +126,6 @@ execute_search(Pid, Uri) ->
                                                                           list_to_binary(Query)),
     lager:info("Search Uri: ~p", [Uri]),
     lager:info("Query: ~p", [Query]),
-    lager:info("Tokens: ~p", [Tokens]),
     Response = case NumFound of
                     0 ->
                         {error, 404}; %% Return 404
