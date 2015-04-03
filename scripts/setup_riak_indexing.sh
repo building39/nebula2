@@ -1,5 +1,7 @@
 #!/bin/bash
 
+pushd $NEBULA_PATH/scripts
+
 RIAK_HOST=nebriak1
 RIAK_HTTP_PORT=8098
 
@@ -21,3 +23,5 @@ sleep 3
 
 # apply index to bucket type cdmi
 curl -v -XPUT "http://${RIAK_HOST}:${RIAK_HTTP_PORT}/types/cdmi/buckets/cdmi/props" -H "Content-Type: application/json" -d '{"props": {"search_index": "cdmi_idx"}}'
+
+popd
