@@ -8,6 +8,7 @@ Created on March 31, 2015
 
 @author: mmartin4242@gmail.com
 '''
+import getpass
 import sys
 try:
     from django.template import Context, Template
@@ -46,9 +47,11 @@ class Bootstrap(object):
     def __init__(self,
                  host,
                  templatepath,
+                 adminpw,
                  port=8080,
                  commit=False,
                  verbose=False):
+        self.adminpw = adminpw
         self.commit = commit
         self.newobjects = 0
         self.host = host
@@ -102,6 +105,7 @@ def usage():
     print ('          [--help]')
     print ('')
     print (' Command Line options:')
+    print ('  --adminpw   - Password for the "admin" user.')
     print ('  --help      - Print this enlightening message')
     print ('  --host      - Nebula host url. Required.')
     print ('  --templates - Path to template files. Required.')
@@ -112,11 +116,12 @@ def usage():
     
 def main(argv):
 
-    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
-    import pydevd; pydevd.settrace()
+#    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
+#    import pydevd; pydevd.settrace()
     if (len(sys.argv) < 3):
         usage()
 
+    adminpw = ''
     commit = False
     host = None
     port = 8080
@@ -126,7 +131,8 @@ def main(argv):
     try:
         opts, _args = getopt.getopt(argv,
                                    '',
-                                   ['help',
+                                   ['adminpw=',
+                                    'help',
                                     'debug',
                                     'commit=',
                                     'host=',
@@ -139,8 +145,11 @@ def main(argv):
         usage()
 
     for opt, arg in opts:
-        if opt in ("-h", "--help"):
+        if opt in ("--adminpw"):
+            adminpw = arg
+        elif opt in ("-h", "--help"):
             usage()
+        elif opt == '--debug':
         elif opt == '--debug':
             global DEBUG
             DEBUG = True
@@ -156,6 +165,8 @@ def main(argv):
     if host is None or templates is None:
         usage()
         sys.exit(1)
+    while adminpw = '':
+        adminpw = getpass.getpass('Please enter a password for the admin user')
         
     settings.configure(TEMPATE_DEBUG=True,
                        TEMPLATE_DIRS=(templates))
@@ -164,6 +175,7 @@ def main(argv):
     bs = Bootstrap(host,  # Nebula host url
                    templates, # pat to templates
                    port,  # Nebula host port
+                   adminpw=adminpw,
                    commit=commit,
                    verbose=verbose)  # print verbose information on progress
 
