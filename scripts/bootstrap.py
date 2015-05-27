@@ -68,26 +68,12 @@ class Bootstrap(object):
             tf.close()
             
         # Create the root container
-        c = Context({"capabilitiesURI": "/cdmi_capabilities/container/permanent/",
-                     "completionStatus": "Complete",
-                     "domainURI": "/cdmi_domains/system_domain/",
-                     "objectName": "rooter/",
-                     "objectType": "application/cdmi-container",
-                     "children": ROOT_CHILDREN,
-                     "childrenrange": "0-%s" % (len(ROOT_CHILDREN) - 1),
-                     "snapshots": "",
-                     "percentComplete": "",
-                     "exports": "",
-                     "metadata": ["cdmi_owner\": \"administrator"
-                                 ],
-                     "objectID": "",
-                     "parentID": "",
-                     "parentURI": ""
-                    })
-        rootdoc = json.dumps(json.loads(self.templates["cdmi_containers.dtl"].render(c)))
+
+        rootdoc = '{"metadata": { "cdmi_administrator": "administrator", \
+                                  "some_more": "metadata"}}'
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/' % (self.host, self.port)
+        url = 'http://%s:%d/cdmi/' % (self.host, int(self.port))
         r = requests.put(url=url,
                          data=rootdoc,
                          headers=headers,
@@ -134,7 +120,7 @@ def main(argv):
                                    ['adminpw=',
                                     'help',
                                     'debug',
-                                    'commit=',
+                                    'commit',
                                     'host=',
                                     'port=',
                                     'templates=',
@@ -150,7 +136,6 @@ def main(argv):
         elif opt in ("-h", "--help"):
             usage()
         elif opt == '--debug':
-        elif opt == '--debug':
             global DEBUG
             DEBUG = True
         elif opt == '--commit':
@@ -165,8 +150,11 @@ def main(argv):
     if host is None or templates is None:
         usage()
         sys.exit(1)
-    while adminpw = '':
+        
+    while adminpw == '':
         adminpw = getpass.getpass('Please enter a password for the admin user')
+        
+    print ('adminpw = %s' % adminpw)
         
     settings.configure(TEMPATE_DEBUG=True,
                        TEMPLATE_DIRS=(templates))
@@ -174,8 +162,8 @@ def main(argv):
 
     bs = Bootstrap(host,  # Nebula host url
                    templates, # pat to templates
+                   adminpw,
                    port,  # Nebula host port
-                   adminpw=adminpw,
                    commit=commit,
                    verbose=verbose)  # print verbose information on progress
 

@@ -2,19 +2,16 @@
 {% block container %}
 {% autoescape off %}
     {% if objectID|length > 0 %}
-        , "objectID": "{{ objectID }}"
+        "objectID": "{{ objectID }}",
     {% endif %}
     "metadata":
         {% if metadata|length > 0 %}
-          {
+        {
               "{{ metadata|join:"\", \"" }}"
-          },
+        },
         {% else %}
           "",
         {% endif %}
-    "capabilitiesURI": "{{ capabilitiesURI }}",
-    "completionStatus": "{{ completionStatus }}",
-    "domainURI": "{{ domainURI }}",
     {% if children|length > 0 %}
         "children": [
             "{{ children|join:"\", \"" }}"
@@ -30,5 +27,8 @@
     {% if snapshots|length > 0 %}
         , "snapshots": "{{ snapshots }}"
     {% endif %}
+    "capabilitiesURI": "{{ capabilitiesURI }}",
+    "completionStatus": "{{ completionStatus }}",
+    "domainURI": "{{ domainURI }}"
 {% endautoescape %}
 {% endblock %}

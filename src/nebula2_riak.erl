@@ -61,23 +61,33 @@ post(Pid, Oid, Data) ->
 -spec nebula2_riak:put(pid(),
                       string(),              %% Object
                       object_oid(),          %% Oid
-                      binary()               %% Data to store
+                      map()                  %% Data to store
                      ) -> {ok, object_oid()}.
 put(Pid, ObjectName, Oid, Data) ->
-    case search(Pid, ObjectName) of
+    lager:debug("nebula2_riak:put Creating object ~p", [ObjectName]),
+    ObjectName2 = "cdmi/" ++ ObjectName,
+    case search(Pid, ObjectName2) of
         {error, 404} ->
             do_put(Pid, Oid, Data);
         {error, E} ->
+            lager:debug("riak_put got error ~p from search", [E]),
             {error, E};
         {ok, _} ->
-            {error, 409}
+            lager:debug("riak_put got conflict error"),
+            {error, 409};
+        {Status, Return} ->
+            lager:debug("riak_put wtf??? ~p ~p", [Status, Return])
     end.
-
+-spec nebula2_riak:do_put(pid(), object_oid, map()) -> {ok|error, object_oid()|term()}.
 do_put(Pid, Oid, Data) ->
+    lager:debug("nebula2_riak:do_put"),
+    lager:debug("nebula2_riak:do_put Data is ~p", [Data]),
+    Json = jsx:encode(Data),
+    lager:debug("nebula2_riak:do_put JSON is ~p", [Json]),
     Object = riakc_obj:new({list_to_binary(?BUCKET_TYPE),
                             list_to_binary(?BUCKET_NAME)},
                             list_to_binary(Oid),
-                            Data,
+                            Json,
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
@@ -91,10 +101,11 @@ do_put(Pid, Oid, Data) ->
                          search_predicate() %% Search predicate
                         ) -> {ok, string()}.
 search(Pid, []) ->
-    search(Pid, "root/");
+    search(Pid, "cdmi/");
 search(Pid, "/") ->
-   search(Pid, "root/");
+   search(Pid, "cdmi/");
 search(Pid, Uri) ->
+    lager:debug("nebula2_riak:search searching for uri: ~p", [Uri]),
     Response = case mcd:get(?MEMCACHE, Uri) of
                     {error, notfound} ->
                         execute_search(Pid, Uri);
@@ -112,20 +123,20 @@ search(Pid, Uri) ->
                                   search_predicate()  %% URI.
                                  ) -> {ok, string()}.
 execute_search(Pid, Uri) ->
-    {Name, ParentUri} = nebula2_utils:get_name_and_parent(Uri),
-    Query = case Uri of
-                    "root/" ->
-                        "metadata.nebula_objectName: root/";
+    lager:debug("nebula2:execute_search: Search Uri: ~p", [Uri]),
+    {ObjectName, ParentUri, _} = nebula2_utils:get_name_and_parent(Pid, Uri),
+    lager:debug("execute_search: ObjectName: ~p ParentUri: ~p", [ObjectName, ParentUri]),
+    Query = case ParentUri of
+                    "" ->
+                        "objectName: cdmi/";
                      _  ->
-                        "metadata.nebula_objectName:" ++ 
-                            Name ++ 
-                            " AND metadata.nebula_parentURI:" ++ ParentUri
+                        "objectName:" ++  ObjectName ++ 
+                        " AND parentURI:" ++ ParentUri
                 end,
+    lager:debug("Query: ~p", [Query]),
     {ok, {search_results, Results, _, NumFound}} = riakc_pb_socket:search(Pid,
                                                                           list_to_binary(?CDMI_INDEX),
                                                                           list_to_binary(Query)),
-    lager:info("Search Uri: ~p", [Uri]),
-    lager:info("Query: ~p", [Query]),
     Response = case NumFound of
                     0 ->
                         {error, 404}; %% Return 404
@@ -140,6 +151,7 @@ execute_search(Pid, Uri) ->
 %% @doc Fetch document.
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
 fetch(Pid, Data) ->
+    lager:debug("nebula2:fetch: fetching key: ~p", [Data]),
     [{<<?CDMI_INDEX>>, Results}] = Data,
     ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
     nebula2_riak:get(Pid, ObjectId).
