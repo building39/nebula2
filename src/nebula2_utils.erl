@@ -3,12 +3,13 @@
 
 -module(nebula2_utils).
 
--include("nebula.hrl").
+-include("include/nebula.hrl").
 
 %% ====================================================================
 %% API functions
 %% ====================================================================
 -export([
+         b_to_l/1,
          beginswith/2,
          get_capabilities_uri/2,
          get_content_type/1,
@@ -21,6 +22,18 @@
          get_time/0,
          make_key/0
         ]).
+%% @doc In a list of lists, transmogrify binaryies to lists.
+-spec nebula2_utils:b_to_l(list()) -> list().
+b_to_l(L) -> b_to_l(L, []).
+
+b_to_l([], Acc) ->
+    Acc;
+b_to_l([H|T], Acc) when is_binary(H) ->
+    Acc2 = lists:append(binary_to_list(H), Acc),
+    b_to_l(T, Acc2);
+b_to_l([H|T], Acc) ->
+    Acc2 = lists:append(H, Acc),
+    b_to_l(T, Acc2).
 
 %% @doc Check if a string begins with a certain substring.
 -spec nebula2_utils:beginswith(string(), string()) -> boolean.

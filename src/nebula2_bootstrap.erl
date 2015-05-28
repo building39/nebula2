@@ -16,7 +16,7 @@ bootstrap() ->
     {ok, Pid} = riakc_pb_socket:start_link("nebriak1", 8087),
     lager:debug("Riak PID is ~p", [Pid]),
     Tstamp = nebula2_utils:get_time(),
-    Location = nebula2_app:riak_location(),
+    Location = nebula2_app:cdmi_location(),
     lager:info("Location: ~p", [Location]),
 
     lager:info("Bootstrapping the CDMI root container:"),

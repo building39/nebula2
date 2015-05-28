@@ -16,7 +16,7 @@
 new_container(Req, State) ->
     Oid = nebula2_utils:make_key(),
     Tstamp = list_to_binary(nebula2_utils:get_time()),
-    Location = nebula2_app:riak_location(),
+    Location = list_to_binary(nebula2_app:cdmi_location()),
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path_info(Req),
     ObjectName = case Path of

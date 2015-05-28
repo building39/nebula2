@@ -7,7 +7,7 @@
 -export([stop/1]).
 
 -export([app_config/2,
-         riak_location/0
+         cdmi_location/0
 ]).
 
 start(_Type, _Args) ->
@@ -26,9 +26,9 @@ stop(_State) ->
     ok.
 
 %% @doc Returns the geographical location configured for nebula.
--spec nebula_app:riak_location() -> string().
-riak_location() -> 
-    app_config(riak_location, ?DEFAULT_LOCATION).
+-spec nebula_app:cdmi_location() -> string().
+cdmi_location() -> 
+    app_config(cdmi_location, ?DEFAULT_LOCATION).
 
 %% @doc Gets a configuration item from the environment.
 -spec nebula_app:app_config(string(), string()) -> string().
