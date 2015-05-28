@@ -60,7 +60,8 @@ new_container(Req, State) ->
                                 {<<"exports">>, <<"">>},
                                 {<<"percentComplete">>, <<"">>},
                                 {<<"snapshots">>, <<"">>}],
-    Response = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
+    {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
+    ok = update_parent(ParentId, ParentUri, ObjectName, Pid),
     pooler:return_member(riak_pool, Pid),
     {true, Req2, State}.
 
@@ -68,4 +69,9 @@ new_container(Req, State) ->
 %% Internal functions
 %% ====================================================================
 
-
+update_parent("", _, _, _) ->
+    %% Must be the root, since there is no parent.
+    ok;
+update_parent(ParentId, ParentUri, ObjectName, Pid) ->
+    lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ParentUri, ObjectName, Pid]),
+    ok.
