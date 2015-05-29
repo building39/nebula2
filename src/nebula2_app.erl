@@ -1,6 +1,9 @@
 -module(nebula2_app).
 -behaviour(application).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 -include("nebula.hrl").
 
 -export([start/2]).
@@ -37,3 +40,21 @@ app_config(Name, Default) ->
 
 handle_app_env({ok, Value}, _Default) -> Value;
 handle_app_env(undefined, Default) -> Default.
+
+%% ====================================================================
+%% eunit tests
+%% ====================================================================
+-ifdef(EUNIT).
+%% @doc Test the cdmi_location/0 function.
+%%      This test expects cdmi_location to be set to "US-TX" in rel/sys.config
+location_test() -> 
+    ?assert(cdmi_location() == "US-TX").
+%% @doc Test the app_config/2 function.
+%%      This test expects cdmi_location to be set to "US-TX" in rel/sys.config
+app_config1_test() ->
+    ?assert(app_config(cdmi_location, ?DEFAULT_LOCATION) == "US-TX").
+%% @doc Test the app_config/2 function default value operation
+%%      This test expects cdmi_location to be set to "US-TX" in rel/sys.config
+app_config2_test() ->
+    ?assert(app_config(non_existent, "test success") == "test success").
+-endif.

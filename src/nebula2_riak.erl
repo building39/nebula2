@@ -4,6 +4,10 @@
 -module(nebula2_riak).
 -compile([{parse_transform, lager_transform}]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -include_lib("riakc/include/riakc.hrl").
 -include("nebula.hrl").
 
@@ -155,3 +159,9 @@ fetch(Pid, Data) ->
     [{<<?CDMI_INDEX>>, Results}] = Data,
     ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
     nebula2_riak:get(Pid, ObjectId).
+
+%% ====================================================================
+%% eunit tests
+%% ====================================================================
+-ifdef(EUNIT).
+-endif.

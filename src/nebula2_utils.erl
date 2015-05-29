@@ -3,7 +3,11 @@
 
 -module(nebula2_utils).
 
--include("include/nebula.hrl").
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+-include("nebula.hrl").
 
 %% ====================================================================
 %% API functions
@@ -154,3 +158,9 @@ handle_content_type(error) ->
     "";
 handle_content_type({ok, Value}) ->
     Value.
+
+%% ====================================================================
+%% eunit tests
+%% ====================================================================
+-ifdef(EUNIT).
+-endif.

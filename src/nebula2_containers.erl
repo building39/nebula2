@@ -1,8 +1,12 @@
 %% @author mmartin
 %% @doc Handle CDMI container objects.
 
-
 -module(nebula2_containers).
+-compile([{parse_transform, lager_transform}]).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 %% ====================================================================
 %% API functions
@@ -56,12 +60,7 @@ new_container(Req, State) ->
                                 {<<"metadata">>, Metadata2},
                                 {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
                                 {<<"domainURI">>, list_to_binary(DomainURI)},
-                                {<<"children">>, <<"">>},
-                                {<<"childrenrange">>, <<"">>},
-                                {<<"completionStatus">>, <<"Complete">>},
-                                {<<"exports">>, <<"">>},
-                                {<<"percentComplete">>, <<"">>},
-                                {<<"snapshots">>, <<"">>}],
+                                {<<"completionStatus">>, <<"Complete">>}],
     {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
     ok = update_parent(ParentId, ParentUri, ObjectName, Pid),
     pooler:return_member(riak_pool, Pid),
@@ -77,3 +76,9 @@ update_parent("", _, _, _) ->
 update_parent(ParentId, ParentUri, ObjectName, Pid) ->
     lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ParentUri, ObjectName, Pid]),
     ok.
+
+%% ====================================================================
+%% eunit tests
+%% ====================================================================
+-ifdef(EUNIT).
+-endif.

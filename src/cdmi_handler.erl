@@ -1,6 +1,10 @@
 -module(cdmi_handler).
 -compile([{parse_transform, lager_transform}]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -include("nebula.hrl").
   
 -export([init/3]).
@@ -276,3 +280,9 @@ needs_a_slash(Path, State) ->
                      false
             end
     end.
+
+%% ====================================================================
+%% eunit tests
+%% ====================================================================
+-ifdef(EUNIT).
+-endif.
