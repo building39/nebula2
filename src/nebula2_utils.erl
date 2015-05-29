@@ -48,8 +48,12 @@ beginswith(Str, Substr) ->
 %% @todo Flesh this out after authentication is done.
 -spec nebula2_utils:get_capabilities_uri(pid(), string()) -> string().
 get_capabilities_uri(_Pid, ObjectName) ->
+    lager:debug("nebula2_utils:get_capabilities: objectname: ~p", [ObjectName]),
     case ObjectName of
-        "cdmi/" -> "/cdmi_capabilities/container/permanent"
+        "cdmi/" ->
+            "/cdmi_capabilities/container/permanent";
+        "cdmi/cdmi_domains" ->
+            "/cdmi_capabilities/container/permanent"
     end.
 
 %% @doc Get the content type for the request.
@@ -63,7 +67,10 @@ get_content_type(Info) ->
 -spec nebula2_utils:get_domain_uri(pid(), string()) -> string().
 get_domain_uri(_Pid, ObjectName) ->
     case ObjectName of
-        "cdmi/" -> "/cdmi_domains/system_domain"
+        "cdmi/" ->
+            "/cdmi_domains/system_domain";
+        "cdmi/cdmi_domains" ->
+            "/cdmi_capabilities/container/permanent"
     end.
 
 %% @doc Get the headers for the request.

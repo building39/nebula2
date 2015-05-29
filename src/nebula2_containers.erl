@@ -18,11 +18,13 @@ new_container(Req, State) ->
     Tstamp = list_to_binary(nebula2_utils:get_time()),
     Location = list_to_binary(nebula2_app:cdmi_location()),
     {Pid, _Opts} = State,
-    {Path, _} = cowboy_req:path_info(Req),
+    {[Path], _} = cowboy_req:path_info(Req),
+    lager:debug("Path is ~p" , [Path]),
     ObjectName = case Path of
                     [] -> "cdmi/";
-                    U  -> "cdmi/" ++ U
+                    U  -> "cdmi/" ++ binary_to_list(U)
                  end,
+    lager:debug("ObjectName is ~p", [ObjectName]),
     {ParentUri, ParentId} = case ObjectName of
                                   "cdmi/" -> {"", ""};    %% root has no parent
                                   _Other  -> nebula2_utils:get_parent(Pid, ObjectName)
