@@ -10,15 +10,7 @@ Created on March 31, 2015
 '''
 import getpass
 import sys
-try:
-    from django.template import Context, Template
-    from django.conf import settings
-    import django
-except:
-    print('bootstrap.py requires Django. Please install Django and run bootstrap again.')
-    print('Example: easy_install django')
-    sys.exit(1)
-    
+
 try:
     import requests
 except:
@@ -36,6 +28,7 @@ import time
 
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
 PRINT_SEP = '-------------------------------------------------------------'
+METADATA = '{"metadata": { "cdmi_administrator": "administrator"}}'
 ROOT_CHILDREN = ["cdmi_capabilities/",
                  "cdmi_domains/",
                  "system_configuration/"]
@@ -60,26 +53,56 @@ class Bootstrap(object):
         self.templates = {}
 
     def bootstrap(self):
-        tfiles = [ f for f in listdir(self.templatepath) if isfile(join(self.templatepath,f)) ]
-        for t in tfiles:
-            tf = open('%s/%s' % (self.templatepath, t), 'r')
-#            doc = tf.read()
-            self.templates[t] = Template(tf.read())
-            tf.close()
-            
+        
         # Create the root container
+        print("...Priming root document with %s" % METADATA)
+        if self.commit:
+            self._create_root()
+        else:
+            print("Dry run: Created root.")
 
-        rootdoc = '{"metadata": { "cdmi_administrator": "administrator", \
-                                  "some_more": "metadata"}}'
+        # Create the domains container
+        print("...Priming domains  with %s" % METADATA)
+        if self.commit:
+            self._create_domain()
+        else:
+            print("Dry run: Created root.")
+        
+        return
+    
+    def _create_root(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/' % (self.host, int(self.port))
         r = requests.put(url=url,
-                         data=rootdoc,
+                         data=METADATA,
                          headers=headers,
                          allow_redirects=True)
-        
-        return
+        if r.status_code in [201]:
+            self.newobjects += 1
+        elif r.status_code in [409]:
+            print("CDMI is already bootstrapped.")
+            sys.exit(1)
+        else:
+           print("Bootstrap received status code %d - exiting..." % r.status_code)
+           return
+       
+    def _create_domain(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-container'
+        url = 'http://%s:%d/cdmi/cdmi_domains' % (self.host, int(self.port))
+        r = requests.put(url=url,
+                         data=METADATA,
+                         headers=headers,
+                         allow_redirects=True)
+        if r.status_code in [201]:
+            self.newobjects += 1
+        elif r.status_code in [409]:
+            print("CDMI is already bootstrapped.")
+            sys.exit(1)
+        else:
+           print("Bootstrap received status code %d - exiting..." % r.status_code)
+           return
 
 def usage():
     print ('Nebula CDMI Bootstrap')
@@ -139,7 +162,7 @@ def main(argv):
             global DEBUG
             DEBUG = True
         elif opt == '--commit':
-            commit = arg
+            commit = True
         elif opt == '--host':
             host = arg
         elif opt == '--port':
@@ -153,12 +176,6 @@ def main(argv):
         
     while adminpw == '':
         adminpw = getpass.getpass('Please enter a password for the admin user')
-        
-    print ('adminpw = %s' % adminpw)
-        
-    settings.configure(TEMPATE_DEBUG=True,
-                       TEMPLATE_DIRS=(templates))
-    django.setup()
 
     bs = Bootstrap(host,  # Nebula host url
                    templates, # pat to templates
@@ -172,7 +189,5 @@ def main(argv):
     print 'Bootstrapped %d new objects' % bs.newobjects
 
 if __name__ == "__main__":
-#    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bot_server.settings.local")
-    from django.core.management import execute_from_command_line
     main(sys.argv[1:])
     
