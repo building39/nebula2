@@ -13,7 +13,6 @@
 %% API functions
 %% ====================================================================
 -export([
-         b_to_l/1,
          beginswith/2,
          get_capabilities_uri/2,
          get_content_type/1,
@@ -26,18 +25,6 @@
          get_time/0,
          make_key/0
         ]).
-%% @doc In a list of lists, transmogrify binaryies to lists.
--spec nebula2_utils:b_to_l(list()) -> list().
-b_to_l(L) -> b_to_l(L, []).
-
-b_to_l([], Acc) ->
-    Acc;
-b_to_l([H|T], Acc) when is_binary(H) ->
-    Acc2 = lists:append(binary_to_list(H), Acc),
-    b_to_l(T, Acc2);
-b_to_l([H|T], Acc) ->
-    Acc2 = lists:append(H, Acc),
-    b_to_l(T, Acc2).
 
 %% @doc Check if a string begins with a certain substring.
 -spec nebula2_utils:beginswith(string(), string()) -> boolean.
@@ -80,9 +67,7 @@ get_domain_uri(_Pid, ObjectName) ->
 %% @doc Get the headers for the request.
 -spec nebula2_utils:get_headers(info()) -> dict:dict().
 get_headers(Info) ->
-    Dict = get_data(headers, Info),
-%%    lager:info("Got request headers: ~p", Dict),
-    Dict.
+    get_data(headers, Info).
 
 %% @doc Get the object name and parent URI.
 -spec nebula2_utils:get_name_and_parent(pid(), string()) -> {string(), string()}.
@@ -92,36 +77,37 @@ get_name_and_parent(Pid, Uri) ->
             "/" -> lists:last(Tokens) ++ "/";
             _   -> lists:last(Tokens)
            end,
-    {ParentUri, {_, ParentId}} = get_parent(Pid, Name),
+    {ParentUri, ParentId} = get_parent(Pid, Name),
     {Name, ParentUri, ParentId}.
 
 %% @doc Get the object name and parent URI.
 -spec nebula2_utils:get_parent(pid(), string()) -> {string(), notfound|{ok, string()}}.
 get_parent(_Pid, "cdmi/") ->        %% Root has no parent
-    {"", {ok, ""}};
+    {"", ""};
 get_parent(Pid, ObjectName) ->
     Tokens = string:tokens(ObjectName, "/"),
     ParentUri = case string:join(lists:droplast(Tokens), "/") of
                     [] -> "cdmi/";
-                    PU -> "cdmi/" ++  PU ++ "/"
+                    PU -> PU ++ "/"
                 end,
-    ParentId = get_parent_oid(Pid, ParentUri),
-    {ParentUri, ParentId}.
+    lager:debug("get_parent found ParentUri=~p", [ParentUri]),
+    {ok, ParentId} = get_parent_oid(Pid, ParentUri),
+    {ParentUri, binary_to_list(ParentId)}.
 
 %% @doc Get the object's parent oid.
 -spec nebula2_utils:get_parent_oid(pid(), string()) -> {{ok|notfound, string()}}.
 get_parent_oid(Pid, ParentUri) ->
     case nebula2_riak:search(Pid, ParentUri) of
-        {error,_} -> {notfound, ""};
-        Data      -> {ok, maps:get(<<"objectId">>, maps:from_list(jsx:decode(Data)))}
+        {error,_} -> 
+            {notfound, ""};
+        {ok, Data} ->
+          {ok, maps:get(<<"objectID">>, maps:from_list(jsx:decode(list_to_binary(Data))))}
     end.
     
 %% @doc Get the query parameters for the request.
 -spec nebula2_utils:get_query_string(info()) -> dict:dict().
 get_query_string(Info) ->
-    Dict = get_data(parse_qs, Info),
-%%    lager:info("Got query parms: ~p", Dict),
-    Dict.        
+    get_data(parse_qs, Info).        
 
 %% @doc Return current time in ISO 8601:2004 extended representation.
 -spec nebula2_utils:get_time() -> string().
@@ -163,4 +149,18 @@ handle_content_type({ok, Value}) ->
 %% eunit tests
 %% ====================================================================
 -ifdef(EUNIT).
+%% @doc Test the beginswith/2 function.
+beginswith_true_test() -> 
+    ?assert(beginswith("abcdef", "abc")).
+beginswith_false_test() -> 
+    ?assertNot(beginswith("abcdef", "def")).
+
+%% @doc Test the get_parent/2 function.
+get_parent_root_test() -> 
+    ?assert(get_parent(ok, "cdmi/") == {"", ""}).
+get_parent_object_test() ->
+    Map = #{"}
+    meck:new(nebula2_riak, [non_strict]),
+    meck:expect(nebula2_riak, search, {ok, maps:arent_oid"),
+    ?assert(get_parent(ok, "cdmi/some/object") == {"cdmi/some/", "parent_oid"}).
 -endif.

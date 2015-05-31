@@ -80,12 +80,13 @@ class Bootstrap(object):
                          allow_redirects=True)
         if r.status_code in [201]:
             self.newobjects += 1
+            time.sleep(2) # give riak time to index
         elif r.status_code in [409]:
             print("CDMI is already bootstrapped.")
             sys.exit(1)
         else:
-           print("Bootstrap received status code %d - exiting..." % r.status_code)
-           return
+           print("Bootstrapping the root received status code %d - exiting..." % r.status_code)
+           sys.exit(1)
        
     def _create_domain(self):
         headers = HEADERS
@@ -101,8 +102,8 @@ class Bootstrap(object):
             print("CDMI is already bootstrapped.")
             sys.exit(1)
         else:
-           print("Bootstrap received status code %d - exiting..." % r.status_code)
-           return
+           print("Bootstrapping the domains received status code %d - exiting..." % r.status_code)
+           sys.exit(1)
 
 def usage():
     print ('Nebula CDMI Bootstrap')

@@ -113,7 +113,10 @@ search(Pid, Uri) ->
     Response = case mcd:get(?MEMCACHE, Uri) of
                     {error, notfound} ->
                         execute_search(Pid, Uri);
+                    {ok, {error, 404}} ->
+                        execute_search(Pid, Uri);
                     {ok, Doc} -> 
+                        lager:debug("Search got cache hit: ~p", [Doc]),
                         Doc
     end,
     Response.
@@ -130,23 +133,31 @@ execute_search(Pid, Uri) ->
     lager:debug("nebula2:execute_search: Search Uri: ~p", [Uri]),
     {ObjectName, ParentUri, _} = nebula2_utils:get_name_and_parent(Pid, Uri),
     lager:debug("execute_search: ObjectName: ~p ParentUri: ~p", [ObjectName, ParentUri]),
-    Query = case ParentUri of
+    Queri = case ParentUri of
                     "" ->
-                        "objectName: cdmi/";
+                        lager:debug("searching for root document"),
+                        "objectName:cdmi/";
                      _  ->
-                        "objectName:" ++  ObjectName ++ 
-                        " AND parentURI:" ++ ParentUri
+                         lager:debug("searching for other object"),
+                         "objectName:" ++  ObjectName ++ " AND parentURI:" ++ ParentUri
                 end,
-    lager:debug("Query: ~p", [Query]),
-    {ok, {search_results, Results, _, NumFound}} = riakc_pb_socket:search(Pid,
-                                                                          list_to_binary(?CDMI_INDEX),
-                                                                          list_to_binary(Query)),
+    Query = list_to_binary(Queri),
+    Index = list_to_binary(?CDMI_INDEX),
+    lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
+    {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
+    NumFound = Results#search_results.num_found,
+    Doc = Results#search_results.docs,
+    lager:debug("Search returned ~p results", [NumFound]),
+    lager:debug("Search returned documents: ~p", [Doc]),
     Response = case NumFound of
                     0 ->
+                        lager:debug("search found zero results"),
                         {error, 404}; %% Return 404
                     1 ->
-                        fetch(Pid, Results);
-                    _ ->
+                        lager:debug("search found one result"),
+                        fetch(Pid, Doc);
+                    N ->
+                        lager:debug("search returned ~p results", [N]),
                         {error, 500} %% Something's funky - return 500
     end,
     {ok, _R} = mcd:set(?MEMCACHE, Uri, Response, ?MEMCACHE_EXPIRY),
@@ -158,6 +169,7 @@ fetch(Pid, Data) ->
     lager:debug("nebula2:fetch: fetching key: ~p", [Data]),
     [{<<?CDMI_INDEX>>, Results}] = Data,
     ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
+    lager:debug("fetch found ObjectId: ~p", [ObjectId]),
     nebula2_riak:get(Pid, ObjectId).
 
 %% ====================================================================
