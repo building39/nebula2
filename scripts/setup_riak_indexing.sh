@@ -7,7 +7,7 @@ RIAK_HTTP_PORT=8098
 DELAY=5
 
 # create cdmi bucket type
-ssh root@${RIAK_HOST} "riak-admin bucket-type create cdmi '{\"props\":{}}'"
+ssh root@${RIAK_HOST} "riak-admin bucket-type create cdmi '{\"props\":{\"allow_mult\": false, \"last_write_wins\": true, \"big_vclock\": 16, \"small_vclock\": 4}}'"
 ssh root@${RIAK_HOST} "riak-admin bucket-type activate cdmi"
 
 sleep ${DELAY}
