@@ -88,10 +88,6 @@ from_cdmi_capability(Req, State) ->
 from_cdmi_container(Req, State) ->
     Response = nebula2_containers:new_container(Req, State),
     lager:debug("Entry from_cdmi_container: ~p", [Response]),
-%    Response = case nebula2_riak:put(Pid, Oid, Name, Data) of
-%                   {ok, _Oid} ->
-%                        RespBody = jsx:encode(maps:to_list(Eterm2)),
-%                        Req3 = cowboy_req:set_resp_body(RespBody, Req2)
     {true, Req, State}.
 
 from_cdmi_domain(Req, State) ->

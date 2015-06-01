@@ -44,6 +44,8 @@ get_capabilities_uri(_Pid, ObjectName) ->
         "cdmi/" ->
             "/cdmi_capabilities/container/permanent";
         "cdmi/cdmi_domains" ->
+            "/cdmi_capabilities/container/permanent";
+        "cdmi/system_configuration" ->
             "/cdmi_capabilities/container/permanent"
     end.
 
@@ -61,7 +63,9 @@ get_domain_uri(_Pid, ObjectName) ->
         "cdmi/" ->
             "/cdmi_domains/system_domain";
         "cdmi/cdmi_domains" ->
-            "/cdmi_capabilities/container/permanent"
+            "/cdmi_domains/system_domain";
+        "cdmi/system_configuration" ->
+            "/cdmi_domains/system_domain"
     end.
 
 %% @doc Get the headers for the request.

@@ -18,7 +18,8 @@
          post/3,
          put/4,
          ping/1,
-         search/2]).
+         search/2,
+         update/3]).
 
 %% @doc Get a value from riak by bucket type, bucket and key.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}.
@@ -120,6 +121,22 @@ search(Pid, Uri) ->
                         Doc
     end,
     Response.
+
+%% @doc Update an existing key/value pair.
+-spec nebula2_riak:update(pid(),
+                      object_oid(),          %% Oid
+                      map()                  %% Data to store
+                     ) -> {ok, object_oid()}.
+update(Pid, Oid, Data) ->
+    lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
+    case get(Pid, Oid) of
+        {error, E} ->
+            lager:debug("riak_put got error ~p from search", [E]),
+            {error, E};
+        {ok, _} ->
+            lager:debug("riak_update updating ~p with ~p", [Oid, Data]),
+            do_put(Pid, Oid, Data)
+    end.
 
 %% ====================================================================
 %% Internal functions
