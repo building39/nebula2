@@ -62,11 +62,18 @@ class Bootstrap(object):
             print("Dry run: Created root.")
 
         # Create the domains container
-        print("...Priming domains  with %s" % METADATA)
+        print("...Priming cdmi_domains with %s" % METADATA)
         if self.commit:
             self._create_domain()
         else:
-            print("Dry run: Created root.")
+            print("Dry run: Created cdmi_domains.")
+            
+        # Create the domains container
+        print("...Priming system_configuration with %s" % METADATA)
+        if self.commit:
+            self._create_system_configuration()
+        else:
+            print("Dry run: Created cdmi_domains.")
         
         return
     
@@ -80,7 +87,7 @@ class Bootstrap(object):
                          allow_redirects=True)
         if r.status_code in [201]:
             self.newobjects += 1
-            time.sleep(2) # give riak time to index
+            time.sleep(1) # give riak time to index
         elif r.status_code in [409]:
             print("CDMI is already bootstrapped.")
             sys.exit(1)
@@ -98,11 +105,30 @@ class Bootstrap(object):
                          allow_redirects=True)
         if r.status_code in [201]:
             self.newobjects += 1
+            time.sleep(1) # give riak time to index
         elif r.status_code in [409]:
             print("CDMI is already bootstrapped.")
             sys.exit(1)
         else:
            print("Bootstrapping the domains received status code %d - exiting..." % r.status_code)
+           sys.exit(1)
+           
+    def _create_system_configuration(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-container'
+        url = 'http://%s:%d/cdmi/system_configuration' % (self.host, int(self.port))
+        r = requests.put(url=url,
+                         data=METADATA,
+                         headers=headers,
+                         allow_redirects=True)
+        if r.status_code in [201]:
+            self.newobjects += 1
+            time.sleep(1) # give riak time to index
+        elif r.status_code in [409]:
+            print("CDMI is already bootstrapped.")
+            sys.exit(1)
+        else:
+           print("Bootstrapping the system configuration received status code %d - exiting..." % r.status_code)
            sys.exit(1)
 
 def usage():
