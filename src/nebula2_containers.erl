@@ -26,7 +26,8 @@ get_container(Pid, Oid) ->
     maps:from_list(jsx:decode(list_to_binary(Data))).
 
 %% @doc Create a new CDMI container
--spec nebula2_containers:new_container(Req, State) -> {boolean(), Req, State}.
+-spec nebula2_containers:new_container(Req, State) -> {boolean(), Req, State}
+        when Req::cowboy_req:req().
 new_container(Req, State) ->
     Oid = nebula2_utils:make_key(),
     Tstamp = list_to_binary(nebula2_utils:get_time()),
@@ -38,14 +39,9 @@ new_container(Req, State) ->
                     [] ->
                         "cdmi/";
                     [U]  -> 
-                        "cdmi/" ++ binary_to_list(U)
+                        "cdmi/" ++ binary_to_list(U) ++ "/"
                  end,
     lager:debug("ObjectName is ~p", [ObjectName]),
-    {ParentUri, ParentId} = case ObjectName of
-                                  "cdmi/" -> {"", ""};    %% root has no parent
-                                  _Other  -> nebula2_utils:get_parent(Pid, ObjectName)
-                            end,
-    lager:debug("ParentUri: ~p~n ParentId: ~p", [ParentUri, ParentId]),
     {ok, Body, Req2} = cowboy_req:body(Req),
     Data = maps:from_list(jsx:decode(Body)),
     Metadata = [{<<"cdmi_atime">>, Tstamp},
@@ -66,19 +62,26 @@ new_container(Req, State) ->
     CapabilitiesURI = nebula2_utils:get_capabilities_uri(Pid, ObjectName),
     DomainURI = nebula2_utils:get_domain_uri(Pid, ObjectName),
     ObjectType = "application/cdmi-container",
-    Data2 = [{<<"objectType">>, list_to_binary(ObjectType)},
-             {<<"objectID">>, list_to_binary(Oid)},
-             {<<"objectName">>, list_to_binary(ObjectName)},
-             {<<"parentID">>, list_to_binary(ParentId)},
-             {<<"parentURI">>, list_to_binary(ParentUri)},
-             {<<"metadata">>, Metadata2},
-             {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
-             {<<"domainURI">>, list_to_binary(DomainURI)},
-             {<<"completionStatus">>, <<"Complete">>}],
-    {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
-    ok = update_parent(ParentId, ObjectName, ObjectType, Pid),
-    pooler:return_member(riak_pool, Pid),
-    {true, Req2, State}.
+    case nebula2_utils:get_parent(Pid, ObjectName) of
+        {ok, ParentUri, ParentId} ->
+            lager:debug("ParentUri: ~p~n ParentId: ~p", [ParentUri, ParentId]),
+            Data2 = [{<<"objectType">>, list_to_binary(ObjectType)},
+                     {<<"objectID">>, list_to_binary(Oid)},
+                     {<<"objectName">>, list_to_binary(ObjectName)},
+                     {<<"parentID">>, list_to_binary(ParentId)},
+                     {<<"parentURI">>, list_to_binary(ParentUri)},
+                     {<<"metadata">>, Metadata2},
+                     {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
+                     {<<"domainURI">>, list_to_binary(DomainURI)},
+                     {<<"completionStatus">>, <<"Complete">>}],
+            {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
+            ok = update_parent(ParentId, ObjectName, ObjectType, Pid),
+            pooler:return_member(riak_pool, Pid),
+            {true, Req2, State};
+        {error, notfound, _} ->
+            pooler:return_member(riak_pool, Pid),
+            {false, Req2, State}
+    end.
 
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {boolean(), json_value()}.

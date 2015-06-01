@@ -36,13 +36,14 @@ def get_object(name, search_pred, parent=''):
     resp = client.fulltext_search('cdmi_idx', search_pred)
     if resp['num_found'] == 1:
         try:
-            objdata = bucket.get(resp['docs'][0]['objectID']).data
+            objdata = bucket.get(resp['docs'][0]['_yz_rk']).data
             printit("%s%s" % (parent, objdata['objectName']), objdata)
             keys_fetched += 1
-        except e:
-            print('Fetch failed.')
+        except Exception, e:
+            print('Fetch failed. Exception: %s' % e)
             print('name: %s search_pred: %s parent: %s' % (name, search_pred, parent))
             failures += 1
+            return
     else:
         if resp['num_found'] == 0:
             missing_children.append(name)
@@ -62,22 +63,29 @@ def get_object(name, search_pred, parent=''):
         parent = '%s%s' % (parent, objdata['objectName'])
         level += 1
         #print('level %d' % level)
-        for child in children:
+        for c in children:
+            child = 'cdmi/%s' % c
             get_object(child,
-                       'parentURI:\%s AND objectName:%s' % (parent,
+                       'parentURI:%s AND objectName:%s' % (parent,
                                                            child),
                        parent)
         parent = prev_parent
         level -= 1
 
-get_object('/', 'objectName:\/')
+def main(argv):
+    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
+    import pydevd; pydevd.settrace()
+    get_object('/', 'objectName:cdmi/')
 
-print('Listed %d objects' % keys_fetched)
-count = 0
-for child in  missing_children:
-    print("Missing child: %s" % child)
-    count += 1
-if count > 0:
-    print('%d missing children' % count)
-if failures > 0:
-    print('%d failures' % failures)
+    print('Listed %d objects' % keys_fetched)
+    count = 0
+    for child in  missing_children:
+        print("Missing child: %s" % child)
+        count += 1
+    if count > 0:
+        print('%d missing children' % count)
+    if failures > 0:
+        print('%d failures' % failures)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -5,6 +5,7 @@
 %% types
 %% @todo tighten down these types.
 %% ====================================================================
+-import(cowboy_req, [req/0]).
 -type path()             :: string().
 
 -type content_type()     :: string().

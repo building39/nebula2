@@ -98,7 +98,7 @@ class Bootstrap(object):
     def _create_domain(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/cdmi_domains' % (self.host, int(self.port))
+        url = 'http://%s:%d/cdmi/cdmi_domains/' % (self.host, int(self.port))
         r = requests.put(url=url,
                          data=METADATA,
                          headers=headers,
@@ -116,7 +116,7 @@ class Bootstrap(object):
     def _create_system_configuration(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/system_configuration' % (self.host, int(self.port))
+        url = 'http://%s:%d/cdmi/system_configuration/' % (self.host, int(self.port))
         r = requests.put(url=url,
                          data=METADATA,
                          headers=headers,
