@@ -1,7 +1,7 @@
 %% @author mmartin
-%% @doc Handle CDMI container objects.
+%% @doc Handle CDMI capability objects.
 
--module(nebula2_containers).
+-module(nebula2_capabilities).
 -compile([{parse_transform, lager_transform}]).
 
 -ifdef(TEST).
@@ -14,25 +14,30 @@
 %% API functions
 %% ====================================================================
 -export([
-            get_container/2,
-            new_container/2,
-            update_container/3
+            get_capability/2,
+            new_capability/2,
+            update_capability/3
         ]).
 
-%% @doc Get a CDMI container
--spec nebula2_containers:get_container(pid(), object_oid()) -> {ok, json_value()}.
-get_container(Pid, Oid) ->
+%% @doc Get a CDMI capability
+-spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
+get_capability(Pid, Oid) ->
     {ok, Data} = nebula2_riak:get(Pid, Oid),
     maps:from_list(jsx:decode(list_to_binary(Data))).
 
-%% @doc Create a new CDMI container
--spec nebula2_containers:new_container(Req, State) -> {boolean(), Req, State}
+%% @doc Create a new CDMI capability
+-spec nebula2_capabilities:new_capability(Req, State) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
-new_container(Req, State) ->
+new_capability(Req, State) ->
+    _DefaultCapabilities = [{<<"cdmi_domains">>, true},
+                           {<<"cdmi_dataobjects">>, true},
+                           {<<"cdmi_object_access_by_ID">>, true},
+                           {<<"cdmi_object_copy_from_local">>, true},
+                           {<<"cdmi_object_move_from_ID">>, true},
+                           {<<"cdmi_object_move_from_local">>, true}],
     Oid = nebula2_utils:make_key(),
-    lager:debug("make_key returned ~p", [Oid]),
-    Tstamp = list_to_binary(nebula2_utils:get_time()),
-    Location = list_to_binary(nebula2_app:cdmi_location()),
+    _Tstamp = list_to_binary(nebula2_utils:get_time()),
+    _Location = list_to_binary(nebula2_app:cdmi_location()),
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path_info(Req),
     lager:debug("Path is ~p" , [Path]),
@@ -44,28 +49,13 @@ new_container(Req, State) ->
                  end,
     lager:debug("ObjectName is ~p", [ObjectName]),
     {ok, Body, Req2} = cowboy_req:body(Req),
-    Data = maps:from_list(jsx:decode(Body)),
-    Metadata = [{<<"cdmi_atime">>, Tstamp},
-                {<<"cdmi_ctime">>, Tstamp},
-                {<<"cdmi_mtime">>, Tstamp},
-                {<<"cdmi_versions_count_provided">>, <<"0">>},
-                {<<"nebula_data_location">>, [Location]},
-                {<<"nebula_modified_by">>, <<"">>}
-               ],
-    Metadata2 = case maps:find(<<"metadata">>, Data) of
-                   {ok, MD} ->
-                       lager:debug("found metadata ~p", [MD]),
-                       lists:append(Metadata, MD);
-                   _ -> 
-                       lager:debug("did not find metadata"),
-                       Metadata
-               end,
+    _Data = maps:from_list(jsx:decode(Body)),
     CapabilitiesURI = nebula2_utils:get_capabilities_uri(Pid, ObjectName),
     DomainURI = nebula2_utils:get_domain_uri(Pid, ObjectName),
-    ObjectType = "application/cdmi-container",
+    ObjectType = "application/cdmi-capability",
     case nebula2_utils:get_parent(Pid, ObjectName) of
         {ok, ParentUri, ParentId} ->
-            lager:debug("Creating new container. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
+            lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
             lager:debug("                        Container Name: ~p", [ObjectName]),
             lager:debug("                        OID: ~p", Oid),
             Data2 = [{<<"objectType">>, list_to_binary(ObjectType)},
@@ -73,7 +63,6 @@ new_container(Req, State) ->
                      {<<"objectName">>, list_to_binary(ObjectName)},
                      {<<"parentID">>, list_to_binary(ParentId)},
                      {<<"parentURI">>, list_to_binary(ParentUri)},
-                     {<<"metadata">>, Metadata2},
                      {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
                      {<<"domainURI">>, list_to_binary(DomainURI)},
                      {<<"completionStatus">>, <<"Complete">>}],
@@ -82,15 +71,14 @@ new_container(Req, State) ->
             pooler:return_member(riak_pool, Pid),
             {true, Req2, State};
         {error, notfound, _} ->
-            lager:debug("new_container: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
             {false, Req2, State}
     end.
 
-%% @doc Update a CDMI container
--spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {boolean(), json_value()}.
-update_container(Pid, ObjectId, Data) ->
-    lager:debug("nebula2_containers:update_container: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
+%% @doc Update a CDMI capability
+-spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {boolean(), json_value()}.
+update_capability(Pid, ObjectId, Data) ->
+    lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
     {ok, NewData}.
 
@@ -113,11 +101,11 @@ update_parent(ParentId, ObjectName, ObjectType, Pid) ->
     lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ObjectName, ObjectType, Pid]),
     N = lists:last(string:tokens(ObjectName, "/")),
     Name = case ObjectType of
-               "application/cdmi-container" -> N ++ "/";
+               "application/cdmi-capability" -> N ++ "/";
                _ -> 
                    N
            end,
-    Parent = nebula2_containers:get_container(Pid, ParentId),
+    Parent = nebula2_capabilities:get_capability(Pid, ParentId),
     lager:debug("update_parent got parent: ~p", [Parent]),
     lager:debug("updating parent with child: ~p", [Name]),
     Children = case maps:get(<<"children">>, Parent, "") of

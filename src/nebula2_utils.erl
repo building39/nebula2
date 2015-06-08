@@ -17,8 +17,8 @@
          get_capabilities_uri/2,
          get_domain_uri/2,
          get_name_and_parent/2,
+         get_object_oid/2,
          get_parent/2,
-         get_parent_oid/2,
          get_time/0,
          make_key/0
         ]).
@@ -26,7 +26,7 @@
 %% @doc Check if a string begins with a certain substring.
 -spec nebula2_utils:beginswith(string(), string()) -> boolean.
 beginswith(Str, Substr) ->
-    lager:info("nebula2_utils:beginswith(~p, ~p)", [Str, Substr]),
+    lager:debug("nebula2_utils:beginswith(~p, ~p)", [Str, Substr]),
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -36,14 +36,15 @@ beginswith(Str, Substr) ->
 %% @todo Flesh this out after authentication is done.
 -spec nebula2_utils:get_capabilities_uri(pid(), string()) -> string().
 get_capabilities_uri(_Pid, ObjectName) ->
-    lager:debug("nebula2_utils:get_capabilities: objectname: ~p", [ObjectName]),
     case ObjectName of
-        "cdmi/" ->
+        "/" ->
             "/cdmi_capabilities/container/permanent";
-        "cdmi/cdmi_domains/" ->
+        "/cdmi_domains/" ->
             "/cdmi_capabilities/container/permanent";
-        "cdmi/system_configuration/" ->
-            "/cdmi_capabilities/container/permanent"
+        "/system_configuration/" ->
+            "/cdmi_capabilities/container/permanent";
+        "/system_configuration/environment_variables/" ->
+                "/cdmi_capabilities/container/permanent"
     end.
 
 %% @doc Get the domain URI for the request.
@@ -51,11 +52,13 @@ get_capabilities_uri(_Pid, ObjectName) ->
 -spec nebula2_utils:get_domain_uri(pid(), string()) -> string().
 get_domain_uri(_Pid, ObjectName) ->
     case ObjectName of
-        "cdmi/" ->
+        "/" ->
             "/cdmi_domains/system_domain";
-        "cdmi/cdmi_domains/" ->
+        "/cdmi_domains/" ->
             "/cdmi_domains/system_domain";
-        "cdmi/system_configuration/" ->
+        "/system_configuration/" ->
+            "/cdmi_domains/system_domain";
+        "/system_configuration/environment_variables/" ->
             "/cdmi_domains/system_domain"
     end.
 
@@ -72,26 +75,29 @@ get_name_and_parent(Pid, Uri) ->
 
 %% @doc Get the object name and parent URI.
 -spec nebula2_utils:get_parent(pid(), string()) -> {{error, notfound, string()}|{ok, string(), string()}}.
-get_parent(_Pid, "cdmi/") ->        %% Root has no parent
+get_parent(_Pid, "/") ->        %% Root has no parent
     {ok, "", ""};
 get_parent(Pid, ObjectName) ->
+    lager:debug("get_parent: ObjectName: ~p", [ObjectName]),
     Tokens = string:tokens(ObjectName, "/"),
     ParentUri = case string:join(lists:droplast(Tokens), "/") of
-                    [] -> "cdmi/";
-                    PU -> PU ++ "/"
+                    [] -> "/";
+                    PU -> "/" ++ PU ++ "/"
                 end,
-    lager:debug("get_parent found ParentUri=~p", [ParentUri]),
-    case get_parent_oid(Pid, ParentUri) of
+    lager:debug("get_parent parsed out ParentUri=~p", [ParentUri]),
+    case get_object_oid(Pid, ParentUri) of
         {ok, ParentId} ->
+            lager:debug("get_parent oid is ~p", [ParentId]),
             {ok, ParentUri, binary_to_list(ParentId)};
         {notfound, ""}->
+             lager:debug("get_parent oid not found"),
             {error, notfound, ParentUri}
     end.
 
 %% @doc Get the object's parent oid.
--spec nebula2_utils:get_parent_oid(pid(), string()) -> {{ok|notfound, string()}}.
-get_parent_oid(Pid, ParentUri) ->
-    case nebula2_riak:search(Pid, ParentUri) of
+-spec nebula2_utils:get_object_oid(pid(), string()) -> {{ok|notfound, string()}}.
+get_object_oid(Pid, ObjectName) ->
+    case nebula2_riak:search(Pid, ObjectName) of
         {error,_} -> 
             {notfound, ""};
         {ok, Data} ->
@@ -130,18 +136,18 @@ beginswith_false_test() ->
 
 %% @doc Test the get_parent/2 function.
 get_parent_root_test() -> 
-    ?assert(get_parent(ok, "cdmi/") == {ok, "", ""}).
+    ?assert(get_parent(ok, "/") == {ok, "", ""}).
 get_parent_object_test() ->
     Data =  "{\"objectID\":\"parent_oid\",}",
-    Path = "cdmi/some/object",
+    Path = "/some/object",
     meck:new(nebula2_riak, [non_strict]),
     meck:expect(nebula2_riak, search, fun(ok, Path) -> {ok, Data} end),
-    ?assert(get_parent(ok, Path) == {ok, "cdmi/some/", "parent_oid"}),
+    ?assert(get_parent(ok, Path) == {ok, "/some/", "parent_oid"}),
     meck:unload(nebula2_riak).
 get_parent_notfound_test() ->
-    Path = "cdmi/some/object",
+    Path = "/some/object",
     meck:new(nebula2_riak, [non_strict]),
     meck:expect(nebula2_riak, search, fun(ok, Path) -> {error, notfound} end),
-    ?assert(get_parent(ok, Path) == {error, notfound, "cdmi/some/"}),
+    ?assert(get_parent(ok, Path) == {error, notfound, "/some/"}),
     meck:unload(nebula2_riak).
 -endif.

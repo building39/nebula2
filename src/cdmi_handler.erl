@@ -195,7 +195,8 @@ resource_exists(Req, State) ->
     {Pid, Opts} = State,
     lager:debug("Entry resource_exists state: ~p", [Opts]),
     {Path, Req2} = cowboy_req:path(Req),
-    Uri = string:substr(binary_to_list(Path), 6),
+    Uri = "cdmi" ++ string:substr(binary_to_list(Path), 6),
+    lager:debug("cdmi_handler:resource_exists: Search Uri is ~p", [Uri]),
     {Response, Opts2} = case nebula2_riak:search(Pid, Uri) of
                             {ok, _Json}      ->
                                 lager:debug("resource DOES exist"),
@@ -236,6 +237,7 @@ to_cdmi_object(Req, State) ->
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path(Req),
     Uri = string:substr(binary_to_list(Path), 6),
+    lager:debug("cdmi_handler:to_cdmi_object: Search Uri is ~p", [Uri]),
     Response = case nebula2_riak:search(Pid, Uri) of
                    {ok, Json}            -> {list_to_binary(Json), Req, Pid};
                    {error, Status} -> 
@@ -267,6 +269,7 @@ needs_a_slash(Path, State) ->
          _  ->
             Path2 = Path ++ "/",
             Uri = string:substr(Path2, 6),
+            lager:debug("cdmi_handler:needs_a_slash: Search Uri is ~p", [Uri]),
             case nebula2_riak:search(Pid, Uri) of
                 {ok, _Json} ->
                      lager:debug("added a slash - true"),

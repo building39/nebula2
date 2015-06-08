@@ -48,3 +48,5 @@
 -define(BUCKET_TYPE, "cdmi").
 -define(BUCKET_NAME, "cdmi").
 -define(CDMI_INDEX, "cdmi_idx").
+-define(NAME_PREFIX, "cdmi").
+

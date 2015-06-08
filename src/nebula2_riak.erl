@@ -18,6 +18,8 @@
          post/3,
          put/4,
          ping/1,
+         prepend_name/1,
+         strip_name/1,
          search/2,
          update/3]).
 
@@ -70,10 +72,9 @@ post(Pid, Oid, Data) ->
                      ) -> {ok, object_oid()}.
 put(Pid, ObjectName, Oid, Data) ->
     lager:debug("nebula2_riak:put Creating object ~p", [ObjectName]),
-    ObjectName2 = "cdmi/" ++ ObjectName,
-    case search(Pid, ObjectName2) of
+    case search(Pid, ObjectName) of
         {error, 404} ->
-            do_put(Pid, Oid, Data);
+            do_put(Pid, Oid, prepend_name(Data));
         {error, E} ->
             lager:debug("riak_put got error ~p from search", [E]),
             {error, E};
@@ -109,7 +110,13 @@ search(Pid, []) ->
     search(Pid, "cdmi/");
 search(Pid, "/") ->
    search(Pid, "cdmi/");
-search(Pid, Uri) ->
+search(Pid, RawUri) ->
+    Uri = case nebula2_utils:beginswith(RawUri, "cdmi/") of
+              true ->
+                  RawUri;
+              false ->
+                  "cdmi" ++ RawUri
+    end,
     lager:debug("nebula2_riak:search searching for uri: ~p", [Uri]),
     Response = case mcd:get(?MEMCACHE, Uri) of
                     {error, notfound} ->
@@ -148,17 +155,7 @@ update(Pid, Oid, Data) ->
                                  ) -> {ok, string()}.
 execute_search(Pid, Uri) ->
     lager:debug("nebula2:execute_search: Search Uri: ~p", [Uri]),
-    {ObjectName, ParentUri, _} = nebula2_utils:get_name_and_parent(Pid, Uri),
-    lager:debug("execute_search: ObjectName: ~p ParentUri: ~p", [ObjectName, ParentUri]),
-    Queri = case ParentUri of
-                    "" ->
-                        lager:debug("searching for root document"),
-                        "objectName:cdmi/";
-                     _  ->
-                         lager:debug("searching for other object"),
-                         "objectName:" ++  ObjectName ++ " AND parentURI:" ++ ParentUri
-                end,
-    Query = list_to_binary(Queri),
+    Query = list_to_binary("objectName:" ++ Uri),
     Index = list_to_binary(?CDMI_INDEX),
     lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
     {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
@@ -189,8 +186,31 @@ fetch(Pid, Data) ->
     lager:debug("fetch found ObjectId: ~p", [ObjectId]),
     nebula2_riak:get(Pid, ObjectId).
 
+%% prepend 'cdmi' to object name
+prepend_name(Data) ->
+    {<<"objectName">>, OldName} = lists:keyfind(<<"objectName">>, 1, Data),
+    NewName = list_to_binary(?NAME_PREFIX ++ binary_to_list(OldName)),
+    lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, NewName}).
+
+%% strip 'cdmi' from object name
+strip_name(Data) ->
+    {<<"objectName">>, OldName} = lists:keyfind(<<"objectName">>, 1, Data),
+    {_, NewName} = lists:split(string:len(?NAME_PREFIX), binary_to_list(OldName)),
+    lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, list_to_binary(NewName)}).
+
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
 -ifdef(EUNIT).
+prepend_name_test() ->
+    Data = prepend_name([{<<"objectID">>,<<"oid">>},
+                         {<<"objectName">>,<<"/objectName">>},
+                         {<<"parentID">>,<<"parentId">>}]),
+    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"cdmi/objectName">>}).
+    
+strip_name_test() ->
+    Data = strip_name([{<<"objectID">>,<<"oid">>},
+                       {<<"objectName">>,<<"cdmi/objectName">>},
+                       {<<"parentID">>,<<"parentId">>}]),
+    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"/objectName">>}).
 -endif.

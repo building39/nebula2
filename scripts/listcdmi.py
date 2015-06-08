@@ -33,6 +33,7 @@ def get_object(name, search_pred, parent=''):
     global missing_children
     global failures
     global level
+    print("Entry parent: %s" % parent)
     resp = client.fulltext_search('cdmi_idx', search_pred)
     if resp['num_found'] == 1:
         try:
@@ -60,21 +61,19 @@ def get_object(name, search_pred, parent=''):
     if 'children' in objdata:
         children = objdata['children']
         prev_parent = parent
-        parent = '%s%s' % (parent, objdata['objectName'])
+        parent = '%s' % (objdata['objectName'])
         level += 1
-        #print('level %d' % level)
+        print('level %d' % level)
         for c in children:
-            child = 'cdmi/%s' % c
+            child = '%s%s' % (parent, c)
+            print("Prev parent: %s parent: %s child: %s" % (prev_parent, parent, child))
             get_object(child,
-                       'parentURI:%s AND objectName:%s' % (parent,
-                                                           child),
+                       'objectName:%s' % (child),
                        parent)
         parent = prev_parent
         level -= 1
 
 def main(argv):
-    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
-    import pydevd; pydevd.settrace()
     get_object('/', 'objectName:cdmi/')
 
     print('Listed %d objects' % keys_fetched)
