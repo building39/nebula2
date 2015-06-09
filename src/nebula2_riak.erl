@@ -25,19 +25,20 @@
 
 %% @doc Get a value from riak by bucket type, bucket and key.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}.
-get(Pid, []) ->
-    get(Pid, "/");
 get(Pid, Oid) ->
     Response = case riakc_pb_socket:get(Pid,
                                         {list_to_binary(?BUCKET_TYPE),
                                          list_to_binary(?BUCKET_NAME)},
                                          list_to_binary(Oid)) of
                     {ok, Object} ->
-                        Contents = binary_to_list(riakc_obj:get_value(Object)),
+                        Data = jsx:decode(riakc_obj:get_value(Object)),
+                        lager:debug("nebula2_riak:get json: ~p", [Data]),
+                        Contents = binary_to_list(jsx:encode(strip_name(jsx:decode(riakc_obj:get_value(Object))))),
                         {ok, Contents};
                     {error, Term} ->
                         {error, Term}
     end,
+    lager:debug("nebula2_riak:get Contents: ~p", [Response]),
     Response.
 
 %% @doc Ping the riak cluster.
@@ -118,7 +119,7 @@ search(Pid, RawUri) ->
                   "cdmi" ++ RawUri
     end,
     lager:debug("nebula2_riak:search searching for uri: ~p", [Uri]),
-    Response = case mcd:get(?MEMCACHE, Uri) of
+    Data = case mcd:get(?MEMCACHE, Uri) of
                     {error, notfound} ->
                         execute_search(Pid, Uri);
                     {ok, {error, 404}} ->
@@ -127,7 +128,7 @@ search(Pid, RawUri) ->
                         lager:debug("Search got cache hit: ~p", [Doc]),
                         Doc
     end,
-    Response.
+    Data.
 
 %% @doc Update an existing key/value pair.
 -spec nebula2_riak:update(pid(),
@@ -194,7 +195,17 @@ prepend_name(Data) ->
 
 %% strip 'cdmi' from object name
 strip_name(Data) ->
-    {<<"objectName">>, OldName} = lists:keyfind(<<"objectName">>, 1, Data),
+    lager:debug("strip_name parm ~p", [Data]),
+    Got = lists:keyfind(<<"objectName">>, 1, Data),
+    lager:debug("strip_name got ~p", [Got]),
+    OldName = case lists:keyfind(<<"objectName">>, 1, Data) of
+                  {<<"objectName">>, Name} ->
+                      Name;
+                  Failure ->
+                      lager:debug("strip_name failure: ~p", [Failure]),
+                      Failure
+              end,
+    lager:debug("Stripping cdmi from front of ~p", [OldName]),
     {_, NewName} = lists:split(string:len(?NAME_PREFIX), binary_to_list(OldName)),
     lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, list_to_binary(NewName)}).
 

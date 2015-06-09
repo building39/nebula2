@@ -245,6 +245,7 @@ to_cdmi_object(Req, State) ->
                        {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
                end,
     pooler:return_member(riak_pool, Pid),
+    lager:debug("to_cdmi_object: Response: ~p", [Response]),
     Response.
 
 %% ====================================================================
