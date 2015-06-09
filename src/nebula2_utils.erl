@@ -14,13 +14,15 @@
 %% ====================================================================
 -export([
          beginswith/2,
+         build_path/1,
          get_capabilities_uri/2,
          get_domain_uri/2,
          get_name_and_parent/2,
          get_object_oid/2,
          get_parent/2,
          get_time/0,
-         make_key/0
+         make_key/0,
+         update_parent/4
         ]).
 
 %% @doc Check if a string begins with a certain substring.
@@ -31,6 +33,14 @@ beginswith(Str, Substr) ->
         Substr -> true;
         _ -> false
     end.
+
+build_path(L) ->
+    build_path(L, []).
+build_path([], Acc) ->
+    Acc;
+build_path([H|T], Acc) ->
+    Acc2 = lists:append(Acc, binary_to_list(H) ++ "/"),
+    build_path(T, Acc2).
 
 %% @doc Get the capabilities URI for the request.
 %% @todo Flesh this out after authentication is done.
@@ -120,6 +130,47 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     Uid ++ ?OID_SUFFIX ++ Crc.
 
+update_parent("", _, _, _) ->
+    %% Must be the root, since there is no parent.
+    ok;
+update_parent(ParentId, ObjectName, ObjectType, Pid) ->
+    lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ObjectName, ObjectType, Pid]),
+    N = lists:last(string:tokens(ObjectName, "/")),
+    Name = case ObjectType of
+               "application/cdmi-capability" -> N ++ "/";
+               "application/cdmi-container" -> N ++ "/";
+               _ -> 
+                   N
+           end,
+    {ok, Parent} = nebula2_riak:get_internal(Pid, ParentId),
+    lager:debug("update_parent got parent: ~p", [Parent]),
+    lager:debug("updating parent with child: ~p", [Name]),
+    X = maps:get(<<"children">>, Parent, ""),
+    lager:debug("capabilities update_parent: X: ~p", [X]),
+    Children = case maps:get(<<"children">>, Parent, "") of
+                     "" ->
+                         [list_to_binary(Name)];
+                     Ch ->
+                         lager:debug("capabilities update_parent: Ch: ~p", [Ch]),
+                         lists:append(Ch, [list_to_binary(Name)])
+                 end,
+    lager:debug("Children is now: ~p", [Children]),
+    ChildRange = case maps:get(<<"childrange">>, Parent, "") of
+                     "" ->
+                         "0-0";
+                     Cr ->
+                         {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
+                         lists:concat(["0-", Num + 1])
+                 end,
+    lager:debug("ChildRange is now: ~p", [ChildRange]),
+    NewParent1 = maps:put(<<"children">>, Children, Parent),
+    NewParent2 = maps:put(<<"childrange">>, list_to_binary(ChildRange), NewParent1),
+    O = maps:to_list(NewParent2),
+    lager:debug("NewParent2: ~p", [NewParent2]),
+    lager:debug("To Encode: ~p", [O]),
+    lager:debug("new parent: ~p", [NewParent2]),
+    {ok, _Oid} = nebula2_riak:update(Pid, ParentId, NewParent2),
+    ok.
 %% ====================================================================
 %% Internal functions
 %% ====================================================================

@@ -15,6 +15,7 @@
 %% API functions
 %% ====================================================================
 -export([get/2,
+         get_internal/2,
          post/3,
          put/4,
          ping/1,
@@ -23,7 +24,7 @@
          search/2,
          update/3]).
 
-%% @doc Get a value from riak by bucket type, bucket and key.
+%% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}.
 get(Pid, Oid) ->
     Response = case riakc_pb_socket:get(Pid,
@@ -41,6 +42,24 @@ get(Pid, Oid) ->
     lager:debug("nebula2_riak:get Contents: ~p", [Response]),
     Response.
 
+%% @doc Get a value from riak by bucket type, bucket and key. Return list.
+-spec nebula2_riak:get_internal(pid(), object_oid()) -> {ok, json_value()}.
+get_internal(Pid, Oid) ->
+    Response = case riakc_pb_socket:get(Pid,
+                                        {list_to_binary(?BUCKET_TYPE),
+                                         list_to_binary(?BUCKET_NAME)},
+                                         list_to_binary(Oid)) of
+                    {ok, Object} ->
+                        Data = jsx:decode(riakc_obj:get_value(Object)),
+                        lager:debug("nebula2_riak:get json: ~p", [Data]),
+                        Contents = jsx:decode(riakc_obj:get_value(Object)),
+                        {ok, maps:from_list(Contents)};
+                    {error, Term} ->
+                        {error, Term}
+    end,
+    lager:debug("nebula2_riak:get Contents: ~p", [Response]),
+    Response.
+    
 %% @doc Ping the riak cluster.
 -spec nebula2_riak:ping(pid()) -> boolean().
 ping(Pid) ->
@@ -206,8 +225,13 @@ strip_name(Data) ->
                       Failure
               end,
     lager:debug("Stripping cdmi from front of ~p", [OldName]),
-    {_, NewName} = lists:split(string:len(?NAME_PREFIX), binary_to_list(OldName)),
-    lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, list_to_binary(NewName)}).
+    case OldName of
+        <<"/">> ->
+            Data;
+        _Other ->
+            {_, NewName} = lists:split(string:len(?NAME_PREFIX), binary_to_list(OldName)),
+            lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, list_to_binary(NewName)})
+    end.
 
 %% ====================================================================
 %% eunit tests
@@ -224,4 +248,10 @@ strip_name_test() ->
                        {<<"objectName">>,<<"cdmi/objectName">>},
                        {<<"parentID">>,<<"parentId">>}]),
     ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"/objectName">>}).
+
+strip_name_root_test() ->
+    Data = strip_name([{<<"objectID">>,<<"oid">>},
+                       {<<"objectName">>,<<"/">>},
+                       {<<"parentID">>,<<"parentId">>}]),
+    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"/">>}).
 -endif.

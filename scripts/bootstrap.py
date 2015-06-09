@@ -26,12 +26,10 @@ from os.path import isfile, join
 import requests
 import time
 
+DEFAULT_CAPABILITIES = '{"capabilities": {"cdmi_domains": "true", "cdmi_dataobjects": "true", "cdmi_object_access_by_ID":"true", "cdmi_object_copy_from_local": "true", "cdmi_object_move_from_ID": "true", "cdmi_object_move_from_local": "true"}}'
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
 PRINT_SEP = '-------------------------------------------------------------'
 METADATA = '{"metadata": { "cdmi_administrator": "administrator"}}'
-ROOT_CHILDREN = ["cdmi_capabilities/",
-                 "cdmi_domains/",
-                 "system_configuration/"]
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%S:000000Z'
 VERSION = '1.0.0'
 
@@ -82,6 +80,13 @@ class Bootstrap(object):
         else:
             print("Dry run: Created cdmi_domains.")
         
+        # Create the system configuration environment variables container
+        print("...Priming capabilities with %s" % DEFAULT_CAPABILITIES)
+        if self.commit:
+            self._create_capabilities()
+        else:
+            print("Dry run: Created cdmi_domains.")
+            
         return
     
     def _create_root(self):
@@ -154,6 +159,24 @@ class Bootstrap(object):
             sys.exit(1)
         else:
            print("Bootstrapping the system configuration environment variables received status code %d - exiting..." % r.status_code)
+           sys.exit(1)
+           
+    def _create_capabilities(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-capability'
+        url = 'http://%s:%d/cdmi/cdmi_capabilities' % (self.host, int(self.port))
+        r = requests.put(url=url,
+                         data=DEFAULT_CAPABILITIES,
+                         headers=headers,
+                         allow_redirects=True)
+        if r.status_code in [201]:
+            self.newobjects += 1
+            time.sleep(1) # give riak time to index
+        elif r.status_code in [409]:
+            print("CDMI is already bootstrapped.")
+            sys.exit(1)
+        else:
+           print("Bootstrapping the capabilities object received status code %d - exiting..." % r.status_code)
            sys.exit(1)
 
 def usage():

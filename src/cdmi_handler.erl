@@ -80,12 +80,15 @@ from_cdmi_capability(Req, State) ->
     lager:debug("Entry from_cdmi_capability...~p", [Pid]),
     {Path, _} = cowboy_req:path_info(Req),
     lager:debug("URI: ~p", [Path]),
-    {ok, Body, Req2} = cowboy_req:body(Req),
+    {ok, Body, _} = cowboy_req:body(Req),
     lager:debug("Body: ~p", [Body]),
-    pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number1\"}">>, Req2, State}.
+    Response = nebula2_capabilities:new_capability(Req, State),
+    lager:debug("Response from_cdmi_capability: ~p", [Response]),
+    {true, Req, State}.
 
 from_cdmi_container(Req, State) ->
+    {ok, Body, _} = cowboy_req:body(Req),
+    lager:debug("from_cdmi_container Body: ~p", [Body]),
     Response = nebula2_containers:new_container(Req, State),
     lager:debug("Entry from_cdmi_container: ~p", [Response]),
     {true, Req, State}.
