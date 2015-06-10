@@ -10,6 +10,13 @@
 
 -include("nebula.hrl").
 
+-define(DEFAULT_CAPABILITIES, [{<<"cdmi_dataobjects">>, <<"true">>},
+                               {<<"cdmi_domains">>, <<"true">>},
+                               {<<"cdmi_object_access_by_ID">>, <<"true">>},
+                               {<<"cdmi_object_copy_from_local">>, <<"true">>},
+                               {<<"cdmi_object_move_from_ID">>, <<"true">>},
+                               {<<"cdmi_object_move_from_local">>, <<"true">>}
+                              ]).
 %% ====================================================================
 %% API functions
 %% ====================================================================
@@ -48,11 +55,13 @@ new_capability(Req, State) ->
             lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
             lager:debug("                        Container Name: ~p", [ObjectName]),
             lager:debug("                        OID: ~p", Oid),
-            Data2 = [{<<"objectType">>, list_to_binary(ObjectType)},
+            Data2 = [{<<"capabilities">>, ?DEFAULT_CAPABILITIES},
+                     {<<"objectType">>, list_to_binary(ObjectType)},
                      {<<"objectID">>, list_to_binary(Oid)},
                      {<<"objectName">>, list_to_binary(ObjectName)},
                      {<<"parentID">>, list_to_binary(ParentId)},
-                     {<<"parentURI">>, list_to_binary(ParentUri)}],
+                     {<<"parentURI">>, list_to_binary(ParentUri)}
+                    ],
             {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
