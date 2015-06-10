@@ -62,7 +62,7 @@ new_container(Req, State) ->
                end,
     CapabilitiesURI = nebula2_utils:get_capabilities_uri(Pid, ObjectName),
     DomainURI = nebula2_utils:get_domain_uri(Pid, ObjectName),
-    ObjectType = "application/cdmi-container",
+    ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     case nebula2_utils:get_parent(Pid, ObjectName) of
         {ok, ParentUri, ParentId} ->
             lager:debug("Creating new container. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),

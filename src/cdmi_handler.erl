@@ -256,9 +256,9 @@ to_cdmi_object(Req, State) ->
 %% ====================================================================
 
 %% @doc Does the URI need a trailing slash?
-needs_a_slash(Path, State, "application/cdmi-container") ->
+needs_a_slash(Path, State, ?CONTENT_TYPE_CDMI_CONTAINER) ->
     needs_a_slash(Path, State);
-needs_a_slash(Path, State, "application/cdmi-domain") ->
+needs_a_slash(Path, State, ?CONTENT_TYPE_CDMI_DOMAIN) ->
     needs_a_slash(Path, State);
 needs_a_slash(_Path, _State, _Other) ->
     false.

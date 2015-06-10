@@ -49,7 +49,7 @@ new_capability(Req, State) ->
     lager:debug("ObjectName is ~p", [ObjectName]),
     {ok, Body, Req2} = cowboy_req:body(Req),
     _Data = maps:from_list(jsx:decode(Body)),
-    ObjectType = "application/cdmi-capability",
+    ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
     case nebula2_utils:get_parent(Pid, ObjectName) of
         {ok, ParentUri, ParentId} ->
             lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),

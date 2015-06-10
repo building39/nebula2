@@ -137,8 +137,8 @@ update_parent(ParentId, ObjectName, ObjectType, Pid) ->
     lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ObjectName, ObjectType, Pid]),
     N = lists:last(string:tokens(ObjectName, "/")),
     Name = case ObjectType of
-               "application/cdmi-capability" -> N ++ "/";
-               "application/cdmi-container" -> N ++ "/";
+               ?CONTENT_TYPE_CDMI_CAPABILITY -> N ++ "/";
+               ?CONTENT_TYPE_CDMI_CONTAINER -> N ++ "/";
                _ -> 
                    N
            end,
