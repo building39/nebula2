@@ -34,7 +34,6 @@ class Handlers(object):
         self.session.cdmiPasswd = entry.get_text()
         entry = self.builder.get_object(CONNECT_URL)
         self.session.cdmiUrl = '%s/cdmi' % entry.get_text()
-        print('cdmiURL1: %s' % self.session.cdmiUrl)
         entry = self.builder.get_object(CONNECT_USERID)
         self.session.cdmiUserid = entry.get_text()
 
@@ -44,7 +43,6 @@ class Handlers(object):
             pass
         else:
             self.session.cdmiUrl = 'http://%s' % self.session.cdmiUrl
-            print('cdmiURL2: %s' % self.session.cdmiUrl)
 
         self.session.auth_basic = "Basic %s" % b64encode("%s:%s" %
                     (self.session.cdmiUserid, self.session.cdmiPasswd))

@@ -35,9 +35,7 @@ class CDMISession(object):
         '''
         if not path.startswith('/'):
             path = '/%s' % path
-        #if path.endswith('/'):
-        #    path = path[:-1]  # Must strip trailing slash
-        print('cdmiUrl: %s' % self.cdmiUrl)
+
         url = '%s%s' % (self.cdmiUrl, self._squash_slashes(path))
 
         statusbar = self.main_builder.get_object('statusbar1')
@@ -67,21 +65,15 @@ class CDMISession(object):
         if model.iter_has_child(treeiter):
             return  # we already got the children
         prefix = '%s' % data.get('parentURI', '/')
-        print('get_children: parentURI is %s' % prefix)
-        #if prefix.endswith('/'):
-        #    prefix = prefix[:-1]
+
         object_name = data.get('objectName', '')
-        print('get_children: objectName is %s' % object_name)
-        #if object_name.endswith('/'):
-        #    object_name = object_name[:-1]
+
         if len(object_name) > 0:
             prefix = '%s/%s' % (prefix, object_name)
-        print('get_children: full name is %s' % prefix)
+
         num_children = len(data.get('children', []))
         for i in range(num_children):
             child = data['children'][i]
-            #if child.endswith('/'):
-            #    child = child[:-1]
             cdmipath = '%s/%s' % (prefix, child)
             _childiter = self.cdmimodel.append(treeiter,
                                        [child, cdmipath])

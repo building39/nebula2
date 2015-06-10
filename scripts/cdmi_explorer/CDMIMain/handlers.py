@@ -42,7 +42,6 @@ class Handlers(object):
         treeiter = args[1]
         treepath = args[2]
         model = treeview.get_model()
-        print('URI1: %s', model[treeiter][1])
         data = self.session.GET(model[treeiter][1])
         self.session.get_children(treeview, treepath, data)
         self.session.display_cdmi_data(data)
@@ -52,23 +51,17 @@ class Handlers(object):
         treeiter = args[1]
         treepath = args[2]
         rowname = self._squash_slashes(self.session.cdmimodel.get_value(treeiter, 1))
-        print('URI2: %s', rowname)
         data = self.session.GET(rowname)
         treeiter = self.session.cdmimodel.get_iter(treepath)
         model = treeview.get_model()
         prefix = rowname
-        #if prefix.endswith('/'):
-        #    prefix = prefix[:-1]
         if model.iter_has_child(treeiter):
             num_children = model.iter_n_children(treeiter)
             for i in range(num_children):
                 if not data:
                     break
                 child = data['children'][i]
-        #        if child.endswith('/'):
-        #            child = child[:-1]
                 childpath = self._squash_slashes('%s/%s' % (prefix, child))
-                print('URI3: %s', childpath)
                 childdata = self.session.GET(childpath)
                 childiter = model.iter_nth_child(treeiter, i)
                 self.session.get_children(treeview,
@@ -86,7 +79,6 @@ class Handlers(object):
         _column = args[2]
         model = treeview.get_model()
         treeiter = model.get_iter(treepath)
-        print('URI4: %s', model[treeiter][1])
         data = self.session.GET(model[treeiter][1])
         self.session.get_children(treeview, treepath, data)
         self.session.display_cdmi_data(data)
