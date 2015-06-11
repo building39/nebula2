@@ -26,7 +26,41 @@ from os.path import isfile, join
 import requests
 import time
 
-DEFAULT_CAPABILITIES = '{"capabilities": {"cdmi_domains": "true", "cdmi_dataobjects": "true", "cdmi_object_access_by_ID":"true", "cdmi_object_copy_from_local": "true", "cdmi_object_move_from_ID": "true", "cdmi_object_move_from_local": "true"}}'
+DEFAULT_CAPABILITIES = '{"capabilities": {"cdmi_domains": "true", ' \
+                                         '"cdmi_dataobjects": "true", ' \
+                                         '"cdmi_object_access_by_ID":"true", ' \
+                                         '"cdmi_object_copy_from_local": "true", ' \
+                                         '"cdmi_object_move_from_ID": "true", ' \
+                                         '"cdmi_object_move_from_local": "true"}}'
+CONTAINER_CAPABILITIES = '{"capabilities": {"cdmi_acl": "true", ' \
+                                           '"cdmi_atime": "true", ' \
+                                           '"cdmi_copy_container": "true", ' \
+                                           '"cdmi_copy_dataobject": "true", ' \
+                                           '"cdmi_create_databoject": "true", ' \
+                                           '"cdmi_ctime": "true", ' \
+                                           '"cdmi_delete_container": "true", ' \
+                                           '"cdmi_delete_dataobject": "true", ' \
+                                           '"cdmi_list_children": "true", ' \
+                                           '"cdmi_list_children_range": "true", ' \
+                                           '"cdmi_modify_metadata": "true", ' \
+                                           '"cdmi_move_container": "true", ' \
+                                           '"cdmi_move_dataobject": "true", ' \
+                                           '"cdmi_mtime": "true", ' \
+                                           '"cdmi_read_metadata": "true", ' \
+                                           '"cdmi_size": "true", ' \
+                                           '"cdmi_versioning": "all"}}'
+DATAOBJECT_CAPABILITIES = '{"capabilities": {"cdmi_acl": "true", ' \
+                                           '"cdmi_atime": "true", ' \
+                                           '"cdmi_ctime": "true", ' \
+                                           '"cdmi_delete_dataobject": "true", ' \
+                                           '"cdmi_modify_metadata": "true", ' \
+                                           '"cdmi_modify_value": "true", ' \
+                                           '"cdmi_modify_value_range": "true", ' \
+                                           '"cdmi_read_metadata": "true", ' \
+                                           '"cdmi_read_value": "true", ' \
+                                           '"cdmi_read_value_range": "true", ' \
+                                           '"cdmi_size": "true", ' \
+                                           '"cdmi_versioning": "all"}}'
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
 PRINT_SEP = '-------------------------------------------------------------'
 METADATA = '{"metadata": { "cdmi_administrator": "administrator"}}'
@@ -71,21 +105,35 @@ class Bootstrap(object):
         if self.commit:
             self._create_system_configuration()
         else:
-            print("Dry run: Created cdmi_domains.")
+            print("Dry run: Created system configuration.")
     
     # Create the system configuration environment variables container
         print("...Priming system_configuration environment variables with %s" % METADATA)
         if self.commit:
             self._create_system_configuration_environment()
         else:
-            print("Dry run: Created cdmi_domains.")
+            print("Dry run: Created systemj configuration environment variables.")
         
-        # Create the system configuration environment variables container
+        # Create the system default capabilities
         print("...Priming capabilities with %s" % DEFAULT_CAPABILITIES)
         if self.commit:
             self._create_capabilities()
         else:
-            print("Dry run: Created cdmi_domains.")
+            print("Dry run: Created capabilities.")
+            
+        # Create the container container capabilities
+        print("...Priming container capabilities with %s" % CONTAINER_CAPABILITIES)
+        if self.commit:
+            self._create_container_capabilities()
+        else:
+            print("Dry run: Created container capabilities.")
+            
+             # Create the dataobject default capabilities
+        print("...Priming dataobject capabilities with %s" % DATAOBJECT_CAPABILITIES)
+        if self.commit:
+            self._create_dataobject_capabilities()
+        else:
+            print("Dry run: Created dataobject capabilities.")
             
         return
     
@@ -93,80 +141,48 @@ class Bootstrap(object):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/' % (self.host, int(self.port))
-        r = requests.put(url=url,
-                         data=METADATA,
-                         headers=headers,
-                         allow_redirects=True)
-        if r.status_code in [201]:
-            self.newobjects += 1
-            time.sleep(1) # give riak time to index
-        elif r.status_code in [409]:
-            print("CDMI is already bootstrapped.")
-            sys.exit(1)
-        else:
-           print("Bootstrapping the root received status code %d - exiting..." % r.status_code)
-           sys.exit(1)
+        self._create(headers, url, METADATA)
        
     def _create_domain(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/cdmi_domains/' % (self.host, int(self.port))
-        r = requests.put(url=url,
-                         data=METADATA,
-                         headers=headers,
-                         allow_redirects=True)
-        if r.status_code in [201]:
-            self.newobjects += 1
-            time.sleep(1) # give riak time to index
-        elif r.status_code in [409]:
-            print("CDMI is already bootstrapped.")
-            sys.exit(1)
-        else:
-           print("Bootstrapping the domains received status code %d - exiting..." % r.status_code)
-           sys.exit(1)
+        self._create(headers, url, METADATA)
            
     def _create_system_configuration(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/system_configuration/' % (self.host, int(self.port))
-        r = requests.put(url=url,
-                         data=METADATA,
-                         headers=headers,
-                         allow_redirects=True)
-        if r.status_code in [201]:
-            self.newobjects += 1
-            time.sleep(1) # give riak time to index
-        elif r.status_code in [409]:
-            print("CDMI is already bootstrapped.")
-            sys.exit(1)
-        else:
-           print("Bootstrapping the system configuration received status code %d - exiting..." % r.status_code)
-           sys.exit(1)
+        self._create(headers, url, METADATA)
            
     def _create_system_configuration_environment(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/system_configuration/environment_variables' % (self.host, int(self.port))
-        r = requests.put(url=url,
-                         data=METADATA,
-                         headers=headers,
-                         allow_redirects=True)
-        if r.status_code in [201]:
-            self.newobjects += 1
-            time.sleep(1) # give riak time to index
-        elif r.status_code in [409]:
-            print("CDMI is already bootstrapped.")
-            sys.exit(1)
-        else:
-           print("Bootstrapping the system configuration environment variables received status code %d - exiting..." % r.status_code)
-           sys.exit(1)
+        self._create(headers, url, METADATA)
            
     def _create_capabilities(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-capability'
         url = 'http://%s:%d/cdmi/cdmi_capabilities' % (self.host, int(self.port))
+        self._create(headers, url, DEFAULT_CAPABILITIES)
+        
+    def _create_container_capabilities(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-capability'
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/container' % (self.host, int(self.port))
+        self._create(headers, url, CONTAINER_CAPABILITIES)
+        
+    def _create_dataobject_capabilities(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-capability'
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/dataobject' % (self.host, int(self.port))
+        self._create(headers, url, DATAOBJECT_CAPABILITIES)
+           
+    def _create(self, headers, url, data):
+        print('_create: data is %s' % data)
         r = requests.put(url=url,
-                         data=DEFAULT_CAPABILITIES,
+                         data=data,
                          headers=headers,
                          allow_redirects=True)
         if r.status_code in [201]:
@@ -176,7 +192,7 @@ class Bootstrap(object):
             print("CDMI is already bootstrapped.")
             sys.exit(1)
         else:
-           print("Bootstrapping the capabilities object received status code %d - exiting..." % r.status_code)
+           print("Bootstrapping received status code %d - exiting..." % r.status_code)
            sys.exit(1)
 
 def usage():

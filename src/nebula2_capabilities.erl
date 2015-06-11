@@ -48,14 +48,15 @@ new_capability(Req, State) ->
                  end,
     lager:debug("ObjectName is ~p", [ObjectName]),
     {ok, Body, Req2} = cowboy_req:body(Req),
-    _Data = maps:from_list(jsx:decode(Body)),
+    Data = maps:from_list(jsx:decode(Body)),
+    lager:debug("new_capability data: ~p", [Data]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
     case nebula2_utils:get_parent(Pid, ObjectName) of
         {ok, ParentUri, ParentId} ->
             lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
             lager:debug("                        Container Name: ~p", [ObjectName]),
             lager:debug("                        OID: ~p", Oid),
-            Data2 = [{<<"capabilities">>, ?DEFAULT_CAPABILITIES},
+            Data2 = [{<<"capabilities">>, Data},
                      {<<"objectType">>, list_to_binary(ObjectType)},
                      {<<"objectID">>, list_to_binary(Oid)},
                      {<<"objectName">>, list_to_binary(ObjectName)},
