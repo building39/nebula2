@@ -21,6 +21,7 @@
 -type response()         :: {term()|integer(), headers(), string()}.
 -type search_predicate() :: string().
 
+-define(DEFAULT_ADMINISTRATOR, "administrator").
 -define(DEFAULT_LOCATION, "US-TX").
 -define(CDMI_VERSION, "1.1").
 -define(FUZZCAT_SNMP_NUMBER, "045241").
@@ -43,6 +44,15 @@
 -define(CONTENT_TYPE_CDMI_CONTAINER,  "application/cdmi-container").
 -define(CONTENT_TYPE_CDMI_DATAOBJECT, "application/cdmi-dataobject").
 -define(CONTENT_TYPE_CDMI_DOMAIN,     "application/cdmi-domain").
+
+%% Capability URIs
+-define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container").
+-define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain").
+-define(DOMAIN_SUMMARY_CAPABILITY_URI, "/cdmi_capabilities/domain/summary").
+-define(PERMANENT_CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/permanent").
+
+%% System domain URI
+-define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain").
 
 %% riak parameters
 -define(BUCKET_TYPE, "cdmi").
