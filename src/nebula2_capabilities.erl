@@ -2,7 +2,6 @@
 %% @doc Handle CDMI capability objects.
 
 -module(nebula2_capabilities).
--compile([{parse_transform, lager_transform}]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -30,7 +29,7 @@
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
 get_capability(Pid, Oid) ->
     {ok, Data} = nebula2_riak:get(Pid, Oid),
-    maps:from_list(jsx:decode(list_to_binary(Data))).
+    jsx:decode(list_to_binary(Data), [return_maps]).
 
 %% @doc Create a new CDMI capability
 -spec nebula2_capabilities:new_capability(Req, State) -> {boolean(), Req, State}
@@ -39,30 +38,29 @@ new_capability(Req, State) ->
     Oid = nebula2_utils:make_key(),
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path_info(Req),
-    lager:debug("Path is ~p" , [Path]),
+    lager:debug("Capability Path is ~p" , [Path]),
     ObjectName = case Path of
                     [] ->
                         "/";
                     U  -> 
-                        "/" ++ nebula2_utils:build_path(U)
+                        "/" ++ build_path(U)
                  end,
     lager:debug("ObjectName is ~p", [ObjectName]),
     {ok, Body, Req2} = cowboy_req:body(Req),
-    Data = maps:from_list(jsx:decode(Body)),
-    lager:debug("new_capability data: ~p", [Data]),
+    Data = jsx:decode(Body, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
     case nebula2_utils:get_parent(Pid, ObjectName) of
         {ok, ParentUri, ParentId} ->
             lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
             lager:debug("                        Container Name: ~p", [ObjectName]),
             lager:debug("                        OID: ~p", Oid),
-            Data2 = [{<<"capabilities">>, Data},
+            Data2 = maps:from_list([{<<"capabilities">>, Data},
                      {<<"objectType">>, list_to_binary(ObjectType)},
                      {<<"objectID">>, list_to_binary(Oid)},
                      {<<"objectName">>, list_to_binary(ObjectName)},
                      {<<"parentID">>, list_to_binary(ParentId)},
                      {<<"parentURI">>, list_to_binary(ParentUri)}
-                    ],
+                    ]),
             {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
@@ -82,6 +80,13 @@ update_capability(Pid, ObjectId, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+build_path(L) ->
+    build_path(L, []).
+build_path([], Acc) ->
+    Acc;
+build_path([H|T], Acc) ->
+    Acc2 = lists:append(Acc, binary_to_list(H) ++ "/"),
+    build_path(T, Acc2).
 
 %% ====================================================================
 %% eunit tests

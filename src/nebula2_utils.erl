@@ -14,9 +14,8 @@
 %% ====================================================================
 -export([
          beginswith/2,
-         build_path/1,
          get_capabilities_uri/2,
-         get_domain_uri/2,
+         get_domain_uri/4,
          get_name_and_parent/2,
          get_object_oid/2,
          get_parent/2,
@@ -34,43 +33,44 @@ beginswith(Str, Substr) ->
         _ -> false
     end.
 
-build_path(L) ->
-    build_path(L, []).
-build_path([], Acc) ->
-    Acc;
-build_path([H|T], Acc) ->
-    Acc2 = lists:append(Acc, binary_to_list(H) ++ "/"),
-    build_path(T, Acc2).
-
 %% @doc Get the capabilities URI for the request.
 %% @todo Flesh this out after authentication is done.
 -spec nebula2_utils:get_capabilities_uri(pid(), string()) -> string().
 get_capabilities_uri(_Pid, ObjectName) ->
     case ObjectName of
         "/" ->
-            "/cdmi_capabilities/container/permanent";
+            ?PERMANENT_CONTAINER_CAPABILITY_URI;
         "/cdmi_domains/" ->
-            "/cdmi_capabilities/container/permanent";
+            ?PERMANENT_CONTAINER_CAPABILITY_URI;
+        "/cdmi_domains/system_domain/" ->
+            ?DOMAIN_CAPABILITY_URI;
+        "/cdmi_domains/cdmi_domain_members/" ->
+            ?CONTAINER_CAPABILITY_URI;
+        "/cdmi_domains/cdmi_domain_summary/" ->
+            ?DOMAIN_SUMMARY_CAPABILITY_URI;
         "/system_configuration/" ->
-            "/cdmi_capabilities/container/permanent";
+            ?CONTAINER_CAPABILITY_URI;
         "/system_configuration/environment_variables/" ->
-                "/cdmi_capabilities/container/permanent"
+            ?CONTAINER_CAPABILITY_URI
     end.
 
 %% @doc Get the domain URI for the request.
-%% @todo Flesh this out after authentication is done.
--spec nebula2_utils:get_domain_uri(pid(), string()) -> string().
-get_domain_uri(_Pid, ObjectName) ->
-    case ObjectName of
-        "/" ->
-            "/cdmi_domains/system_domain";
-        "/cdmi_domains/" ->
-            "/cdmi_domains/system_domain";
-        "/system_configuration/" ->
-            "/cdmi_domains/system_domain";
-        "/system_configuration/environment_variables/" ->
-            "/cdmi_domains/system_domain"
-    end.
+-spec nebula2_utils:get_domain_uri(pid(), string(), string(), binary()) -> string().
+get_domain_uri(Pid, ObjectName, ObjectType, ParentId) ->
+    DomainUri = case beginswith(ObjectName, "/cdmi_domains/") of
+        true ->
+            case ObjectType of
+                ?CONTENT_TYPE_CDMI_DOMAIN ->
+                    ObjectName;
+                _Other ->
+                    {ok, Parent} = nebula2_riak:get_mapped(Pid, ParentId),
+                    binary_to_list(maps:get(<<"domainURI">>, Parent))
+            end;
+        false ->
+            ?SYSTEM_DOMAIN_URI
+    end,
+    lager:debug("get_domain_uri: ~p", [DomainUri]),
+    DomainUri.
 
 %% @doc Get the object name and parent URI.
 -spec nebula2_utils:get_name_and_parent(pid(), string()) -> {string(), string()}.
@@ -83,7 +83,7 @@ get_name_and_parent(Pid, Uri) ->
     {ok, ParentUri, ParentId} = get_parent(Pid, Name),
     {Name, ParentUri, ParentId}.
 
-%% @doc Get the object name and parent URI.
+%% @doc Get the object's parent URI.
 -spec nebula2_utils:get_parent(pid(), string()) -> {{error, notfound, string()}|{ok, string(), string()}}.
 get_parent(_Pid, "/") ->        %% Root has no parent
     {ok, "", ""};
@@ -142,7 +142,7 @@ update_parent(ParentId, ObjectName, ObjectType, Pid) ->
                _ -> 
                    N
            end,
-    {ok, Parent} = nebula2_riak:get_internal(Pid, ParentId),
+    {ok, Parent} = nebula2_riak:get_mapped(Pid, ParentId),
     lager:debug("update_parent got parent: ~p", [Parent]),
     lager:debug("updating parent with child: ~p", [Name]),
     X = maps:get(<<"children">>, Parent, ""),

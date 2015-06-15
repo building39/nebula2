@@ -30,7 +30,7 @@ get(Pid, Oid) ->
                                          list_to_binary(?BUCKET_NAME)},
                                          list_to_binary(Oid)) of
                     {ok, Object} ->
-                        Data = jsx:decode(riakc_obj:get_value(Object)),
+                        Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
                         lager:debug("nebula2_riak:get json: ~p", [Data]),
                         Contents = binary_to_list(jsx:encode(riakc_obj:get_value(Object))),
                         {ok, Contents};
@@ -48,7 +48,7 @@ get_mapped(Pid, Oid) ->
                                          list_to_binary(?BUCKET_NAME)},
                                          list_to_binary(Oid)) of
                     {ok, Object} ->
-                        Contents = jsx:decode(riakc_obj:get_value(Object)),
+                        Contents = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
                         {ok, maps:from_list(Contents)};
                     {error, Term} ->
                         {error, Term}
@@ -170,6 +170,7 @@ update(Pid, Oid, Data) ->
 -spec nebula2_riak:create_sk(map()                    %% map of cdmi data
                             ) -> map().               %% updated cdmi data
 create_sk(Data) ->
+    lager:debug("create_sk: Data: ~p", [Data]),
     DomainURI = binary_to_list(maps:get(<<"domainURI">>, Data, <<"/cdmi_domains/system_domain/">>)),
     ParentURI = binary_to_list(maps:get(<<"parentURI">>, Data, <<"/root/">>)),
     ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),

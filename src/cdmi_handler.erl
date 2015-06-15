@@ -40,7 +40,7 @@ init(_, _Req, _Opts) ->
 
 rest_init(Req, _State) ->
     PoolMember = pooler:take_member(riak_pool),
-    {ok, Req, {PoolMember, []}}.
+    {ok, Req, {PoolMember, [{<<"envmap">>, maps:new()}]}}.
 
 allowed_methods(Req, State) ->
     lager:debug("Entry allowed_methods"),
@@ -112,8 +112,24 @@ from_cdmi_object(Req, State) ->
 is_authorized(Req, State) ->
 %% TODO: Check credentials here
     lager:debug("Entry is_authorized"),
-    {true, Req, State}.
-%%    {{false, "You suck!!!"}, Req, State}.
+    {AuthString, Req2} = cowboy_req:header(<<"authorization">>, Req),
+    AuthString2 = binary_to_list(AuthString),
+    [AuthMethod, Auth] = string:tokens(AuthString2, " "),
+    [Userid, _Password] = case string:to_lower(AuthMethod) of
+                            "basic" ->
+                                basic(Auth);
+                             _Other ->
+                                 {error, "Unknown AuthMethod: " ++ AuthMethod}
+                         end,
+    {Pid, Opts} = State,
+    {<<"envmap">>, EnvMap} = lists:keyfind(<<"envmap">>, 1, Opts),
+    lager:debug("is_authorized: Userid: ~p EnvMap: ~p", [Userid, EnvMap]),
+    NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(Userid), EnvMap),
+    lager:debug("is_authorized: NewEnvMap: ~p", [NewEnvMap]),
+    NewOpts = lists:keyreplace(<<"envmap">>, 1, Opts, {<<"envmap">>, NewEnvMap}),
+    lager:debug("is_authorized: NewOpts: ~p", [NewOpts]),
+    NewState = {Pid, NewOpts},
+    {true, Req2, NewState}.
 
 is_conflict(Req, State) ->
     {_, Opts} = State,
@@ -254,6 +270,10 @@ to_cdmi_object(Req, State) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%% Basic Authorization
+basic(Auth) ->
+    string:tokens(base64:decode_to_string(Auth), ":").
 
 %% @doc Does the URI need a trailing slash?
 needs_a_slash(Path, State, ?CONTENT_TYPE_CDMI_CONTAINER) ->
