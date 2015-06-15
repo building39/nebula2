@@ -10,6 +10,7 @@ Created on March 31, 2015
 '''
 import getpass
 import sys
+from base64 import encodestring
 
 try:
     import requests
@@ -26,44 +27,94 @@ from os.path import isfile, join
 import requests
 import time
 
-DEFAULT_CAPABILITIES = '{"capabilities": {"cdmi_domains": "true", ' \
-                                         '"cdmi_dataobjects": "true", ' \
-                                         '"cdmi_object_access_by_ID":"true", ' \
-                                         '"cdmi_object_copy_from_local": "true", ' \
-                                         '"cdmi_object_move_from_ID": "true", ' \
-                                         '"cdmi_object_move_from_local": "true"}}'
-CONTAINER_CAPABILITIES = '{"capabilities": {"cdmi_acl": "true", ' \
-                                           '"cdmi_atime": "true", ' \
-                                           '"cdmi_copy_container": "true", ' \
-                                           '"cdmi_copy_dataobject": "true", ' \
-                                           '"cdmi_create_databoject": "true", ' \
-                                           '"cdmi_ctime": "true", ' \
-                                           '"cdmi_delete_container": "true", ' \
-                                           '"cdmi_delete_dataobject": "true", ' \
-                                           '"cdmi_list_children": "true", ' \
-                                           '"cdmi_list_children_range": "true", ' \
-                                           '"cdmi_modify_metadata": "true", ' \
-                                           '"cdmi_move_container": "true", ' \
-                                           '"cdmi_move_dataobject": "true", ' \
-                                           '"cdmi_mtime": "true", ' \
-                                           '"cdmi_read_metadata": "true", ' \
-                                           '"cdmi_size": "true", ' \
-                                           '"cdmi_versioning": "all"}}'
-DATAOBJECT_CAPABILITIES = '{"capabilities": {"cdmi_acl": "true", ' \
-                                           '"cdmi_atime": "true", ' \
-                                           '"cdmi_ctime": "true", ' \
-                                           '"cdmi_delete_dataobject": "true", ' \
-                                           '"cdmi_modify_metadata": "true", ' \
-                                           '"cdmi_modify_value": "true", ' \
-                                           '"cdmi_modify_value_range": "true", ' \
-                                           '"cdmi_read_metadata": "true", ' \
-                                           '"cdmi_read_value": "true", ' \
-                                           '"cdmi_read_value_range": "true", ' \
-                                           '"cdmi_size": "true", ' \
-                                           '"cdmi_versioning": "all"}}'
+DOMAIN_ACL = '"cdmi_acl": [{"aceflags": "0x80", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}, ' \
+                                 '{"aceflags": "0x83", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}] '
+SYS_DOMAIN_ACL = '"cdmi_acl": [ {"aceflags": "0x0", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}, ' \
+                                 '{"aceflags": "0xb", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}, ' \
+                                '{"aceflags": "0x80", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}, ' \
+                                 '{"aceflags": "0x83", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}] '
+ROOT_ACL = '"cdmi_acl": [{"aceflags": "0x0", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}, ' \
+                                 '{"aceflags": "0xb", ' \
+                                  '"acemask": "0x1f07fff", ' \
+                                  '"acetype": "0x0", ' \
+                                  '"identifier": "ADMINISTRATOR@"}] '
+DEFAULT_CAPABILITIES = '{"cdmi_domains": "true", ' \
+                        '"cdmi_dataobjects": "true", ' \
+                        '"cdmi_object_access_by_ID":"true", ' \
+                        '"cdmi_object_copy_from_local": "true", ' \
+                        '"cdmi_object_move_from_ID": "true", ' \
+                        '"cdmi_object_move_from_local": "true"}'
+CONTAINER_CAPABILITIES = '{"cdmi_acl": "true", ' \
+                         '"cdmi_atime": "true", ' \
+                         '"cdmi_copy_container": "true", ' \
+                         '"cdmi_copy_dataobject": "true", ' \
+                         '"cdmi_create_container": "true", ' \
+                         '"cdmi_create_databoject": "true", ' \
+                         '"cdmi_ctime": "true", ' \
+                         '"cdmi_delete_container": "true", ' \
+                         '"cdmi_delete_dataobject": "true", ' \
+                         '"cdmi_list_children": "true", ' \
+                         '"cdmi_list_children_range": "true", ' \
+                         '"cdmi_modify_metadata": "true", ' \
+                         '"cdmi_move_container": "true", ' \
+                         '"cdmi_move_dataobject": "true", ' \
+                         '"cdmi_mtime": "true", ' \
+                         '"cdmi_read_metadata": "true", ' \
+                         '"cdmi_size": "true", ' \
+                         '"cdmi_versioning": "all"}'
+DATAOBJECT_CAPABILITIES = '{"cdmi_acl": "true", ' \
+                           '"cdmi_atime": "true", ' \
+                           '"cdmi_ctime": "true", ' \
+                           '"cdmi_delete_dataobject": "true", ' \
+                           '"cdmi_modify_metadata": "true", ' \
+                           '"cdmi_modify_value": "true", ' \
+                           '"cdmi_modify_value_range": "true", ' \
+                           '"cdmi_read_metadata": "true", ' \
+                           '"cdmi_read_value": "true", ' \
+                           '"cdmi_read_value_range": "true", ' \
+                           '"cdmi_size": "true", ' \
+                           '"cdmi_versioning": "all"}'
+DOMAIN_CAPABILITIES = '{"cdmi_acl": "true", ' \
+                       '"cdmi_atime": "true", ' \
+                       '"cdmi_copy_domain": "false", ' \
+                       '"cdmi_create_container": "true", ' \
+                       '"cdmi_create_domain": "true", ' \
+                       '"cdmi_ctime": "true", ' \
+                       '"cdmi_delete_container": "true", ' \
+                       '"cdmi_delete_domain": "true", ' \
+                       '"cdmi_domain_members": "true", ' \
+                       '"cdmi_domain_summary": "true", ' \
+                       '"cdmi_list_children": "true", ' \
+                       '"cdmi_modify_metadata": "true", ' \
+                       '"cdmi_mtime": "true", ' \
+                       '"cdmi_read_metadata": "true", ' \
+                       '"cdmi_size": "true", ' \
+                       '"cdmi_versioning": "all"}'
+
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
 PRINT_SEP = '-------------------------------------------------------------'
-METADATA = '{"metadata": { "cdmi_administrator": "administrator"}}'
+METADATA = '{"metadata": { "cdmi_owner": "%s", %s}}'
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%S:000000Z'
 VERSION = '1.0.0'
 
@@ -71,69 +122,82 @@ class Bootstrap(object):
 
     def __init__(self,
                  host,
-                 templatepath,
+                 adminid,
                  adminpw,
                  port=8080,
                  commit=False,
                  verbose=False):
+        self.adminid = adminid
         self.adminpw = adminpw
         self.commit = commit
         self.newobjects = 0
         self.host = host
         self.port = port
-        self.templatepath = templatepath
-        self.templates = {}
 
     def bootstrap(self):
         
         # Create the root container
-        print("...Priming root document with %s" % METADATA)
+        print("...Priming root document")
         if self.commit:
             self._create_root()
         else:
             print("Dry run: Created root.")
 
         # Create the domains container
-        print("...Priming cdmi_domains with %s" % METADATA)
+        print("...Priming cdmi_domains")
         if self.commit:
             self._create_domain()
         else:
             print("Dry run: Created cdmi_domains.")
             
+        # Create the domains container
+        print("...Priming cdmi_domains/system_domain")
+        if self.commit:
+            self._create_system_domain()
+        else:
+            print("Dry run: Created cdmi_domains.")
+            
         # Create the system configuration container
-        print("...Priming system_configuration with %s" % METADATA)
+        print("...Priming system_configuration")
         if self.commit:
             self._create_system_configuration()
         else:
             print("Dry run: Created system configuration.")
     
     # Create the system configuration environment variables container
-        print("...Priming system_configuration environment variables with %s" % METADATA)
+        print("...Priming system_configuration environment variables")
         if self.commit:
             self._create_system_configuration_environment()
         else:
-            print("Dry run: Created systemj configuration environment variables.")
+            print("Dry run: Created system configuration environment variables.")
         
         # Create the system default capabilities
-        print("...Priming capabilities with %s" % DEFAULT_CAPABILITIES)
+        print("...Priming capabilities")
         if self.commit:
             self._create_capabilities()
         else:
             print("Dry run: Created capabilities.")
             
         # Create the container container capabilities
-        print("...Priming container capabilities with %s" % CONTAINER_CAPABILITIES)
+        print("...Priming container capabilities")
         if self.commit:
             self._create_container_capabilities()
         else:
             print("Dry run: Created container capabilities.")
             
-             # Create the dataobject default capabilities
-        print("...Priming dataobject capabilities with %s" % DATAOBJECT_CAPABILITIES)
+        # Create the dataobject default capabilities
+        print("...Priming dataobject capabilities")
         if self.commit:
             self._create_dataobject_capabilities()
         else:
             print("Dry run: Created dataobject capabilities.")
+            
+        # Create the domain default capabilities
+        print("...Priming domain capabilities")
+        if self.commit:
+            self._create_domain_capabilities()
+        else:
+            print("Dry run: Created domain capabilities.")
             
         return
     
@@ -141,49 +205,63 @@ class Bootstrap(object):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/' % (self.host, int(self.port))
-        self._create(headers, url, METADATA)
+        self._create(headers, url, METADATA % (self.adminid, ROOT_ACL))
        
     def _create_domain(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/cdmi_domains/' % (self.host, int(self.port))
-        self._create(headers, url, METADATA)
+        self._create(headers, url, METADATA % (self.adminid, DOMAIN_ACL))
+        
+    def _create_system_domain(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-container'
+        url = 'http://%s:%d/cdmi/cdmi_domains/system_domain' % (self.host, int(self.port))
+        self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
            
     def _create_system_configuration(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/system_configuration/' % (self.host, int(self.port))
-        self._create(headers, url, METADATA)
+        self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
            
     def _create_system_configuration_environment(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-container'
         url = 'http://%s:%d/cdmi/system_configuration/environment_variables' % (self.host, int(self.port))
-        self._create(headers, url, METADATA)
+        self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
            
     def _create_capabilities(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities' % (self.host, int(self.port))
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/' % (self.host, int(self.port))
         self._create(headers, url, DEFAULT_CAPABILITIES)
         
     def _create_container_capabilities(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/container' % (self.host, int(self.port))
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/container/' % (self.host, int(self.port))
         self._create(headers, url, CONTAINER_CAPABILITIES)
         
     def _create_dataobject_capabilities(self):
         headers = HEADERS
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/dataobject' % (self.host, int(self.port))
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/dataobject/' % (self.host, int(self.port))
         self._create(headers, url, DATAOBJECT_CAPABILITIES)
+        
+    def _create_domain_capabilities(self):
+        headers = HEADERS
+        headers['Content-Type'] = 'application/cdmi-capability'
+        url = 'http://%s:%d/cdmi/cdmi_capabilities/domain' % (self.host, int(self.port))
+        self._create(headers, url, DOMAIN_CAPABILITIES)
            
     def _create(self, headers, url, data):
-        print('_create: data is %s' % data)
+        new_headers = headers.copy()
+        auth_string = 'Basic %s' % encodestring('%s:%s' % (self.adminid, self.adminpw))
+        new_headers["Authorization"] = auth_string
         r = requests.put(url=url,
                          data=data,
-                         headers=headers,
+                         headers=new_headers,
                          allow_redirects=True)
         if r.status_code in [201]:
             self.newobjects += 1
@@ -200,17 +278,17 @@ def usage():
     print ('Version : %s' % VERSION)
     print ('')
     print ('Usage: '
-           '%s --host=[hostname] --port=[port] --templates=[path to template files], --commit=[true|false]'
+           '%s --host=[hostname] --port=[port] --commit'
            % sys.argv[0])
     print ('          [--help]')
     print ('')
     print (' Command Line options:')
-    print ('  --adminpw   - Password for the "admin" user.')
+    print ('  --adminpw   - Password for the "admin" user. If absent, will be prompted for.')
+    print ('  --adminid   - User name for the administrator user. Default: administrator')
     print ('  --help      - Print this enlightening message')
     print ('  --host      - Nebula host url. Required.')
-    print ('  --templates - Path to template files. Required.')
     print ('  --port      - Nebula host port. Optional, defaults to 8080.')
-    print ('  --commit    - Optional. Bootstrap commited if true, otherwise')
+    print ('  --commit    - Optional. Bootstrap committed if present, otherwise')
     print ('                the objects that would have been bootstrapped are')
     print ('                displayed.')
     
@@ -221,23 +299,23 @@ def main(argv):
     if (len(sys.argv) < 3):
         usage()
 
+    adminid = 'administrator'
     adminpw = ''
     commit = False
     host = None
     port = 8080
-    templates = None
     verbose = False
 
     try:
         opts, _args = getopt.getopt(argv,
                                    '',
-                                   ['adminpw=',
+                                   ['adminid=',
+                                    'adminpw=',
                                     'help',
                                     'debug',
                                     'commit',
                                     'host=',
                                     'port=',
-                                    'templates=',
                                     'verbose'])
     except getopt.GetoptError, e:
         print ('opt error %s' % e)
@@ -245,7 +323,9 @@ def main(argv):
         usage()
 
     for opt, arg in opts:
-        if opt in ("--adminpw"):
+        if opt in ("--adminid"):
+            adminid = arg
+        elif opt in ("--adminpw"):
             adminpw = arg
         elif opt in ("-h", "--help"):
             usage()
@@ -257,11 +337,9 @@ def main(argv):
         elif opt == '--host':
             host = arg
         elif opt == '--port':
-            port = True
-        elif opt == '--templates':
-            templates = arg
+            port = arg
             
-    if host is None or templates is None:
+    if host is None:
         usage()
         sys.exit(1)
         
@@ -269,7 +347,7 @@ def main(argv):
         adminpw = getpass.getpass('Please enter a password for the admin user')
 
     bs = Bootstrap(host,  # Nebula host url
-                   templates, # pat to templates
+                   adminid,
                    adminpw,
                    port,  # Nebula host port
                    commit=commit,
