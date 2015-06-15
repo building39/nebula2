@@ -19,10 +19,7 @@
          post/3,
          put/4,
          ping/1,
-         prepend_name/1,
-         strip_name/1,
          search/2,
-         create_sk/1,
          update/3]).
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
@@ -35,7 +32,7 @@ get(Pid, Oid) ->
                     {ok, Object} ->
                         Data = jsx:decode(riakc_obj:get_value(Object)),
                         lager:debug("nebula2_riak:get json: ~p", [Data]),
-                        Contents = binary_to_list(jsx:encode(strip_name(jsx:decode(riakc_obj:get_value(Object))))),
+                        Contents = binary_to_list(jsx:encode(riakc_obj:get_value(Object))),
                         {ok, Contents};
                     {error, Term} ->
                         {error, Term}
@@ -93,7 +90,7 @@ put(Pid, ObjectName, Oid, Data) ->
     lager:debug("nebula2_riak:put Creating object ~p", [ObjectName]),
     case search(Pid, ObjectName) of
         {error, 404} ->
-            do_put(Pid, Oid, prepend_name(Data));
+            do_put(Pid, Oid, create_sk(Data));
         {error, E} ->
             lager:debug("riak_put got error ~p from search", [E]),
             {error, E};
@@ -221,54 +218,11 @@ fetch(Pid, Data) ->
     lager:debug("fetch found ObjectId: ~p", [ObjectId]),
     nebula2_riak:get(Pid, ObjectId).
 
-%% prepend 'cdmi' to object name
-prepend_name(Data) ->
-    {<<"objectName">>, OldName} = lists:keyfind(<<"objectName">>, 1, Data),
-    NewName = list_to_binary(?NAME_PREFIX ++ binary_to_list(OldName)),
-    lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, NewName}).
-
-%% strip 'cdmi' from object name
-strip_name(Data) ->
-    lager:debug("strip_name parm ~p", [Data]),
-    Got = lists:keyfind(<<"objectName">>, 1, Data),
-    lager:debug("strip_name got ~p", [Got]),
-    OldName = case lists:keyfind(<<"objectName">>, 1, Data) of
-                  {<<"objectName">>, Name} ->
-                      Name;
-                  Failure ->
-                      lager:debug("strip_name failure: ~p", [Failure]),
-                      Failure
-              end,
-    lager:debug("Stripping cdmi from front of ~p", [OldName]),
-    case OldName of
-        <<"/">> ->
-            Data;
-        _Other ->
-            {_, NewName} = lists:split(string:len(?NAME_PREFIX), binary_to_list(OldName)),
-            lists:keyreplace(<<"objectName">>, 1, Data, {<<"objectName">>, list_to_binary(NewName)})
-    end.
 
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
 -ifdef(EUNIT).
-prepend_name_test() ->
-    Data = prepend_name([{<<"objectID">>,<<"oid">>},
-                         {<<"objectName">>,<<"/objectName">>},
-                         {<<"parentID">>,<<"parentId">>}]),
-    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"cdmi/objectName">>}).
-    
-strip_name_test() ->
-    Data = strip_name([{<<"objectID">>,<<"oid">>},
-                       {<<"objectName">>,<<"cdmi/objectName">>},
-                       {<<"parentID">>,<<"parentId">>}]),
-    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"/objectName">>}).
-
-strip_name_root_test() ->
-    Data = strip_name([{<<"objectID">>,<<"oid">>},
-                       {<<"objectName">>,<<"/">>},
-                       {<<"parentID">>,<<"parentId">>}]),
-    ?assert(lists:keyfind(<<"objectName">>, 1, Data) == {<<"objectName">>, <<"/">>}).
 
 create_sk_test() ->
     Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
