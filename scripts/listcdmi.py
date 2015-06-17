@@ -71,15 +71,12 @@ def get_object(name, search_pred, parent=''):
             parentURI = '%s%s' % (objdata['parentURI'], objdata['objectName'])
         else:
             parentURI = '/'
-        domainURI = objdata['domainURI']
         level += 1
         print('level %d' % level)
         for child in children:
             print("Prev parent: %s parent: %s child: %s" % (prev_parent, parent, child))
             get_object(child,
-                       'domainURI:\\%s AND parentURI:\\%s AND objectName:\\%s' % (domainURI,
-                                                                                  parentURI,
-                                                                                  child)),
+                       'parentURI:\\%s AND objectName:\\%s' % (parentURI, child)),
         parent = prev_parent
         level -= 1
 

@@ -39,7 +39,20 @@ init(_, _Req, _Opts) ->
 
 rest_init(Req, _State) ->
     PoolMember = pooler:take_member(riak_pool),
-    {ok, Req, {PoolMember, [{<<"envmap">>, maps:new()}]}}.
+    {Method, Req2} = cowboy_req:method(Req),
+    {ok, Body, Req3} = cowboy_req:body(Req2),
+    {Path, Req4} = cowboy_req:path_info(Req3),
+    lager:debug("cdmi_handler: rest_init: Body: ~p", [Body]),
+    Map = case Body of
+               <<>> ->
+                   maps:new();
+               _Other ->
+                   M = maps:new(),
+                   maps:put(<<"body">>, jsx:decode(Body, [return_maps]), M)
+           end,
+    Map2 = maps:put(<<"method">>, Method, Map),
+    Map3 = maps:put(<<"path">>, Path, Map2),
+    {ok, Req4, {PoolMember, Map3}}.
 
 allowed_methods(Req, State) ->
     lager:debug("Entry allowed_methods"),
@@ -75,34 +88,39 @@ forbidden(Req, State) ->
 %%    {true, Req, State}.
     
 from_cdmi_capability(Req, State) ->
-    {Pid, _Opts} = State,
+    {Pid, EnvMap} = State,
     lager:debug("Entry from_cdmi_capability...~p", [Pid]),
-    {Path, _} = cowboy_req:path_info(Req),
+    Path = maps:get(<<"path">>, EnvMap),
     lager:debug("URI: ~p", [Path]),
-    {ok, Body, _} = cowboy_req:body(Req),
+    Body = maps:get(<<"body">>, EnvMap),
     lager:debug("Body: ~p", [Body]),
     Response = nebula2_capabilities:new_capability(Req, State),
     lager:debug("Response from_cdmi_capability: ~p", [Response]),
     {true, Req, State}.
 
 from_cdmi_container(Req, State) ->
-    {ok, Body, _} = cowboy_req:body(Req),
+    {_Pid, EnvMap} = State,
+    Body = maps:get(<<"body">>, EnvMap),
     lager:debug("from_cdmi_container Body: ~p", [Body]),
     Response = nebula2_containers:new_container(Req, State),
     lager:debug("Entry from_cdmi_container: ~p", [Response]),
     {true, Req, State}.
 
 from_cdmi_domain(Req, State) ->
-    lager:debug("Entry from_cdmi_domain"),
+    {_Pid, EnvMap} = State,
+    Body = maps:get(<<"body">>, EnvMap),
+    lager:debug("Entry from_cdmi_domain Body: ~p", [Body]),
     {<<"{\"jsondoc\": \"domain\"}">>, Req, State}.
 
 from_cdmi_object(Req, State) ->
-    {Pid, _Opts} = State,
+    {Pid, EnvMap} = State,
     lager:debug("from_cdmi_object...~p", [Pid]),
-    {Path, _} = cowboy_req:path(Req),
+    Body = maps:get(<<"body">>, EnvMap),
+    Path = maps:get(<<"path">>, EnvMap),
 %%    Uri = string:substr(binary_to_list(Path), 6),
     
     lager:debug("Get URI: ~p", [Path]),
+    lager:debug("Get Body: ~p", [Body]),
 %%    Json = nebula2_riak:get(Pid, Uri),
 %%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
@@ -120,21 +138,18 @@ is_authorized(Req, State) ->
                              _Other ->
                                  {error, "Unknown AuthMethod: " ++ AuthMethod}
                          end,
-    {Pid, Opts} = State,
-    {<<"envmap">>, EnvMap} = lists:keyfind(<<"envmap">>, 1, Opts),
+    {Pid, EnvMap} = State,
     lager:debug("is_authorized: Userid: ~p EnvMap: ~p", [Userid, EnvMap]),
     NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(Userid), EnvMap),
     lager:debug("is_authorized: NewEnvMap: ~p", [NewEnvMap]),
-    NewOpts = lists:keyreplace(<<"envmap">>, 1, Opts, {<<"envmap">>, NewEnvMap}),
-    lager:debug("is_authorized: NewOpts: ~p", [NewOpts]),
-    NewState = {Pid, NewOpts},
-    {true, Req2, NewState}.
+    {true, Req2, {Pid, NewEnvMap}}.
 
 is_conflict(Req, State) ->
-    {_, Opts} = State,
-    lager:debug("Entry is_conflict: ~p", [Opts]),
-    {Method, _} = cowboy_req:method(Req),
-    Conflicts = handle_is_conflict(Method, lists:member(resource_exists, Opts)),
+    {_Pid, EnvMap} = State,
+    lager:debug("Entry is_conflict: ~p", [EnvMap]),
+    Method = maps:get(<<"method">>, EnvMap),
+    Exists = maps:get(<<"exists">>, EnvMap),
+    Conflicts = handle_is_conflict(Method, Exists),
     {Conflicts, Req, State}
 .
 handle_is_conflict(<<"PUT">>, Exists) ->
@@ -152,7 +167,7 @@ known_methods(Req, State) ->
 %% There must be an X-CDMI-Specification-Version header, and it
 %% must request version 1.1
 malformed_request(Req, State) ->
-    lager:debug("Entery malformed_request"),
+    lager:debug("Enter malformed_request"),
     CDMIVersion = cowboy_req:header(<<?VERSION_HEADER>>, Req, error),
     Valid = case CDMIVersion of
         {error, _} ->
@@ -169,10 +184,9 @@ malformed_request(Req, State) ->
 %% If the request asks for a cdmi-container or cdmi-domain, and
 %% the URL does not end with a slash, it has moved permanently.
 moved_permanently(Req, State) ->
-    {_Pid, Moved} = State,
-    {Method, _} = cowboy_req:method(Req),
+    {_Pid, EnvMap} = State,
+    Method = maps:get(<<"method">>, EnvMap),
     lager:debug("Entry moved permanently, method: ~p", [Method]),
-    {_Pid, Moved} = State,
     lager:debug("Leaving moved_permanently"),
     {false, Req, State}.
 %    {Moved, Req, State}.
@@ -191,10 +205,10 @@ multiple_choices(Req, State) ->
 %% For non-CDMIobject types that lack a trailing slash,
 %% does that resource exist with a trailing slash?
 previously_existed(Req, State) ->
-    {Pid, _Opts} = State,
+    {Pid, EnvMap} = State,
     lager:debug("-------------------------------------------------------------------------------------------------"),
     lager:debug("Entry previously_existed"),
-    {Path, _} = cowboy_req:path(Req),
+    Path = maps:get(<<"path">>, EnvMap),
     {BinaryAcceptHeader, _} = cowboy_req:header(<<?ACCEPT_HEADER>>, Req, error),
     Response = needs_a_slash(binary_to_list(Path),
                              State,
@@ -210,21 +224,25 @@ previously_existed(Req, State) ->
 
 %% Does the resource exist?
 resource_exists(Req, State) ->
-    {Pid, Opts} = State,
-    lager:debug("Entry resource_exists state: ~p", [Opts]),
-    {Path, Req2} = cowboy_req:path(Req),
-    Uri = "cdmi" ++ string:substr(binary_to_list(Path), 6),
-    lager:debug("cdmi_handler:resource_exists: Search Uri is ~p", [Uri]),
-    {Response, Opts2} = case nebula2_riak:search(Pid, Uri) of
-                            {ok, _Json}      ->
-                                lager:debug("resource DOES exist"),
-                                {true, lists:append(Opts, [resource_exists])};
-                            {error, _Status} ->
-                                lager:debug("resource does NOT exist"),
-                                {false, lists:append(Opts, [resource_noexist])}
-                        end,
-    State2 = {Pid, Opts2},
-    {Response, Req2, State2}.
+    {Pid, EnvMap} = State,
+    lager:debug("Entry resource_exists state: ~p", [EnvMap]),
+    Method = maps:get(<<"method">>, EnvMap),
+    Response = resource_exists_handler(Method, Req, State),
+    NewEnvMap = maps:put(<<"exists">>, Response, EnvMap),
+    {Response, Req, {Pid, NewEnvMap}}.
+
+resource_exists_handler("GET", Req, State) ->
+    {ok, Req, State};
+resource_exists_handler("PUT", _Req, State) ->
+    {Pid, EnvMap} = State,
+    Body = maps:get(<<"body">>, EnvMap),
+    Response = case nebula2_riak:search(Pid, Body) of
+                   {error, _Status} ->
+                       false;
+                   _Other ->
+                       true
+               end,
+    Response.
     
 %% if pooler says no members, kick back a 503. I
 %% do this here because a 503 seems to me the most
@@ -233,7 +251,7 @@ resource_exists(Req, State) ->
 service_available(Req, {error_no_members, _}) ->
     {false, Req, undefined};
 service_available(Req, State) ->
-    {Pid, _opts} = State,
+    {Pid, _EnvMap} = State,
     Available = case nebula2_riak:ping(Pid) of
         true -> true;
         _ -> false
@@ -252,8 +270,8 @@ to_cdmi_domain(Req, State) ->
 
 to_cdmi_object(Req, State) ->
     lager:debug("Entry to_cdmi_object"),
-    {Pid, _Opts} = State,
-    {Path, _} = cowboy_req:path(Req),
+    {Pid, EnvMap} = State,
+    Path = maps:get(<<"path">>, EnvMap),
     Uri = string:substr(binary_to_list(Path), 6),
     lager:debug("cdmi_handler:to_cdmi_object: Search Uri is ~p", [Uri]),
     Response = case nebula2_riak:search(Pid, Uri) of
@@ -283,7 +301,7 @@ needs_a_slash(_Path, _State, _Other) ->
     false.
     
 needs_a_slash(Path, State) ->
-    {Pid, _Opts} = State,
+    {Pid, _EnvMap} = State,
     lager:debug("needs_a_slash: Path ~", [Path]),
     End = string:right(Path, 1),
     case End of
