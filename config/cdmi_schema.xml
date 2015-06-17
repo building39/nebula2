@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <schema name="cdmi_schema" version="1.5">
  <fields>
-   <field name="metadata.nebula_sk"	type="string" indexed="true" stored="false" />
+   <field name="domainURI"  type="string" indexed="true" stored="false" />
+   <field name="objectName" type="string" indexed="true" stored="false" />
+   <field name="metadata.cdmi_owner" type="string" indexed="true" stored="false" />
+   <field name="parentURI" type="string" indexed="true" stored="false" />
+
    <dynamicField name="*" type="ignored"  />
 
    <!-- All of these fields are required by Riak Search -->

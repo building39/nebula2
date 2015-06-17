@@ -11,6 +11,8 @@ Created on March 31, 2015
 import getpass
 import sys
 from base64 import encodestring
+import json
+import time
 
 try:
     import requests
@@ -27,44 +29,79 @@ from os.path import isfile, join
 import requests
 import time
 
-DOMAIN_ACL = '"cdmi_acl": [{"aceflags": "0x80", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}, ' \
-                                 '{"aceflags": "0x83", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}] '
-SYS_DOMAIN_ACL = '"cdmi_acl": [ {"aceflags": "0x0", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}, ' \
-                                 '{"aceflags": "0xb", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}, ' \
-                                '{"aceflags": "0x80", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}, ' \
-                                 '{"aceflags": "0x83", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}] '
-ROOT_ACL = '"cdmi_acl": [{"aceflags": "0x0", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}, ' \
-                                 '{"aceflags": "0xb", ' \
-                                  '"acemask": "0x1f07fff", ' \
-                                  '"acetype": "0x0", ' \
-                                  '"identifier": "ADMINISTRATOR@"}] '
+CDMI_ACE_ACCESS_ALLOW = 0x0
+CDMI_ACE_ACCESS_DENY  = 0x1
+CDMI_ACE_SYSTEM_AUDIT = 0x2
+
+CDMI_ACE_FLAGS_NONE = 0x00000000
+CDMI_ACE_FLAGS_OBJECT_INHERIT_ACE = 0x00000001
+CDMI_ACE_FLAGS_CONTAINER_INHERIT_ACE = 0x00000002
+CDMI_ACE_FLAGS_NO_PROPAGATE_ACE = 0x00000004
+CDMI_ACE_FLAGS_INHERIT_ONLY_ACE = 0x00000008
+CDMI_ACE_FLAGS_IDENTIFIER_GROUP = 0x00000040
+CDMI_ACE_FLAGS_INHERITED_ACE = 0x00000080
+
+CDMI_ACE_READ_OBJECT = 0x00000001
+CDMI_ACE_LIST_CONTAINER = 0x00000001
+CDMI_ACE_WRITE_OBJECT = 0x00000002
+CDMI_ACE_ADD_OBJECT = 0x00000002
+CDMI_ACE_APPEND_DATA = 0x00000004
+CDMI_ACE_ADD_SUBCONTAINER = 0x00000004
+CDMI_ACE_READ_METADATA = 0x00000008
+CDMI_ACE_WRITE_METADATA = 0x00000010
+CDMI_ACE_EXECUTE = 0x00000020
+CDMI_ACE_TRAVERSE_CONTAINER = 0x00000020
+CDMI_ACE_DELETE_OBJECT = 0x00000040
+CDMI_ACE_DELETE_SUBCONTAINER = 0x00000040
+CDMI_ACE_READ_ATTRIBUTES = 0x00000080
+CDMI_ACE_WRITE_ATTRIBUTES = 0x00000100
+CDMI_ACE_WRITE_RETENTION = 0x00000200
+CDMI_ACE_WRITE_RETENTION_HOLD = 0x00000400
+CDMI_ACE_DELETE = 0x00010000
+CDMI_ACE_READ_ACL = 0x00020000
+CDMI_ACE_WRITE_ACL = 0x00040000
+CDMI_ACE_WRITE_OWNER = 0x00080000
+CDMI_ACE_SYNCHRONIZE = 0x00100000
+CDMI_ACE_ALL_PERMS = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRITE_OBJECT | CDMI_ACE_ADD_OBJECT | \
+                    CDMI_ACE_APPEND_DATA | CDMI_ACE_ADD_SUBCONTAINER | CDMI_ACE_READ_METADATA | \
+                    CDMI_ACE_WRITE_METADATA | CDMI_ACE_EXECUTE | CDMI_ACE_TRAVERSE_CONTAINER | \
+                    CDMI_ACE_DELETE_OBJECT | CDMI_ACE_DELETE_SUBCONTAINER | CDMI_ACE_READ_ATTRIBUTES | \
+                    CDMI_ACE_WRITE_ATTRIBUTES | CDMI_ACE_WRITE_RETENTION | CDMI_ACE_WRITE_RETENTION_HOLD | \
+                    CDMI_ACE_DELETE | CDMI_ACE_READ_ACL | CDMI_ACE_WRITE_ACL | CDMI_ACE_WRITE_OWNER | \
+                    CDMI_ACE_SYNCHRONIZE
+CDMI_ACE_RW_ALL = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRITE_OBJECT | CDMI_ACE_ADD_OBJECT | \
+                  CDMI_ACE_APPEND_DATA | CDMI_ACE_ADD_SUBCONTAINER | CDMI_ACE_READ_METADATA | \
+                  CDMI_ACE_WRITE_METADATA | CDMI_ACE_EXECUTE | CDMI_ACE_TRAVERSE_CONTAINER | \
+                  CDMI_ACE_DELETE_OBJECT | CDMI_ACE_DELETE_SUBCONTAINER | CDMI_ACE_READ_ACL | CDMI_ACE_WRITE_ACL
+CDMI_ACE_RW = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRITE_OBJECT | CDMI_ACE_ADD_OBJECT | \
+              CDMI_ACE_APPEND_DATA | CDMI_ACE_ADD_SUBCONTAINER | CDMI_ACE_READ_METADATA | \
+              CDMI_ACE_WRITE_METADATA
+              
+ROOT_OWNER_ACL = {'acetype': 'ALLOW',
+                  'identifier': 'OWNER@',
+                  'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
+                  'acemask': 'ALL_PERMS'}
+ROOT_AUTHD_ACL = {'acetype': 'ALLOW',
+                  'identifier': 'AUTHENTICATED@',
+                  'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
+                  'acemask': 'READ'}
+
+DOMAIN_OWNER_ACL = {'acetype': 'ALLOW',
+                    'identifier': 'OWNER@',
+                    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
+                    'acemask': 'ALL_PERMS'}
+DOMAIN_AUTHD_ACL = {'acetype': 'ALLOW',
+                    'identifier': 'AUTHENTICATED@',
+                    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
+                    'acemask': 'READ'}
+            
 DEFAULT_CAPABILITIES = '{"cdmi_domains": "true", ' \
                         '"cdmi_dataobjects": "true", ' \
                         '"cdmi_object_access_by_ID":"true", ' \
                         '"cdmi_object_copy_from_local": "true", ' \
                         '"cdmi_object_move_from_ID": "true", ' \
                         '"cdmi_object_move_from_local": "true"}'
+                        
 CONTAINER_CAPABILITIES = '{"cdmi_acl": "true", ' \
                          '"cdmi_atime": "true", ' \
                          '"cdmi_copy_container": "true", ' \
@@ -83,6 +120,7 @@ CONTAINER_CAPABILITIES = '{"cdmi_acl": "true", ' \
                          '"cdmi_read_metadata": "true", ' \
                          '"cdmi_size": "true", ' \
                          '"cdmi_versioning": "all"}'
+                         
 DATAOBJECT_CAPABILITIES = '{"cdmi_acl": "true", ' \
                            '"cdmi_atime": "true", ' \
                            '"cdmi_ctime": "true", ' \
@@ -95,6 +133,7 @@ DATAOBJECT_CAPABILITIES = '{"cdmi_acl": "true", ' \
                            '"cdmi_read_value_range": "true", ' \
                            '"cdmi_size": "true", ' \
                            '"cdmi_versioning": "all"}'
+                           
 DOMAIN_CAPABILITIES = '{"cdmi_acl": "true", ' \
                        '"cdmi_atime": "true", ' \
                        '"cdmi_copy_domain": "false", ' \
@@ -114,9 +153,15 @@ DOMAIN_CAPABILITIES = '{"cdmi_acl": "true", ' \
 
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
 PRINT_SEP = '-------------------------------------------------------------'
-METADATA = '{"metadata": { "cdmi_owner": "%s", %s}}'
+METADATA = '{"metadata": { "cdmi_owner": "%(cdmiOwner)s", %(metadata)s}}'
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%S:000000Z'
 VERSION = '1.0.0'
+
+CDMI_CAPABILITIES_DOMAIN = '/cdmi_capabilities/domain'
+CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
+
+OBJECT_TYPE_CONTAINER = 'application/cdmi-container'
+OBJECT_TYPE_DOMAIN    = 'application/cdmi-domain'
 
 class Bootstrap(object):
 
@@ -142,7 +187,7 @@ class Bootstrap(object):
             self._create_root()
         else:
             print("Dry run: Created root.")
-
+    
         # Create the domains container
         print("...Priming cdmi_domains")
         if self.commit:
@@ -150,13 +195,14 @@ class Bootstrap(object):
         else:
             print("Dry run: Created cdmi_domains.")
             
+            
         # Create the domains container
         print("...Priming cdmi_domains/system_domain")
         if self.commit:
             self._create_system_domain()
         else:
             print("Dry run: Created cdmi_domains.")
-            
+        return
         # Create the system configuration container
         print("...Priming system_configuration")
         if self.commit:
@@ -202,68 +248,104 @@ class Bootstrap(object):
         return
     
     def _create_root(self):
-        headers = HEADERS
-        headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/' % (self.host, int(self.port))
-        self._create(headers, url, METADATA % (self.adminid, ROOT_ACL))
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': '/',
+               'objectType': OBJECT_TYPE_CONTAINER}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        url = 'http://%s:%d/bootstrap/' % (self.host, int(self.port))
+        self.root_oid = self._create(headers, url, doc, acls)
        
     def _create_domain(self):
-        headers = HEADERS
+        acls = [DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': 'cdmi_domains/',
+               'objectType': OBJECT_TYPE_CONTAINER,
+               'parentURI': '/',
+               'parentID': self.root_oid}
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/cdmi_domains/' % (self.host, int(self.port))
-        self._create(headers, url, METADATA % (self.adminid, DOMAIN_ACL))
+        url = 'http://%s:%d/bootstrap/cdmi_domains/' % (self.host, int(self.port))
+        self.domains_oid = self._create(headers, url, doc, acls)
         
     def _create_system_domain(self):
-        headers = HEADERS
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': 'system_domain/',
+               'objectType': OBJECT_TYPE_DOMAIN,
+               'parentURI': '/cdmi_domains/',
+               'parentID': self.domains_oid}
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/cdmi_domains/system_domain' % (self.host, int(self.port))
-        self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
+        url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain' % (self.host, int(self.port))
+        self.system_domain_oid = self._create(headers, url, doc, acls)
            
     def _create_system_configuration(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/system_configuration/' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/system_configuration/' % (self.host, int(self.port))
         self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
            
     def _create_system_configuration_environment(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-container'
-        url = 'http://%s:%d/cdmi/system_configuration/environment_variables' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/system_configuration/environment_variables' % (self.host, int(self.port))
         self._create(headers, url, METADATA % (self.adminid, SYS_DOMAIN_ACL))
            
     def _create_capabilities(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/' % (self.host, int(self.port))
         self._create(headers, url, DEFAULT_CAPABILITIES)
         
     def _create_container_capabilities(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/container/' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/container/' % (self.host, int(self.port))
         self._create(headers, url, CONTAINER_CAPABILITIES)
         
     def _create_dataobject_capabilities(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/dataobject/' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/' % (self.host, int(self.port))
         self._create(headers, url, DATAOBJECT_CAPABILITIES)
         
     def _create_domain_capabilities(self):
-        headers = HEADERS
+        headers = HEADERS.copy()
         headers['Content-Type'] = 'application/cdmi-capability'
-        url = 'http://%s:%d/cdmi/cdmi_capabilities/domain' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/domain' % (self.host, int(self.port))
         self._create(headers, url, DOMAIN_CAPABILITIES)
            
-    def _create(self, headers, url, data):
+    def _create(self, headers, url, doc, acls):
         new_headers = headers.copy()
         auth_string = 'Basic %s' % encodestring('%s:%s' % (self.adminid, self.adminpw))
         new_headers["Authorization"] = auth_string
+        now = time.gmtime()
+        timestamp = time.strftime('%Y-%m-%dT%H:%M:%s.000000Z', now)
+
+        metadata = {'cdmi_owner': self.adminid,
+                    'cdmi_acls': acls,
+                    'cdmi_atime': timestamp,
+                    'cdmi_ctime': timestamp,
+                    'cdmi_mtime': timestamp}
+        doc['metadata'] = metadata
+
         r = requests.put(url=url,
-                         data=data,
+                         data=json.dumps(doc),
                          headers=new_headers,
                          allow_redirects=True)
-        if r.status_code in [201]:
+        if r.status_code in [200, 201, 204]:
+            body = json.loads(r.text)
+            print('status code: %d' % r.status_code)
+            print('got object: %s' % body)
+            oid = body['objectID']
             self.newobjects += 1
             time.sleep(1) # give riak time to index
         elif r.status_code in [409]:
@@ -272,6 +354,8 @@ class Bootstrap(object):
         else:
            print("Bootstrapping received status code %d - exiting..." % r.status_code)
            sys.exit(1)
+           sys.exit(1)
+        return oid
 
 def usage():
     print ('Nebula CDMI Bootstrap')
@@ -280,7 +364,6 @@ def usage():
     print ('Usage: '
            '%s --host=[hostname] --port=[port] --commit'
            % sys.argv[0])
-    print ('          [--help]')
     print ('')
     print (' Command Line options:')
     print ('  --adminpw   - Password for the "admin" user. If absent, will be prompted for.')
@@ -338,7 +421,7 @@ def main(argv):
             host = arg
         elif opt == '--port':
             port = arg
-            
+        
     if host is None:
         usage()
         sys.exit(1)

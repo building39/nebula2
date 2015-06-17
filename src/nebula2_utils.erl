@@ -130,15 +130,29 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     Uid ++ ?OID_SUFFIX ++ Crc.
 
-update_parent("", _, _, _) ->
+update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     %% Must be the root, since there is no parent.
+        lager:debug("update_parent: root: Nothing to update"),
     ok;
-update_parent(ParentId, ObjectName, ObjectType, Pid) ->
-    lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, ObjectName, ObjectType, Pid]),
-    N = lists:last(string:tokens(ObjectName, "/")),
+update_parent(ParentId, Path, ObjectType, Pid) ->
+    lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, Path, ObjectType, Pid]),
+    N = case length(string:tokens(Path, "/")) of
+            0 ->
+                "";
+            1 ->
+                "";
+            _Other ->
+                lists:last(string:tokens(Path, "/"))
+        end,
+    lager:debug("update_parent: N: ~p", [N]),
+    lager:debug("update_parent: child type: ~p", [ObjectType]),
     Name = case ObjectType of
-               ?CONTENT_TYPE_CDMI_CAPABILITY -> N ++ "/";
-               ?CONTENT_TYPE_CDMI_CONTAINER -> N ++ "/";
+               ?CONTENT_TYPE_CDMI_CAPABILITY ->
+                   N ++ "/";
+               ?CONTENT_TYPE_CDMI_CONTAINER ->
+                   N ++ "/";
+               ?CONTENT_TYPE_CDMI_DOMAIN ->
+                   N ++ "/";
                _ -> 
                    N
            end,

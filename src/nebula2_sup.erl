@@ -1,5 +1,4 @@
 -module(nebula2_sup).
--compile([{parse_transform, lager_transform}]).
 -behaviour(supervisor).
 
 -export([start_link/0]).

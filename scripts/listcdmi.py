@@ -2,10 +2,15 @@
 import json
 import riak
 import sys
+import base64
 
 NODES = [{'host': 'nebriak1', 'pb_port': 8087},
          {'host': 'nebriak2', 'pb_port': 8087},
          {'host': 'nebriak3', 'pb_port': 8087}]
+
+BUCKET_TYPE = 'cdmi'
+BUCKET_NAME = 'cdmi'
+INDEX = 'cdmi_idx'
 
 # Connect to riak
 client = riak.RiakClient(nodes=NODES)
@@ -61,20 +66,28 @@ def get_object(name, search_pred, parent=''):
     if 'children' in objdata:
         children = objdata['children']
         prev_parent = parent
-        parent = '%s' % (objdata['objectName'])
+        parent = objdata['objectName']
+        if 'parentURI' in objdata:
+            parentURI = '%s%s' % (objdata['parentURI'], objdata['objectName'])
+        else:
+            parentURI = '/'
+        domainURI = objdata['domainURI']
         level += 1
         print('level %d' % level)
-        for c in children:
-            child = '%s%s' % (parent, c)
+        for child in children:
             print("Prev parent: %s parent: %s child: %s" % (prev_parent, parent, child))
             get_object(child,
-                       'objectName:%s' % (child),
-                       parent)
+                       'domainURI:\\%s AND parentURI:\\%s AND objectName:\\%s' % (domainURI,
+                                                                                  parentURI,
+                                                                                  child)),
         parent = prev_parent
         level -= 1
 
 def main(argv):
-    get_object('/', 'objectName:cdmi/')
+    #sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.0.0.201504132356/pysrc')
+    #import pydevd; pydevd.settrace()
+
+    get_object('/', 'objectName:\\/')
 
     print('Listed %d objects' % keys_fetched)
     count = 0

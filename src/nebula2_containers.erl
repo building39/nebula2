@@ -73,7 +73,8 @@ new_container(Req, State) ->
             {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
-            {true, Req2, State};
+            Req3 = cowboy_req:set_resp_body(list_to_binary(maps:to_list(Data2)), Req2),
+            {true, Req3, State};
         {error, notfound, _} ->
             lager:debug("new_container: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
