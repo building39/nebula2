@@ -250,29 +250,29 @@ previously_existed(Req, State) ->
 resource_exists(Req, State) ->
     {Pid, EnvMap} = State,
     lager:debug("Entry resource_exists state: ~p", [EnvMap]),
-    Method = maps:get(<<"method">>, EnvMap),
-    Response = resource_exists_handler(Method, State),
+    ParentURI = maps:get(<<"parentURI">>, EnvMap),
+    Response = resource_exists_handler(ParentURI, State),
     NewEnvMap = maps:put(<<"exists">>, Response, EnvMap),
     {Response, Req, {Pid, NewEnvMap}}.
 
-resource_exists_handler(<<"GET">>, State) ->
-    {_, EnvMap} = State,
-    Path = maps:get(<<"path">>, EnvMap),
-    case nebula2_riak:search(Path, State) of
+resource_exists_handler("/cdmi_objectid/", State) ->
+    {Pid, EnvMap} = State,
+    Oid = maps:get(<<"objectName">>, EnvMap),
+    case nebula2_riak:get(Pid, Oid) of
                    {error, _Status} ->
                        false;
                    _Other ->
                        true
                end;
-resource_exists_handler(<<"PUT">>, State) ->
+resource_exists_handler(_ParentURI, State) ->
     {_, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     case nebula2_riak:search(Path, State) of
-                   {error, _Status} ->
-                       false;
-                   _Other ->
-                       true
-               end.
+        {error, _Status} ->
+            false;
+        _Other ->
+            true
+    end.
     
 %% if pooler says no members, kick back a 503. I
 %% do this here because a 503 seems to me the most
@@ -302,14 +302,28 @@ to_cdmi_object(Req, State) ->
     lager:debug("Entry to_cdmi_object"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
-    Response = case nebula2_riak:search(Path, State) of
-                   {ok, Json}            -> {list_to_binary(Json), Req, Pid};
-                   {error, Status} -> 
-                       {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
-               end,
+    Response = to_cdmi_object_handler(Req, State, Path, maps:get(<<"parentURI">>, EnvMap)),
     pooler:return_member(riak_pool, Pid),
-    lager:debug("to_cdmi_object: Response: ~p", [Response]),
     Response.
+
+-spec to_cdmi_object_handler(map(), tuple(), string(), string()) -> {term(), string()}.
+to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
+    {Pid, EnvMap} = State,
+    Oid = maps:get(<<"objectName">>, EnvMap),
+    case nebula2_riak:get(Pid, Oid) of
+        {ok, Json} ->
+            {list_to_binary(Json), Req, Pid};
+        {error, Status} -> 
+            {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
+    end;
+to_cdmi_object_handler(Req, State, Path, _) ->
+    {Pid, _} = State,
+    case nebula2_riak:search(Path, State) of
+        {ok, Json} ->
+            {list_to_binary(Json), Req, Pid};
+        {error, Status} -> 
+            {"Not Found", cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), Pid}
+    end.
 
 %% ====================================================================
 %% Internal functions
