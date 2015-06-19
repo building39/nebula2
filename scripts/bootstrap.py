@@ -423,9 +423,9 @@ class Bootstrap(object):
         
     def _create_system_administrator_member(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
-        credentials = hmac.HMAC(key='nebula9',msg=self.adminpw, digestmod=hashlib.sha1).hexdigest()
+        credentials = hmac.HMAC(key=self.adminid,msg=self.adminpw, digestmod=hashlib.sha1).hexdigest()
         value = '{"cdmi_member_enabled": "true",' \
-                 '"cdmi_member_type": "user","' \
+                 '"cdmi_member_type": "user", ' \
                  '"cdmi_member_name": "%s",' \
                  '"cdmi_member_credentials": "%s",' \
                  '"cdmi_member_principal": "%s",' \

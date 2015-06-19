@@ -156,17 +156,21 @@ is_authorized_handler(AuthString, Req, State) ->
     lager:debug("is_authorized_handler2 AuthString: ~p", [AuthString]),
     AuthString2 = binary_to_list(AuthString),
     [AuthMethod, Auth] = string:tokens(AuthString2, " "),
-    [Userid, _Password] = case string:to_lower(AuthMethod) of
+    {Authenticated, UserId} = case string:to_lower(AuthMethod) of
                             "basic" ->
-                                basic(Auth);
+                                basic(Auth, State);
                              _Other ->
-                                 {error, "Unknown AuthMethod: " ++ AuthMethod}
+                                 lager:error("Unknown AuthMethod: ~p", [AuthMethod]),
+                                 {false, undefined}
                          end,
-    {Pid, EnvMap} = State,
-    lager:debug("is_authorized: Userid: ~p EnvMap: ~p", [Userid, EnvMap]),
-    NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(Userid), EnvMap),
-    lager:debug("is_authorized: NewEnvMap: ~p", [NewEnvMap]),
-    {true, Req, {Pid, NewEnvMap}}.
+    case Authenticated of
+        true ->
+            {Pid, EnvMap} = State,
+            NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(UserId), EnvMap),
+            {true, Req, {Pid, NewEnvMap}};
+        false ->
+            {{false, "Basic realm=\"default\""}, Req, State}
+    end.
 
 is_conflict(Req, State) ->
     {_Pid, EnvMap} = State,
@@ -330,8 +334,39 @@ to_cdmi_object_handler(Req, State, Path, _) ->
 %% ====================================================================
 
 %% Basic Authorization
-basic(Auth) ->
-    string:tokens(base64:decode_to_string(Auth), ":").
+-spec basic(string(), tuple()) -> {boolean(), term()}.
+basic(Auth, State) ->
+    {_, EnvMap} = State,
+    [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
+    lager:debug("UserId: ~p Password: ~p", [UserId, Password]),
+    DomainUri = maps:get(<<"domainURI">>, EnvMap) ++ "/cdmi_domain_members/" ++ UserId,
+    Result = case nebula2_riak:search(DomainUri, State) of
+                 {ok, Json} ->
+                     {true, Json};
+                 {error, _Status} ->
+                     false
+             end,
+    case Result of
+        false ->
+            {false, undefined};
+        {true, Data} ->
+            Map = jsx:decode(list_to_binary(Data), [return_maps]),
+            Value = maps:get(<<"value">>, Map),
+            VMap = jsx:decode(Value, [return_maps]),
+            Creds = binary_to_list(maps:get(<<"cdmi_member_credentials">>, VMap)),
+            lager:debug("Creds: ~p", [Creds]),
+            basic_auth_handler(Creds, UserId, Password)
+    end.
+
+-spec basic_auth_handler(binary(), string(), string()) -> {boolean(), string()}.
+basic_auth_handler(Creds, UserId, Password) ->
+    <<Mac:160/integer>> = crypto:hmac(sha, UserId, Password),
+    case Creds == lists:flatten(io_lib:format("~40.16.0b", [Mac])) of
+        true ->
+            {true, UserId};
+        false ->
+            {false, "Basic realm=\"default\""}
+    end.
 
 %% @doc Map the domain URI
 -spec map_domain_uri(string()) -> string().
