@@ -619,7 +619,7 @@ class Bootstrap(object):
         if r.status_code in [200, 201, 204]:
             body = json.loads(r.text)
             print('status code: %d' % r.status_code)
-            #print('got object: %s' % body)
+            print('got object: %s' % body)
             oid = body['objectID']
             self.newobjects += 1
             time.sleep(1) # give riak time to index
@@ -652,8 +652,8 @@ def usage():
     
 def main(argv):
 
-    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
-    import pydevd; pydevd.settrace()
+#    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
+#    import pydevd; pydevd.settrace()
     if (len(sys.argv) < 3):
         usage()
 

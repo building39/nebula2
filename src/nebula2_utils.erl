@@ -14,11 +14,9 @@
 %% ====================================================================
 -export([
          beginswith/2,
+         extract_parentURI/1,
          get_capabilities_uri/2,
-         get_domain_uri/4,
-         get_name_and_parent/2,
          get_object_oid/2,
-         get_parent/2,
          get_time/0,
          make_key/0,
          update_parent/4
@@ -32,6 +30,21 @@ beginswith(Str, Substr) ->
         Substr -> true;
         _ -> false
     end.
+
+%% @doc Extract the Parent URI from the path.
+-spec extract_parentURI(list()) -> list().
+extract_parentURI(Path) ->
+    lager:debug("Path: ~p", [Path]),
+    extract_parentURI(Path, "/").
+-spec extract_parentURI(list(), list()) -> list().
+extract_parentURI([], Acc) ->
+    lager:debug("Final: ~p", [Acc]),
+    Acc;
+extract_parentURI([H|T], Acc) ->
+    lager:debug("Head: ~p~nTail: ~p~nAcc: ~p", [H, T, Acc]),
+    Acc2 = Acc ++ "/" ++ H,
+    lager:debug("Acc2: ~p", [Acc2]),
+    extract_parentURI(T, Acc2).
 
 %% @doc Get the capabilities URI for the request.
 %% @todo Flesh this out after authentication is done.
@@ -54,60 +67,10 @@ get_capabilities_uri(_Pid, ObjectName) ->
             ?CONTAINER_CAPABILITY_URI
     end.
 
-%% @doc Get the domain URI for the request.
--spec nebula2_utils:get_domain_uri(pid(), string(), string(), binary()) -> string().
-get_domain_uri(Pid, ObjectName, ObjectType, ParentId) ->
-    DomainUri = case beginswith(ObjectName, "/cdmi_domains/") of
-        true ->
-            case ObjectType of
-                ?CONTENT_TYPE_CDMI_DOMAIN ->
-                    ObjectName;
-                _Other ->
-                    {ok, Parent} = nebula2_riak:get_mapped(Pid, ParentId),
-                    binary_to_list(maps:get(<<"domainURI">>, Parent))
-            end;
-        false ->
-            ?SYSTEM_DOMAIN_URI
-    end,
-    lager:debug("get_domain_uri: ~p", [DomainUri]),
-    DomainUri.
-
-%% @doc Get the object name and parent URI.
--spec nebula2_utils:get_name_and_parent(pid(), string()) -> {string(), string()}.
-get_name_and_parent(Pid, Uri) ->
-    Tokens = string:tokens(Uri, "/"),
-    Name = case string:right(Uri, 1) of
-            "/" -> lists:last(Tokens) ++ "/";
-            _   -> lists:last(Tokens)
-           end,
-    {ok, ParentUri, ParentId} = get_parent(Pid, Name),
-    {Name, ParentUri, ParentId}.
-
-%% @doc Get the object's parent URI.
--spec nebula2_utils:get_parent(pid(), string()) -> {{error, notfound, string()}|{ok, string(), string()}}.
-get_parent(_Pid, "/") ->        %% Root has no parent
-    {ok, "", ""};
-get_parent(Pid, ObjectName) ->
-    lager:debug("get_parent: ObjectName: ~p", [ObjectName]),
-    Tokens = string:tokens(ObjectName, "/"),
-    ParentUri = case string:join(lists:droplast(Tokens), "/") of
-                    [] -> "/";
-                    PU -> "/" ++ PU ++ "/"
-                end,
-    lager:debug("get_parent parsed out ParentUri=~p", [ParentUri]),
-    case get_object_oid(Pid, ParentUri) of
-        {ok, ParentId} ->
-            lager:debug("get_parent oid is ~p", [ParentId]),
-            {ok, ParentUri, binary_to_list(ParentId)};
-        {notfound, ""}->
-             lager:debug("get_parent oid not found"),
-            {error, notfound, ParentUri}
-    end.
-
 %% @doc Get the object's parent oid.
--spec nebula2_utils:get_object_oid(pid(), string()) -> {{ok|notfound, string()}}.
-get_object_oid(Pid, ObjectName) ->
-    case nebula2_riak:search(Pid, ObjectName) of
+-spec nebula2_utils:get_object_oid(string(), map()) -> {{ok|notfound, string()}}.
+get_object_oid(Path, State) ->
+    case nebula2_riak:search(Path, State) of
         {error,_} -> 
             {notfound, ""};
         {ok, Data} ->

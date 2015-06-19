@@ -36,7 +36,7 @@ get_capability(Pid, Oid) ->
         when Req::cowboy_req:req().
 new_capability(Req, State) ->
     Oid = nebula2_utils:make_key(),
-    {Pid, _Opts} = State,
+    {Pid, EnvMap} = State,
     {Path, _} = cowboy_req:path_info(Req),
     lager:debug("Capability Path is ~p" , [Path]),
     ObjectName = case Path of
@@ -49,8 +49,12 @@ new_capability(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Data = jsx:decode(Body, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
-    case nebula2_utils:get_parent(Pid, ObjectName) of
-        {ok, ParentUri, ParentId} ->
+    case maps:get(<<"parentURI">>, EnvMap, undefined) of
+        undefined ->
+            pooler:return_member(riak_pool, Pid),
+            {false, Req2, State};
+        ParentUri ->
+            ParentId = nebula2_utils:get_object_oid(State),
             lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
             lager:debug("                        Container Name: ~p", [ObjectName]),
             lager:debug("                        OID: ~p", Oid),
@@ -65,10 +69,7 @@ new_capability(Req, State) ->
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
             Req3 = cowboy_req:set_resp_body(list_to_binary(maps:to_list(Data2)), Req2),
-            {true, Req3, State};
-        {error, notfound, _} ->
-            pooler:return_member(riak_pool, Pid),
-            {false, Req2, State}
+            {true, Req3, State}
     end.
 
 %% @doc Update a CDMI capability

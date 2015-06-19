@@ -31,10 +31,9 @@ get(Pid, Oid) ->
                                          list_to_binary(?BUCKET_NAME)},
                                          list_to_binary(Oid)) of
                     {ok, Object} ->
-                        Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
+                        Data = binary_to_list(riakc_obj:get_value(Object)),
                         lager:debug("nebula2_riak:get json: ~p", [Data]),
-                        Contents = binary_to_list(jsx:encode(riakc_obj:get_value(Object))),
-                        {ok, Contents};
+                        {ok, Data};
                     {error, Term} ->
                         {error, Term}
     end,
@@ -117,12 +116,12 @@ do_put(Pid, Oid, Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec nebula2_riak:search(pid(),
-                         map()
-                        ) -> {ok, string()}.
-search(Pid, Data) ->
-    lager:debug("nebula2_riak:search Data: ~p", [Data]),
-    Query = create_query(Data),
+-spec nebula2_riak:search(string(), map()) -> {ok, string()}.
+search(Path, State) ->
+    lager:debug("Search: Path: ~p", [Path]),
+    lager:debug("Search: State: ~p", [State]),
+    {Pid, EnvMap} = State,
+    Query = create_query(Path, EnvMap),
     lager:debug("nebula2_riak:search searching for key: ~p", [Query]),
     Result =  execute_search(Pid, Query),
     lager:debug("nebula2_riak:search result: ~p", [Result]),
@@ -149,27 +148,37 @@ update(Pid, Oid, Data) ->
 %% ====================================================================
 
 %% @doc Create a search key.
--spec nebula2_riak:create_query(map()                    %% map of cdmi data
-                            ) -> map().               %% updated cdmi data
-create_query(Data) ->
-    ObjectType = binary_to_list(maps:get(<<"objectType">>, Data)),
-    ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
-    create_query(ObjectName, ObjectType, Data).
+-spec nebula2_riak:create_query(string(), map()) -> string().
+create_query(Path, EnvMap) ->
+    Parts = string:tokens(Path, "/"),
+    ParentURI = case Parts of
+                    [] ->
+                        "";
+                    _ ->
+                        nebula2_utils:extract_parentURI(lists:droplast(Parts))
+                end,
+    ObjectName = case Parts of
+                    [] ->
+                        "/";
+                     _ ->
+                         case string:right(Path, 1) of
+                            "/" ->
+                                lists:last(Parts) ++ "/";
+                            _Other ->
+                                lists:last(Parts)
+                        end
+                 end,
+    ObjectType = maps:get(<<"content-type">>, EnvMap),
+    create_query(ObjectName, ObjectType, ParentURI, EnvMap).
 
-create_query(ObjectName, _, _) when ObjectName == ""; ObjectName == "/"; ObjectName == <<"">>; ObjectName == <<"/">> ->
+-spec nebula2_riak:create_query(string(), string(), string(), map()) -> string().
+create_query(ObjectName, _, _, _) when ObjectName == ""; ObjectName == "/"; ObjectName == <<"">>; ObjectName == <<"/">> ->
     "objectName:\\/";
-create_query(ObjectName, ?CONTENT_TYPE_CDMI_CAPABILITY, Data) ->
-    ParentURI = binary_to_list(maps:get(<<"parentURI">>, Data)),
+create_query(ObjectName, ?CONTENT_TYPE_CDMI_CAPABILITY, ParentURI, _) ->
     "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
-create_query(ObjectName, _, Data) ->
-    DomainURI = binary_to_list(maps:get(<<"domainURI">>, Data)),
-    Metadata = maps:get(<<"metadata">>, Data),
-    Owner = binary_to_list(maps:get(<<"cdmi_owner">>, Metadata, <<?DEFAULT_ADMINISTRATOR>>)),
-    ParentURI = binary_to_list(maps:get(<<"parentURI">>, Data)),
-    "domainURI:\\" ++ DomainURI ++ 
-        " AND metadata.cdmi_owner:" ++ Owner ++
-        " AND parentURI:\\" ++ ParentURI ++
-        " AND objectName:\\" ++ ObjectName.
+create_query(ObjectName, _, ParentURI, EnvMap) ->
+    DomainURI = maps:get(<<"domainURI">>, EnvMap),
+    "domainURI:\\" ++ DomainURI ++ " AND parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName.
     
 %% @doc Execute a search.
 -spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
@@ -210,6 +219,7 @@ fetch(Pid, Data) ->
                    Other ->
                        Other
                end,
+    lager:debug("Response: ~p", [Response]),
     Response.
 
 %% ====================================================================
