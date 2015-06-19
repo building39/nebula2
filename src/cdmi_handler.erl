@@ -64,22 +64,8 @@ rest_init(Req, _State) ->
     Map6 = maps:put(<<"domainURI">>, map_domain_uri(HostUrl_S), Map5),
     Parts = string:tokens(Path, "/"),
     lager:debug("Parts: ~p", [Parts]),
-    ParentURI = case Parts of
-                    [] ->
-                        "";     %% Root has no parent
-                    _ ->
-                        nebula2_utils:extract_parentURI(lists:droplast(Parts))
-                end,
-    ObjectName = case Parts of
-                     [] ->
-                         "/";
-                     _ -> case string:right(Path, 1) of
-                            "/" ->
-                                lists:last(Parts) ++ "/";
-                            _ ->
-                                lists:last(Parts)
-                          end
-                 end,
+    ParentURI = nebula2_utils:get_parent_uri(Parts),
+    ObjectName = nebula2_utils:get_object_name(Parts, Path),
     Map7 = maps:put(<<"parentURI">>, ParentURI, Map6),
     Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),

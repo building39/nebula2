@@ -151,23 +151,11 @@ update(Pid, Oid, Data) ->
 -spec nebula2_riak:create_query(string(), map()) -> string().
 create_query(Path, EnvMap) ->
     Parts = string:tokens(Path, "/"),
-    ParentURI = case Parts of
-                    [] ->
-                        "";
-                    _ ->
-                        nebula2_utils:extract_parentURI(lists:droplast(Parts))
-                end,
-    ObjectName = case Parts of
-                    [] ->
-                        "/";
-                     _ ->
-                         case string:right(Path, 1) of
-                            "/" ->
-                                lists:last(Parts) ++ "/";
-                            _Other ->
-                                lists:last(Parts)
-                        end
-                 end,
+    lager:debug("Path: ~p Parts: ~p", [Path, Parts]),
+    ParentURI = nebula2_utils:get_parent_uri(Parts),
+    lager:debug("ParentURI: ~p", [ParentURI]),
+    ObjectName = nebula2_utils:get_object_name(Parts, Path),
+    lager:debug("ObjectName: ~p", [ObjectName]),
     ObjectType = maps:get(<<"content-type">>, EnvMap),
     create_query(ObjectName, ObjectType, ParentURI, EnvMap).
 

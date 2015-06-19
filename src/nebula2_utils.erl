@@ -16,7 +16,9 @@
          beginswith/2,
          extract_parentURI/1,
          get_capabilities_uri/2,
+         get_object_name/2,
          get_object_oid/2,
+         get_parent_uri/1,
          get_time/0,
          make_key/0,
          update_parent/4
@@ -35,7 +37,7 @@ beginswith(Str, Substr) ->
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
     lager:debug("Path: ~p", [Path]),
-    extract_parentURI(Path, "/").
+    extract_parentURI(Path, "") ++ "/".
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
     lager:debug("Final: ~p", [Acc]),
@@ -67,6 +69,20 @@ get_capabilities_uri(_Pid, ObjectName) ->
             ?CONTAINER_CAPABILITY_URI
     end.
 
+%% @doc Get the object name.
+-spec get_object_name(list(), string()) -> string().
+get_object_name(Parts, Path) ->
+    case Parts of
+        [] ->
+            "/";
+        _ -> case string:right(Path, 1) of
+                "/" ->
+                    lists:last(Parts) ++ "/";
+                _ ->
+                    lists:last(Parts)
+             end
+    end.
+
 %% @doc Get the object's parent oid.
 -spec nebula2_utils:get_object_oid(string(), map()) -> {{ok|notfound, string()}}.
 get_object_oid(Path, State) ->
@@ -75,6 +91,17 @@ get_object_oid(Path, State) ->
             {notfound, ""};
         {ok, Data} ->
             {ok, maps:get(<<"objectID">>, maps:from_list(jsx:decode(list_to_binary(Data))))}
+    end.
+
+-spec get_parent_uri(list()) -> string().
+get_parent_uri(Parts) ->
+    case length(Parts) of
+        0 ->
+            "";     %% Root has no parent
+        1 ->
+            "/";
+        _ ->
+            nebula2_utils:extract_parentURI(lists:droplast(Parts))
     end.
 
 %% @doc Return current time in ISO 8601:2004 extended representation.
