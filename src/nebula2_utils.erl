@@ -17,6 +17,7 @@
          extract_parentURI/1,
          get_capabilities_uri/2,
          get_object_name/2,
+         get_object_oid/1,
          get_object_oid/2,
          get_parent_uri/1,
          get_time/0,
@@ -25,7 +26,7 @@
         ]).
 
 %% @doc Check if a string begins with a certain substring.
--spec nebula2_utils:beginswith(string(), string()) -> boolean.
+-spec nebula2_utils:beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
     lager:debug("nebula2_utils:beginswith(~p, ~p)", [Str, Substr]),
     case string:left(Str, string:len(Substr)) of
@@ -83,8 +84,14 @@ get_object_name(Parts, Path) ->
              end
     end.
 
-%% @doc Get the object's parent oid.
--spec nebula2_utils:get_object_oid(string(), map()) -> {{ok|notfound, string()}}.
+%% @doc Get the object's oid.
+-spec nebula2_utils:get_object_oid(map()) -> {ok, term()}|{notfound, string()}.
+get_object_oid(State) ->
+    {_, Path} = State,
+    get_object_oid(Path, State).
+
+%% @doc Get the object's oid.
+-spec nebula2_utils:get_object_oid(string(), tuple()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) ->
     case nebula2_riak:search(Path, State) of
         {error,_} -> 

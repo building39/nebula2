@@ -14,12 +14,13 @@
 -type json_value()       :: list().
 -type headers()          :: list().
 -type method()           :: string().
--type object_oid()       :: string().
+-type object_name()      :: nonempty_string().
+-type object_oid()       :: nonempty_string().
 -type object_type()      :: content_type().
 -type object_uri()       :: path()|nil().
 -type parent_uri()       :: path().
 -type response()         :: {term()|integer(), headers(), string()}.
--type search_predicate() :: string().
+-type search_predicate() :: nonempty_string().
 
 -define(DEFAULT_ADMINISTRATOR, "administrator").
 -define(DEFAULT_LOCATION, "US-TX").

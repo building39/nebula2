@@ -22,7 +22,7 @@
          update/3]).
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
--spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}.
+-spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}|{error, term()}.
 get(Pid, Oid) when is_binary(Oid) ->
     get(Pid, binary_to_list(Oid));
 get(Pid, Oid) ->
@@ -41,7 +41,7 @@ get(Pid, Oid) ->
     Response.
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return map.
--spec nebula2_riak:get_mapped(pid(), object_oid()) -> {ok, json_value()}.
+-spec nebula2_riak:get_mapped(pid(), object_oid()) -> {ok, json_value()} | {error, term()}.
 get_mapped(Pid, Oid) when is_binary(Oid) ->
     get_mapped(Pid, binary_to_list(Oid));
 get_mapped(Pid, Oid) ->
@@ -54,9 +54,7 @@ get_mapped(Pid, Oid) ->
                         Contents = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
                         {ok, Contents};
                     {error, Term} ->
-                        {error, Term};
-                   Other ->
-                       Other
+                        {error, Term}
     end,
     lager:debug("nebula2_riak:get Contents: ~p", [Response]),
     Response.
@@ -87,15 +85,15 @@ post(Pid, Oid, Data) ->
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),
-                      string(),              %% Object
-                      object_oid(),          %% Oid
-                      map()                  %% Data to store
-                     ) -> {ok, object_oid()}.
+                      object_name(),  %% Object
+                      object_oid(),   %% Oid
+                      map()           %% Data to store
+                     ) -> {'error', _} | {'ok', _}.
 put(Pid, ObjectName, Oid, Data) ->
     lager:debug("nebula2_riak:put Creating object ~p", [ObjectName]),
     do_put(Pid, Oid, Data).
 
--spec nebula2_riak:do_put(pid(), object_oid, map()) -> {ok|error, object_oid()|term()}.
+-spec nebula2_riak:do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
 do_put(Pid, Oid, Data) when is_binary(Oid) ->
     do_put(Pid, binary_to_list(Oid), Data);
 do_put(Pid, Oid, Data) ->
@@ -116,7 +114,7 @@ do_put(Pid, Oid, Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec nebula2_riak:search(string(), map()) -> {ok, string()}.
+-spec nebula2_riak:search(string(), tuple(_,map())) -> {error, 404|500}|{ok, string()}.
 search(Path, State) ->
     lager:debug("Search: Path: ~p", [Path]),
     lager:debug("Search: State: ~p", [State]),
@@ -129,9 +127,9 @@ search(Path, State) ->
 
 %% @doc Update an existing key/value pair.
 -spec nebula2_riak:update(pid(),
-                      object_oid(),          %% Oid
-                      map()                  %% Data to store
-                     ) -> {ok, object_oid()}.
+                          object_oid(),      %% Oid
+                          map()              %% Data to store
+                         ) -> {ok, object_oid()}.
 update(Pid, Oid, Data) ->
     lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
     case get(Pid, Oid) of
@@ -171,13 +169,13 @@ create_query(ObjectName, _, ParentURI, EnvMap) ->
 %% @doc Execute a search.
 -spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
                                   search_predicate()  %% URI.
-                                 ) -> {ok, string()}.
+                                 ) -> {error, 404|500} |{ok, string()}.
 execute_search(Pid, Query) ->
     Index = list_to_binary(?CDMI_INDEX),
     lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
     {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
     NumFound = Results#search_results.num_found,
-    Doc = Results#search_results.docs,
+    [_, Doc] = Results#search_results.docs,
     lager:debug("Search returned ~p results", [NumFound]),
     lager:debug("Search returned documents: ~p", [Doc]),
     Response = case NumFound of
@@ -197,8 +195,7 @@ execute_search(Pid, Query) ->
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
 fetch(Pid, Data) ->
     lager:debug("nebula2:fetch: fetching key: ~p", [Data]),
-    [{<<?CDMI_INDEX>>, Results}] = Data,
-    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Results)),
+    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
     lager:debug("fetch found ObjectId: ~p", [ObjectId]),
     Response = case nebula2_riak:get(Pid, ObjectId) of
                    {ok, Data} ->

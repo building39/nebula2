@@ -163,13 +163,13 @@ is_authorized_handler(AuthString, Req, State) ->
                                  lager:error("Unknown AuthMethod: ~p", [AuthMethod]),
                                  {false, undefined}
                          end,
-    case Authenticated of
+    if
+        Authenticated==false ->
+            {{false, "Basic realm=\"default\""}, Req, State};
         true ->
             {Pid, EnvMap} = State,
             NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(UserId), EnvMap),
-            {true, Req, {Pid, NewEnvMap}};
-        false ->
-            {{false, "Basic realm=\"default\""}, Req, State}
+            {true, Req, {Pid, NewEnvMap}}
     end.
 
 is_conflict(Req, State) ->
@@ -265,7 +265,7 @@ resource_exists_handler("/cdmi_objectid/", State) ->
     case nebula2_riak:get(Pid, Oid) of
                    {error, _Status} ->
                        false;
-                   _Other ->
+                   {ok, _} ->
                        true
                end;
 resource_exists_handler(_ParentURI, State) ->
@@ -310,7 +310,7 @@ to_cdmi_object(Req, State) ->
     pooler:return_member(riak_pool, Pid),
     Response.
 
--spec to_cdmi_object_handler(map(), tuple(), string(), string()) -> {term(), string()}.
+-spec to_cdmi_object_handler(map(), tuple(), string(), string()) -> {term(), term(), pid()}.
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
@@ -334,7 +334,7 @@ to_cdmi_object_handler(Req, State, Path, _) ->
 %% ====================================================================
 
 %% Basic Authorization
--spec basic(string(), tuple()) -> {boolean(), term()}.
+-spec basic(string(), tuple()) -> {true, nonempty_string} | {false, string()}.
 basic(Auth, State) ->
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
@@ -348,7 +348,7 @@ basic(Auth, State) ->
              end,
     case Result of
         false ->
-            {false, undefined};
+            {false, ""};
         {true, Data} ->
             Map = jsx:decode(list_to_binary(Data), [return_maps]),
             Value = maps:get(<<"value">>, Map),
@@ -358,7 +358,7 @@ basic(Auth, State) ->
             basic_auth_handler(Creds, UserId, Password)
     end.
 
--spec basic_auth_handler(binary(), string(), string()) -> {boolean(), string()}.
+-spec basic_auth_handler(list(), nonempty_string(), nonempty_string()) -> {true|false, nonempty_string()}.
 basic_auth_handler(Creds, UserId, Password) ->
     <<Mac:160/integer>> = crypto:hmac(sha, UserId, Password),
     case Creds == lists:flatten(io_lib:format("~40.16.0b", [Mac])) of

@@ -82,7 +82,7 @@ new_container(Req, State) ->
     end.
 
 %% @doc Update a CDMI container
--spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {boolean(), json_value()}.
+-spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_container(Pid, ObjectId, Data) ->
     lager:debug("nebula2_containers:update_container: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,

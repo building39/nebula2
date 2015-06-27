@@ -30,12 +30,12 @@ stop(_State) ->
     ok.
 
 %% @doc Returns the geographical location configured for nebula.
--spec nebula_app:cdmi_location() -> string().
+-spec nebula2_app:cdmi_location() -> string().
 cdmi_location() -> 
     app_config(cdmi_location, ?DEFAULT_LOCATION).
 
 %% @doc Gets a configuration item from the environment.
--spec nebula_app:app_config(string(), string()) -> string().
+-spec nebula2_app:app_config(atom(), string()) -> any().
 app_config(Name, Default) ->
     handle_app_env(application:get_env(nebula2, Name), Default).
 

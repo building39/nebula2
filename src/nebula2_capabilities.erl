@@ -73,7 +73,7 @@ new_capability(Req, State) ->
     end.
 
 %% @doc Update a CDMI capability
--spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {boolean(), json_value()}.
+-spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_capability(Pid, ObjectId, Data) ->
     lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
