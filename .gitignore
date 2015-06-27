@@ -8,5 +8,10 @@ ebin
 rel/example_project
 .concrete/DEV_MODE
 .rebar
+.erlang.*
+.project
+.pydevproject
+.settings
 relx
 _rel
+/templates.save/
