@@ -174,16 +174,13 @@ execute_search(Pid, Query) ->
     Index = list_to_binary(?CDMI_INDEX),
     lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
     {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
-    NumFound = Results#search_results.num_found,
-    [_, Doc] = Results#search_results.docs,
-    lager:debug("Search returned ~p results", [NumFound]),
-    lager:debug("Search returned documents: ~p", [Doc]),
-    Response = case NumFound of
+    Response = case Results#search_results.num_found of
                     0 ->
                         lager:debug("search found zero results"),
                         {error, 404}; %% Return 404
                     1 ->
-                        lager:debug("search found one result"),
+                        [{_, Doc}] = Results#search_results.docs,
+                        lager:debug("search found one result: ~p", [Doc]),
                         fetch(Pid, Doc);
                     N ->
                         lager:debug("search returned ~p results", [N]),
