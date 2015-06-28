@@ -167,9 +167,13 @@ create_query(Path, EnvMap) ->
     create_query(ObjectName, ObjectType, ParentURI, EnvMap).
 
 -spec nebula2_riak:create_query(string(), string(), string(), map()) -> string().
-create_query(ObjectName, _, _, _) when ObjectName == ""; ObjectName == "/"; ObjectName == <<"">>; ObjectName == <<"/">> ->
+create_query(ObjectName, _, _, _) when ObjectName == "";
+                                       ObjectName == "/"; 
+                                       ObjectName == <<"">>; 
+                                       ObjectName == <<"/">> ->
     "objectName:\\/";
-create_query(ObjectName, <<?CONTENT_TYPE_CDMI_CAPABILITY>>, ParentURI, _) ->
+create_query(ObjectName, ContentType, ParentURI, _) when ContentType =:= <<?CONTENT_TYPE_CDMI_CAPABILITY>>; 
+                                                         ContentType =:= <<"*/*">> ->
     lager:debug("create_query: capability object"),
     "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
 create_query(ObjectName, ContentType, ParentURI, EnvMap) ->
