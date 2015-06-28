@@ -154,15 +154,26 @@ create_query(Path, EnvMap) ->
     lager:debug("ParentURI: ~p", [ParentURI]),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
     lager:debug("ObjectName: ~p", [ObjectName]),
-    ObjectType = maps:get(<<"content-type">>, EnvMap),
+    Method = maps:get(<<"method">>, EnvMap),
+    ObjectType = case Method of
+                     <<"GET">> ->
+                         maps:get(<<"accept">>, EnvMap);
+                     <<"PUT">> ->
+                         maps:get(<<"content-type">>, EnvMap);
+                     _ ->
+                         lager:error("create_query: need to implement for method ~p", [Method]),
+                         maps:get(<<"content-type">>, EnvMap)
+                 end,
     create_query(ObjectName, ObjectType, ParentURI, EnvMap).
 
 -spec nebula2_riak:create_query(string(), string(), string(), map()) -> string().
 create_query(ObjectName, _, _, _) when ObjectName == ""; ObjectName == "/"; ObjectName == <<"">>; ObjectName == <<"/">> ->
     "objectName:\\/";
-create_query(ObjectName, ?CONTENT_TYPE_CDMI_CAPABILITY, ParentURI, _) ->
+create_query(ObjectName, <<?CONTENT_TYPE_CDMI_CAPABILITY>>, ParentURI, _) ->
+    lager:debug("create_query: capability object"),
     "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
-create_query(ObjectName, _, ParentURI, EnvMap) ->
+create_query(ObjectName, ContentType, ParentURI, EnvMap) ->
+    lager:debug("create_query: ~p", [ContentType]),
     DomainURI = maps:get(<<"domainURI">>, EnvMap),
     "domainURI:\\" ++ DomainURI ++ " AND parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName.
     

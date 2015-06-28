@@ -45,6 +45,7 @@ rest_init(Req, _State) ->
     {HostUrl, Req5} = cowboy_req:host_url(Req4),
     {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req5),
     {ReqPath, Req7} = cowboy_req:path(Req6),
+    {AcceptType, Req8} = cowboy_req:header(<<"accept">>, Req7),
     lager:debug("cdmi_handler: rest_init: Body: ~p", [Body]),
     Map = case Body of
                <<>> ->
@@ -69,8 +70,10 @@ rest_init(Req, _State) ->
     Map7 = maps:put(<<"parentURI">>, ParentURI, Map6),
     Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),
+    Map10 = maps:put(<<"accept">>, AcceptType, Map9),
+    lager:debug("rest_init: EnvMap: ~p", [Map9]),
     lager:info("Body: ~p", [Body]),
-    {ok, Req7, {PoolMember, Map9}}.
+    {ok, Req8, {PoolMember, Map10}}.
 
 allowed_methods(Req, State) ->
     lager:debug("Entry allowed_methods"),
@@ -395,7 +398,7 @@ needs_a_slash(Path, State, Other) ->
 -spec needs_a_slash(nonempty_string(), cdmi_state()) -> cdmi_state().
 needs_a_slash(Path, State) ->
     {Pid, EnvMap} = State,
-    lager:debug("needs_a_slash: Path ~", [Path]),
+    lager:debug("needs_a_slash: Path ~p", [Path]),
     End = string:right(Path, 1),
     EnvMap2 = case End of
                 "/" -> 
