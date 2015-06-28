@@ -13,7 +13,7 @@ CONNECT_UI = '%s/CDMIConnect/CDMIConnect.glade'
 CONNECT_URL = 'connectURL'
 CONNECT_USERID = 'connectUserid'
 
-DEBUGPATH = '/opt/eclipse/plugins/org.python.pydev_2.7.5.2013052819/pysrc'
+DEBUGPATH = '/opt/eclipse/plugins/org.python.pydev_4.1.0.201505270003/pysrc'
 
 HELP_DIALOG = 'helpDialog'
 HELP_FILE = '%s/CDMIExplorerHelp.txt'

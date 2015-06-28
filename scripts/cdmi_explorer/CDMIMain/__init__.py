@@ -21,6 +21,7 @@ class CDMIMainWindow(object):
     def __init__(self, ppath):
         # Build the main window
         sys.path.append(DEBUGPATH)
+        #import pydevd; pydevd.settrace()
         self.ppath = ppath  # Where we live. Need this to find .glade files
         builder = Gtk.Builder()
         self.session = CDMISession(ppath, builder)
