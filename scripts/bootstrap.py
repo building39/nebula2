@@ -80,117 +80,143 @@ CDMI_ACE_RW = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRITE_OB
               CDMI_ACE_APPEND_DATA | CDMI_ACE_ADD_SUBCONTAINER | CDMI_ACE_READ_METADATA | \
               CDMI_ACE_WRITE_METADATA
               
-ROOT_OWNER_ACL = {'acetype': 'ALLOW',
-                  'identifier': 'OWNER@',
-                  'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
-                  'acemask': 'ALL_PERMS'}
-ROOT_AUTHD_ACL = {'acetype': 'ALLOW',
-                  'identifier': 'AUTHENTICATED@',
-                  'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
-                  'acemask': 'READ'}
+ROOT_OWNER_ACL = {
+    'acetype': 'ALLOW',
+    'identifier': 'OWNER@',
+    'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
+    'acemask': 'ALL_PERMS'
+}
+ROOT_AUTHD_ACL = {
+    'acetype': 'ALLOW',
+    'identifier': 'AUTHENTICATED@',
+    'aceflags': 'OBJECT_INHERIT, CONTAINER_INHERIT',
+    'acemask': 'READ'
+}
 
-DOMAIN_OWNER_ACL = {'acetype': 'ALLOW',
-                    'identifier': 'OWNER@',
-                    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
-                    'acemask': 'ALL_PERMS'}
-DOMAIN_AUTHD_ACL = {'acetype': 'ALLOW',
-                    'identifier': 'AUTHENTICATED@',
-                    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
-                    'acemask': 'READ'}
+DOMAIN_OWNER_ACL = {
+    'acetype': 'ALLOW',
+    'identifier': 'OWNER@',
+    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
+    'acemask': 'ALL_PERMS'
+}
+DOMAIN_AUTHD_ACL = {
+    'acetype': 'ALLOW',
+    'identifier': 'AUTHENTICATED@',
+    'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
+    'acemask': 'READ'
+}
             
-DEFAULT_CAPABILITIES = '{"cdmi_domains": "true", ' \
-                        '"cdmi_dataobjects": "true", ' \
-                        '"cdmi_object_access_by_ID":"true", ' \
-                        '"cdmi_object_copy_from_local": "true", ' \
-                        '"cdmi_object_move_from_ID": "true", ' \
-                        '"cdmi_object_move_from_local": "true"}'
+DEFAULT_CAPABILITIES = {
+    "cdmi_domains": "true",
+    "cdmi_dataobjects": "true",
+    "cdmi_object_access_by_ID":"true",
+    "cdmi_object_copy_from_local": "true",
+    "cdmi_object_move_from_ID": "true",
+    "cdmi_object_move_from_local": "true"
+}
                         
-CONTAINER_CAPABILITIES = '{"cdmi_acl": "true", ' \
-                         '"cdmi_atime": "true", ' \
-                         '"cdmi_copy_container": "true", ' \
-                         '"cdmi_copy_dataobject": "true", ' \
-                         '"cdmi_create_container": "true", ' \
-                         '"cdmi_create_databoject": "true", ' \
-                         '"cdmi_ctime": "true", ' \
-                         '"cdmi_delete_container": "true", ' \
-                         '"cdmi_delete_dataobject": "true", ' \
-                         '"cdmi_list_children": "true", ' \
-                         '"cdmi_list_children_range": "true", ' \
-                         '"cdmi_modify_metadata": "true", ' \
-                         '"cdmi_move_container": "true", ' \
-                         '"cdmi_move_dataobject": "true", ' \
-                         '"cdmi_mtime": "true", ' \
-                         '"cdmi_read_metadata": "true", ' \
-                         '"cdmi_size": "true", ' \
-                         '"cdmi_versioning": "all"}'
+CONTAINER_CAPABILITIES = {
+    "cdmi_acl": "true",
+    "cdmi_atime": "true",
+    "cdmi_copy_container": "true",
+    "cdmi_copy_dataobject": "true",
+    "cdmi_create_container": "true",
+    "cdmi_create_databoject": "true",
+    "cdmi_ctime": "true",
+    "cdmi_delete_container": "true",
+    "cdmi_delete_dataobject": "true",
+    "cdmi_list_children": "true",
+    "cdmi_list_children_range": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_move_container": "true",
+    "cdmi_move_dataobject": "true",
+    "cdmi_mtime": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_size": "true",
+    "cdmi_versioning": "all"
+}
                          
-DATAOBJECT_CAPABILITIES = '{"cdmi_acl": "true", ' \
-                           '"cdmi_atime": "true", ' \
-                           '"cdmi_ctime": "true", ' \
-                           '"cdmi_delete_dataobject": "true", ' \
-                           '"cdmi_modify_metadata": "true", ' \
-                           '"cdmi_modify_value": "true", ' \
-                           '"cdmi_modify_value_range": "true", ' \
-                           '"cdmi_read_metadata": "true", ' \
-                           '"cdmi_read_value": "true", ' \
-                           '"cdmi_read_value_range": "true", ' \
-                           '"cdmi_size": "true", ' \
-                           '"cdmi_versioning": "all"}'
+DATAOBJECT_CAPABILITIES = {
+    "cdmi_acl": "true",
+    "cdmi_atime": "true",
+    "cdmi_ctime": "true",
+    "cdmi_delete_dataobject": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_modify_value_range": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true",
+    "cdmi_read_value_range": "true",
+    "cdmi_size": "true",
+    "cdmi_versioning": "all"
+}
                            
-DATAOBJECT_CONFIG_CAPABILITIES = '"cdmi_delete_dataobject": "true", ' \
-                                 '"cdmi_modify_metadata": "true", ' \
-                                 '"cdmi_modify_value": "true", ' \
-                                 '"cdmi_modify_value_range": "true", ' \
-                                 '"cdmi_read_metadata": "true", ' \
-                                 '"cdmi_read_value": "true", ' \
-                                 '"cdmi_read_value_range": "true"}'
+DATAOBJECT_CONFIG_CAPABILITIES = {
+    "cdmi_delete_dataobject": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_modify_value_range": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true",
+    "cdmi_read_value_range": "true"
+}
                                  
-DATAOBJECT_CONFIG_VERSION_CAPABILITIES = '"cdmi_delete_dataobject": "true", ' \
-                                 '"cdmi_modify_metadata": "true", ' \
-                                 '"cdmi_modify_value": "true", ' \
-                                 '"cdmi_modify_value_range": "true", ' \
-                                 '"cdmi_read_metadata": "true", ' \
-                                 '"cdmi_read_value": "true", ' \
-                                 '"cdmi_read_value_range": "true"}'
+DATAOBJECT_CONFIG_VERSION_CAPABILITIES = {
+    "cdmi_delete_dataobject": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_modify_value_range": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true",
+    "cdmi_read_value_range": "true"
+}
                                  
-DATAOBJECT_CONFIG_PERMANENT_CAPABILITIES = '"cdmi_modify_metadata": "true", ' \
-                                 '"cdmi_modify_value": "true", ' \
-                                 '"cdmi_modify_value_range": "true", ' \
-                                 '"cdmi_read_metadata": "true", ' \
-                                 '"cdmi_read_value": "true", ' \
-                                 '"cdmi_read_value_range": "true"}'
+DATAOBJECT_CONFIG_PERMANENT_CAPABILITIES = {
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_modify_value_range": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true",
+    "cdmi_read_value_range": "true"
+}
                            
-DOMAIN_CAPABILITIES = '{"cdmi_acl": "true", ' \
-                       '"cdmi_atime": "true", ' \
-                       '"cdmi_copy_domain": "false", ' \
-                       '"cdmi_create_container": "true", ' \
-                       '"cdmi_create_domain": "true", ' \
-                       '"cdmi_ctime": "true", ' \
-                       '"cdmi_delete_container": "true", ' \
-                       '"cdmi_delete_domain": "true", ' \
-                       '"cdmi_domain_members": "true", ' \
-                       '"cdmi_domain_summary": "true", ' \
-                       '"cdmi_list_children": "true", ' \
-                       '"cdmi_modify_metadata": "true", ' \
-                       '"cdmi_mtime": "true", ' \
-                       '"cdmi_read_metadata": "true", ' \
-                       '"cdmi_size": "true", ' \
-                       '"cdmi_versioning": "all"}'
+DOMAIN_CAPABILITIES = {
+    "cdmi_acl": "true",
+    "cdmi_atime": "true",
+    "cdmi_copy_domain": "false",
+    "cdmi_create_container": "true",
+    "cdmi_create_domain": "true",
+    "cdmi_ctime": "true",
+    "cdmi_delete_container": "true",
+    "cdmi_delete_domain": "true",
+    "cdmi_domain_members": "true",
+    "cdmi_domain_summary": "true",
+    "cdmi_list_children": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_mtime": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_size": "true",
+    "cdmi_versioning": "all"
+}
 
-MEMBER_CAPABILITIES = '{"cdmi_acl": "true", ' \
-                        '"cdmi_atime": "true", ' \
-                        '"cdmi_ctime": "true", ' \
-                        '"cdmi_delete_dataobject": "true", ' \
-                        '"cdmi_modify_metadata": "true", ' \
-                        '"cdmi_modify_value": "true", ' \
-                        '"cdmi_mtime": "true", ' \
-                        '"cdmi_read_metadata": "true", ' \
-                        '"cdmi_size": "true", ' \
-                        '"cdmi_versioning": "all", ' \
-                        '"cdmi_write_metadata": "true"}'
+MEMBER_CAPABILITIES = {
+    "cdmi_acl": "true",
+    "cdmi_atime": "true",
+    "cdmi_ctime": "true",
+    "cdmi_delete_dataobject": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_mtime": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_size": "true",
+    "cdmi_versioning": "all",
+    "cdmi_write_metadata": "true"
+}
                        
-VERSIONS_CAPABILITIES = '"cdmi_read_metadata": "true", ' \
-                        '"cdmi_read_value": "true"}'
+VERSIONS_CAPABILITIES = {
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true"
+}
                         
 
 
