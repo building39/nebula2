@@ -52,15 +52,16 @@ from_cdmi_domain(Req, State) ->
     from_cdmi_object(Req, State).
 
 from_cdmi_object(Req, State) ->
-    {Pid, EnvMap} = State,
-    Body = maps:get(<<"body">>, EnvMap),
+    {Pid, _EnvMap} = State,
+    {ok, Body, Req2} = cowboy_req:body(Req),
     lager:debug("bootstrap: from_cdmi_object: Body: ~p", [Body]),
+    Data = jsx:decode(Body, [return_maps]),
     Oid = nebula2_utils:make_key(),
     lager:debug("bootstrap: from_cdmi_object: Oid: ~p", [Oid]),
-    Data2 = maps:put(<<"objectID">>, list_to_binary(Oid), Body),
+    Data2 = maps:put(<<"objectID">>, list_to_binary(Oid), Data),
     ParentID = maps:get(<<"parentID">>, Data2, <<"">>),
     lager:debug("bootstrap: parentID: ~p", [ParentID]),
-    {Path, Req2} = cowboy_req:path(Req),
+    {Path, Req3} = cowboy_req:path(Req2),
     lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
     ObjectType = maps:get(<<"objectType">>, Data2),
     ObjectName = maps:get(<<"objectName">>, Data2),
@@ -72,8 +73,8 @@ from_cdmi_object(Req, State) ->
     pooler:return_member(riak_pool, Pid),
     L = maps:to_list(Data2),
     B = jsx:encode(L),
-    Req3 = cowboy_req:set_resp_body(B, Req2),
-    {true, Req3, State}.
+    Req4 = cowboy_req:set_resp_body(B, Req3),
+    {true, Req4, State}.
 
 is_conflict(Req, State) ->
     cdmi_handler:is_conflict(Req, State).

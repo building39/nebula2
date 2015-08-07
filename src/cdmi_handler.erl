@@ -40,20 +40,21 @@ init(_, _Req, _Opts) ->
 rest_init(Req, _State) ->
     PoolMember = pooler:take_member(riak_pool),
     {Method, Req2} = cowboy_req:method(Req),
-    {ok, Body, Req3} = cowboy_req:body(Req2),
-    {Url, Req4} = cowboy_req:url(Req3),
+%%    {ok, Body, Req3} = cowboy_req:body(Req2),
+    {Url, Req4} = cowboy_req:url(Req2),
     {HostUrl, Req5} = cowboy_req:host_url(Req4),
     {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req5),
     {ReqPath, Req7} = cowboy_req:path(Req6),
     {AcceptType, Req8} = cowboy_req:header(<<"accept">>, Req7),
-    lager:debug("cdmi_handler: rest_init: Body: ~p", [Body]),
-    Map = case Body of
-               <<>> ->
-                   maps:new();
-               _Other ->
-                   M = maps:new(),
-                   maps:put(<<"body">>, jsx:decode(Body, [return_maps]), M)
-           end,
+%%    lager:debug("cdmi_handler: rest_init: Body: ~p", [Body]),
+%%    Map = case Body of
+%%               <<>> ->
+%%                   maps:new();
+%%               _Other ->
+%%                   M = maps:new(),
+%%                   maps:put(<<"body">>, jsx:decode(Body, [return_maps]), M)
+%%           end,
+    Map = maps:new(),
     Url_S = binary_to_list(Url),
     HostUrl_S = binary_to_list(HostUrl),
     Map2 = maps:put(<<"method">>, Method, Map),
@@ -72,7 +73,7 @@ rest_init(Req, _State) ->
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
     lager:debug("rest_init: EnvMap: ~p", [Map9]),
-    lager:info("Body: ~p", [Body]),
+%%    lager:info("Body: ~p", [Body]),
     {ok, Req8, {PoolMember, Map10}}.
 
 allowed_methods(Req, State) ->
@@ -87,6 +88,7 @@ content_types_accepted(Req, State) ->
     lager:debug("Entry content_types_accepted"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
       {{<<"application">>, <<"cdmi-container">>, '*'}, from_cdmi_container},
+      {{<<"application">>, <<"cdmi-domain">>, '*'}, from_cdmi_domain},
       {{<<"application">>, <<"cdmi-object">>, '*'}, from_cdmi_object}
      ], Req, State}.
 
@@ -113,24 +115,21 @@ from_cdmi_capability(Req, State) ->
     lager:debug("Entry from_cdmi_capability...~p", [Pid]),
     Path = maps:get(<<"path">>, EnvMap),
     lager:debug("URI: ~p", [Path]),
-    Body = maps:get(<<"body">>, EnvMap),
-    lager:debug("Body: ~p", [Body]),
+%%    Body = maps:get(<<"body">>, EnvMap),
+%%    lager:debug("Body: ~p", [Body]),
     Response = nebula2_capabilities:new_capability(Req, State),
     lager:debug("Response from_cdmi_capability: ~p", [Response]),
     {true, Req, State}.
 
 from_cdmi_container(Req, State) ->
-    {_Pid, EnvMap} = State,
-    Body = maps:get(<<"body">>, EnvMap),
-    lager:debug("from_cdmi_container Body: ~p", [Body]),
+    {_Pid, _EnvMap} = State,
+%%    Body = maps:get(<<"body">>, EnvMap),
+%%    lager:debug("from_cdmi_container Body: ~p", [Body]),
     Response = nebula2_containers:new_container(Req, State),
     lager:debug("Entry from_cdmi_container: ~p", [Response]),
     {true, Req, State}.
 
 from_cdmi_domain(Req, State) ->
-    {_Pid, EnvMap} = State,
-    Body = maps:get(<<"body">>, EnvMap),
-    lager:debug("from_cdmi_domain Body: ~p", [Body]),
     Response = nebula2_domains:new_domain(Req, State),
     lager:debug("Entry from_cdmi_domain: ~p", [Response]),
     {true, Req, State}.
@@ -138,12 +137,12 @@ from_cdmi_domain(Req, State) ->
 from_cdmi_object(Req, State) ->
     {Pid, EnvMap} = State,
     lager:debug("from_cdmi_object...~p", [Pid]),
-    Body = maps:get(<<"body">>, EnvMap),
+%%    Body = maps:get(<<"body">>, EnvMap),
     Path = maps:get(<<"path">>, EnvMap),
 %%    Uri = string:substr(binary_to_list(Path), 6),
     
     lager:debug("Get URI: ~p", [Path]),
-    lager:debug("Get Body: ~p", [Body]),
+%%    lager:debug("Get Body: ~p", [Body]),
 %%    Json = nebula2_riak:get(Pid, Uri),
 %%    lager:debug("Got Json: ~p", [Json]),
     pooler:return_member(riak_pool, Pid),
@@ -241,14 +240,8 @@ multiple_choices(Req, State) ->
 %% For non-CDMI object types that lack a trailing slash,
 %% does that resource exist with a trailing slash?
 previously_existed(Req, State) ->
-%%     {_, EnvMap} = State,
     lager:debug("-------------------------------------------------------------------------------------------------"),
     lager:debug("Entry previously_existed"),
-%%     Path = maps:get(<<"path">>, EnvMap),
-%%     {BinaryAcceptHeader, _} = cowboy_req:header(<<?ACCEPT_HEADER>>, Req, error),
-%%    State2 = needs_a_slash(Path,
-%%                           State,
-%%                           binary_to_list(BinaryAcceptHeader)),
     {_, EnvMap2} = State,
     Moved = maps:get(<<"moved_permanently">>, EnvMap2, false),
     R = case Moved of
@@ -384,40 +377,6 @@ basic_auth_handler(Creds, UserId, Password) ->
 map_domain_uri(_HostUrl) ->
     %% @todo Do something useful here.
     "/cdmi_domains/system_domain/".
-
-%% @doc Does the URI need a trailing slash?
-%%-spec needs_a_slash(nonempty_string(), cdmi_state(), nonempty_string()) -> cdmi_state().
-%%needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER; ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER_JSON ->
-%%    lager:debug("needs_a_slash: cdmi_container"),
-%%    needs_a_slash(Path, State);
-%%needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN; ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN_JSON ->
-%%    lager:debug("needs_a_slash: cdmi_domain"),
-%%     needs_a_slash(Path, State);
-%% needs_a_slash(Path, State, Other) ->
-%%     lager:debug("needs_a_slash: ~p", [Other]),
-%%     needs_a_slash(Path, State).
-
-%% -spec needs_a_slash(nonempty_string(), cdmi_state()) -> cdmi_state().
-%% needs_a_slash(Path, State) ->
-%%     {Pid, EnvMap} = State,
-%%     lager:debug("needs_a_slash: Path ~p", [Path]),
-%%     End = string:right(Path, 1),
-%%     EnvMap2 = case End of
-%%                 "/" -> 
-%%                     EnvMap;
-%%                  _  ->
-%%                     Path2 = Path ++ "/",
-%%                     lager:debug("cdmi_handler:needs_a_slash: Search Uri is ~p", [Path2]),
-%%                     case nebula2_riak:search(Path2, State) of
-%%                         {ok, _Json} ->
-%%                              lager:debug("added a slash - true"),
-%%                              maps:put(<<"moved_permanently">>, {true, maps:get(<<"url">>, EnvMap) ++ "/"}, EnvMap);
-%%                         {error, _Status} ->
-%%                              lager:debug("added a slash - false"),
-%%                              EnvMap
-%%                     end
-%%             end,
-%%     {Pid, EnvMap2}.
 
 %% ====================================================================
 %% eunit tests
