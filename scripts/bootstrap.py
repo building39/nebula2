@@ -135,12 +135,26 @@ CONTAINER_CAPABILITIES = {
     "cdmi_size": "true",
     "cdmi_versioning": "all"
 }
-                         
+
 DATAOBJECT_CAPABILITIES = {
     "cdmi_acl": "true",
     "cdmi_atime": "true",
     "cdmi_ctime": "true",
     "cdmi_delete_dataobject": "true",
+    "cdmi_modify_metadata": "true",
+    "cdmi_modify_value": "true",
+    "cdmi_modify_value_range": "true",
+    "cdmi_read_metadata": "true",
+    "cdmi_read_value": "true",
+    "cdmi_read_value_range": "true",
+    "cdmi_size": "true",
+    "cdmi_versioning": "all"
+}
+
+DATAOBJECT_PERMANENT_CAPABILITIES = {
+    "cdmi_acl": "true",
+    "cdmi_atime": "true",
+    "cdmi_ctime": "true",
     "cdmi_modify_metadata": "true",
     "cdmi_modify_value": "true",
     "cdmi_modify_value_range": "true",
@@ -230,6 +244,7 @@ CDMI_CAPABILITIES_DOMAIN = '/cdmi_capabilities/domain'
 CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container'
 CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%s/permanent' % CDMI_CAPABILITIES_CONTAINER
 CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject'
+CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%s/permanent' % CDMI_CAPABILITIES_DATAOBJECT
 CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%s/member' % CDMI_CAPABILITIES_DATAOBJECT
 
 CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
@@ -300,12 +315,19 @@ class Bootstrap(object):
         else:
             print("Dry run: Created system configuration.")
     
-    # Create the system configuration environment variables container
+        # Create the system configuration environment variables container
         print("...Priming system_configuration environment variables")
         if self.commit:
             self._create_system_configuration_environment()
         else:
             print("Dry run: Created system configuration environment variables.")
+            
+        # Create the system configuration domain maps object
+        print("...Priming system_configuration domain maps")
+        if self.commit:
+            self._create_system_configuration_domainmap()
+        else:
+            print("Dry run: Created system configuration domain maps.")
         
         # Create the system default capabilities
         print("...Priming capabilities")
@@ -494,12 +516,29 @@ class Bootstrap(object):
                'domainURI': CDMI_SYSTEM_DOMAIN,
                'completionStatus': 'complete',
                'objectName': 'environment_variables/',
-               'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/',
+               'objectType': OBJECT_TYPE_CONTAINER,
+               'parentURI': 'system_configuration/',
                'parentID': self.system_config_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/system_configuration/environment_variables' % (self.host, int(self.port))
+        self.system_envvar_oid = self._create(headers, url, doc, acls)
+        
+    def _create_system_configuration_domainmap(self):
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_DATAOBJECT_PERMANENT,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': 'domain_maps',
+               'objectType': OBJECT_TYPE_DATAOBJECT,
+               'parentURI': '/system_configuration/',
+               'parentID': self.system_config_oid,
+               'value': '[]',
+               'valuerange': '0-1',
+               'valuetransferencoding': 'utf-8'}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_DATAOBJECT
+        url = 'http://%s:%d/bootstrap/system_configuration/domain_maps' % (self.host, int(self.port))
         self.system_envvar_oid = self._create(headers, url, doc, acls)
            
     def _create_capabilities(self):
@@ -548,6 +587,18 @@ class Bootstrap(object):
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/' % (self.host, int(self.port))
+        self.dataobject_caps_oid = self._create(headers, url, doc, acls)
+        
+    def _create_dataobject_permanent_capabilities(self):
+        acls = None
+        doc = {'capabilities': DATAOBJECT_PERMANENT_CAPABILITIES,
+               'objectName': 'dataobject/',
+               'objectType': OBJECT_TYPE_CAPABILITY,
+               'parentURI': '/cdmi_capabilities/',
+               'parentID': self.caps_oid}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/permanent/' % (self.host, int(self.port))
         self.dataobject_caps_oid = self._create(headers, url, doc, acls)
         
     def _create_dataobject_config_capabilities(self):

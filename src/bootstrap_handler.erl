@@ -59,6 +59,7 @@ from_cdmi_object(Req, State) ->
     lager:debug("bootstrap: from_cdmi_object: Oid: ~p", [Oid]),
     Data2 = maps:put(<<"objectID">>, list_to_binary(Oid), Body),
     ParentID = maps:get(<<"parentID">>, Data2, <<"">>),
+    lager:debug("bootstrap: parentID: ~p", [ParentID]),
     {Path, Req2} = cowboy_req:path(Req),
     lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
     ObjectType = maps:get(<<"objectType">>, Data2),

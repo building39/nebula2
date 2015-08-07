@@ -130,8 +130,10 @@ from_cdmi_container(Req, State) ->
 from_cdmi_domain(Req, State) ->
     {_Pid, EnvMap} = State,
     Body = maps:get(<<"body">>, EnvMap),
-    lager:debug("Entry from_cdmi_domain Body: ~p", [Body]),
-    {<<"{\"jsondoc\": \"domain\"}">>, Req, State}.
+    lager:debug("from_cdmi_domain Body: ~p", [Body]),
+    Response = nebula2_domains:new_domain(Req, State),
+    lager:debug("Entry from_cdmi_domain: ~p", [Response]),
+    {true, Req, State}.
 
 from_cdmi_object(Req, State) ->
     {Pid, EnvMap} = State,
@@ -239,15 +241,15 @@ multiple_choices(Req, State) ->
 %% For non-CDMI object types that lack a trailing slash,
 %% does that resource exist with a trailing slash?
 previously_existed(Req, State) ->
-    {_, EnvMap} = State,
+%%     {_, EnvMap} = State,
     lager:debug("-------------------------------------------------------------------------------------------------"),
     lager:debug("Entry previously_existed"),
-    Path = maps:get(<<"path">>, EnvMap),
-    {BinaryAcceptHeader, _} = cowboy_req:header(<<?ACCEPT_HEADER>>, Req, error),
-    State2 = needs_a_slash(Path,
-                           State,
-                           binary_to_list(BinaryAcceptHeader)),
-    {_, EnvMap2} = State2,
+%%     Path = maps:get(<<"path">>, EnvMap),
+%%     {BinaryAcceptHeader, _} = cowboy_req:header(<<?ACCEPT_HEADER>>, Req, error),
+%%    State2 = needs_a_slash(Path,
+%%                           State,
+%%                           binary_to_list(BinaryAcceptHeader)),
+    {_, EnvMap2} = State,
     Moved = maps:get(<<"moved_permanently">>, EnvMap2, false),
     R = case Moved of
             false ->
@@ -255,9 +257,9 @@ previously_existed(Req, State) ->
             _ ->
                 true
         end,
-    lager:debug("Leaving previously_existed: ~p ~p ~p", [R, Req, State2]),
+    lager:debug("Leaving previously_existed: ~p ~p ~p", [R, Req, State]),
     lager:debug("-------------------------------------------------------------------------------------------------"),
-    {R, Req, State2}.
+    {R, Req, State}.
 
 %% Does the resource exist?
 resource_exists(Req, State) ->
@@ -384,38 +386,38 @@ map_domain_uri(_HostUrl) ->
     "/cdmi_domains/system_domain/".
 
 %% @doc Does the URI need a trailing slash?
--spec needs_a_slash(nonempty_string(), cdmi_state(), nonempty_string()) -> cdmi_state().
-needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER; ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER_JSON ->
-    lager:debug("needs_a_slash: cdmi_container"),
-    needs_a_slash(Path, State);
-needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN; ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN_JSON ->
-    lager:debug("needs_a_slash: cdmi_domain"),
-    needs_a_slash(Path, State);
-needs_a_slash(Path, State, Other) ->
-    lager:debug("needs_a_slash: ~p", [Other]),
-    needs_a_slash(Path, State).
+%%-spec needs_a_slash(nonempty_string(), cdmi_state(), nonempty_string()) -> cdmi_state().
+%%needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER; ContentType =:= ?CONTENT_TYPE_CDMI_CONTAINER_JSON ->
+%%    lager:debug("needs_a_slash: cdmi_container"),
+%%    needs_a_slash(Path, State);
+%%needs_a_slash(Path, State, ContentType) when ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN; ContentType =:= ?CONTENT_TYPE_CDMI_DOMAIN_JSON ->
+%%    lager:debug("needs_a_slash: cdmi_domain"),
+%%     needs_a_slash(Path, State);
+%% needs_a_slash(Path, State, Other) ->
+%%     lager:debug("needs_a_slash: ~p", [Other]),
+%%     needs_a_slash(Path, State).
 
--spec needs_a_slash(nonempty_string(), cdmi_state()) -> cdmi_state().
-needs_a_slash(Path, State) ->
-    {Pid, EnvMap} = State,
-    lager:debug("needs_a_slash: Path ~p", [Path]),
-    End = string:right(Path, 1),
-    EnvMap2 = case End of
-                "/" -> 
-                    EnvMap;
-                 _  ->
-                    Path2 = Path ++ "/",
-                    lager:debug("cdmi_handler:needs_a_slash: Search Uri is ~p", [Path2]),
-                    case nebula2_riak:search(Path2, State) of
-                        {ok, _Json} ->
-                             lager:debug("added a slash - true"),
-                             maps:put(<<"moved_permanently">>, {true, maps:get(<<"url">>, EnvMap) ++ "/"}, EnvMap);
-                        {error, _Status} ->
-                             lager:debug("added a slash - false"),
-                             EnvMap
-                    end
-            end,
-    {Pid, EnvMap2}.
+%% -spec needs_a_slash(nonempty_string(), cdmi_state()) -> cdmi_state().
+%% needs_a_slash(Path, State) ->
+%%     {Pid, EnvMap} = State,
+%%     lager:debug("needs_a_slash: Path ~p", [Path]),
+%%     End = string:right(Path, 1),
+%%     EnvMap2 = case End of
+%%                 "/" -> 
+%%                     EnvMap;
+%%                  _  ->
+%%                     Path2 = Path ++ "/",
+%%                     lager:debug("cdmi_handler:needs_a_slash: Search Uri is ~p", [Path2]),
+%%                     case nebula2_riak:search(Path2, State) of
+%%                         {ok, _Json} ->
+%%                              lager:debug("added a slash - true"),
+%%                              maps:put(<<"moved_permanently">>, {true, maps:get(<<"url">>, EnvMap) ++ "/"}, EnvMap);
+%%                         {error, _Status} ->
+%%                              lager:debug("added a slash - false"),
+%%                              EnvMap
+%%                     end
+%%             end,
+%%     {Pid, EnvMap2}.
 
 %% ====================================================================
 %% eunit tests

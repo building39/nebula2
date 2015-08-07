@@ -102,6 +102,7 @@ get_object_oid(Path, State) ->
 
 -spec get_parent_uri(list()) -> string().
 get_parent_uri(Parts) ->
+    lager:debug("get_parent_uri: Parts: ~p", [Parts]),
     case length(Parts) of
         0 ->
             "";     %% Root has no parent
