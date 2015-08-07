@@ -479,13 +479,13 @@ class Bootstrap(object):
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER_PERMANENT,
                'domainURI': CDMI_SYSTEM_DOMAIN,
                'completionStatus': 'complete',
-               'objectName': 'storage_root/',
+               'objectName': 'system_configuration/',
                'objectType': OBJECT_TYPE_CONTAINER,
                'parentURI': '/',
                'parentID': self.root_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
-        url = 'http://%s:%d/bootstrap/storage_root/' % (self.host, int(self.port))
+        url = 'http://%s:%d/bootstrap/system_configuration/' % (self.host, int(self.port))
         self.system_config_oid = self._create(headers, url, doc, acls)
            
     def _create_system_configuration_environment(self):
@@ -496,7 +496,7 @@ class Bootstrap(object):
                'objectName': 'environment_variables/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/',
-               'parentID': self.root_oid}
+               'parentID': self.system_config_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/system_configuration/environment_variables' % (self.host, int(self.port))
