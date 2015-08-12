@@ -21,7 +21,9 @@ start(_Type, _Args) ->
     cowboy:start_http(my_http_listener, 100, [{port, 8080}],
         [{env, [{dispatch, Dispatch}]}]
     ),
+    io:format("About to start lager..."),
     lager:start(),
+    io:format("lager started."),
     application:start(pooler),
     mcd:start_link(?MEMCACHE, ["localhost", 11211]),
     nebula2_sup:start_link().

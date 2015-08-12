@@ -114,7 +114,8 @@ do_put(Pid, Oid, Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec nebula2_riak:search(string(), tuple(_,map())) -> {error, 404|500}|{ok, string()}.
+-spec nebula2_riak:search(string(), Req) -> {error, 404|500}|{ok, string()}
+         when Req::cowboy_req:req().
 search(Path, State) ->
     lager:debug("Search: Path: ~p", [Path]),
     lager:debug("Search: State: ~p", [State]),

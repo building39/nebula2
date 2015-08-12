@@ -38,22 +38,14 @@ init(_, _Req, _Opts) ->
     {upgrade, protocol, cowboy_rest}.
 
 rest_init(Req, _State) ->
+    lager:debug("in rest_init: Req: ~p", [Req]),
     PoolMember = pooler:take_member(riak_pool),
     {Method, Req2} = cowboy_req:method(Req),
-%%    {ok, Body, Req3} = cowboy_req:body(Req2),
     {Url, Req4} = cowboy_req:url(Req2),
     {HostUrl, Req5} = cowboy_req:host_url(Req4),
     {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req5),
     {ReqPath, Req7} = cowboy_req:path(Req6),
     {AcceptType, Req8} = cowboy_req:header(<<"accept">>, Req7),
-%%    lager:debug("cdmi_handler: rest_init: Body: ~p", [Body]),
-%%    Map = case Body of
-%%               <<>> ->
-%%                   maps:new();
-%%               _Other ->
-%%                   M = maps:new(),
-%%                   maps:put(<<"body">>, jsx:decode(Body, [return_maps]), M)
-%%           end,
     Map = maps:new(),
     Url_S = binary_to_list(Url),
     HostUrl_S = binary_to_list(HostUrl),
@@ -72,8 +64,7 @@ rest_init(Req, _State) ->
     Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    lager:debug("rest_init: EnvMap: ~p", [Map9]),
-%%    lager:info("Body: ~p", [Body]),
+    lager:debug("rest_init: EnvMap: ~p", [Map10]),
     {ok, Req8, {PoolMember, Map10}}.
 
 allowed_methods(Req, State) ->

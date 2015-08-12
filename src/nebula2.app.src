@@ -6,14 +6,13 @@
 	{registered, []},
 	{applications, [
 	    lager,
-		kernel,
-		stdlib,
-		erlydtl,
-		riakc,
-		crc16,
-		uuid,
-		jsx,
-        cowboy
+            kernel,
+            stdlib,
+            riakc,
+            crc16,
+            uuid,
+            jsx,
+            cowboy
 	]},
     {included_applications, [pooler, mcd]},
 	{mod, {nebula2_app, []}},

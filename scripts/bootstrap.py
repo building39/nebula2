@@ -674,6 +674,8 @@ class Bootstrap(object):
         self.domain_caps_oid = self._create(headers, url, doc, acls)
            
     def _create(self, headers, url, doc, acls):
+#        import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.2.0.201507041133/pysrc')
+#        import pydevd; pydevd.settrace()
         new_headers = headers.copy()
         auth_string = 'Basic %s' % encodestring('%s:%s' % (self.adminid, self.adminpw))
         new_headers["Authorization"] = auth_string
