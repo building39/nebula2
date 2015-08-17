@@ -517,7 +517,7 @@ class Bootstrap(object):
                'completionStatus': 'complete',
                'objectName': 'environment_variables/',
                'objectType': OBJECT_TYPE_CONTAINER,
-               'parentURI': 'system_configuration/',
+               'parentURI': '/system_configuration/',
                'parentID': self.system_config_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
