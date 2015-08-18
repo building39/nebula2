@@ -15,7 +15,6 @@
 %% ====================================================================
 -export([get/2,
          get_mapped/2,
-         post/3,
          put/4,
          ping/1,
          search/2,
@@ -68,19 +67,6 @@ ping(Pid) ->
         R -> lager:debug("Can't ping Riak: ~p", [R]),
              false
     end.
-
-%% @doc Post a value to riak by bucket type, bucket and key.
--spec nebula2_riak:post(pid(),
-                       object_oid(),              %% Object ID
-                       binary()                   %% Data to store
-                      ) -> {ok, object_oid()}.
-post(Pid, Oid, Data) ->
-    Object = riakc_obj:new({list_to_binary(?BUCKET_TYPE),
-                            list_to_binary(?BUCKET_NAME)},
-                           undefined,
-                           Data),
-    {ok, _RetObj} = riakc_pb_socket:put(Pid, Object),
-    {ok, Oid}.
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),
