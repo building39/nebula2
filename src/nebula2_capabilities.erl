@@ -29,7 +29,7 @@
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
 get_capability(Pid, Oid) ->
     {ok, Data} = nebula2_riak:get(Pid, Oid),
-    jsx:decode(list_to_binary(Data), [return_maps]).
+    Data.
 
 %% @doc Create a new CDMI capability
 -spec nebula2_capabilities:new_capability(Req, State) -> {boolean(), Req, State}

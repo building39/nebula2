@@ -28,7 +28,7 @@
 %% @doc Check if a string begins with a certain substring.
 -spec nebula2_utils:beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
-    lager:debug("nebula2_utils:beginswith(~p, ~p)", [Str, Substr]),
+    lager:debug("Entry nebula2_utils:beginswith(~p, ~p)", [Str, Substr]),
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -38,6 +38,7 @@ beginswith(Str, Substr) ->
 -spec nebula2_utils:create_object(Req, State, object_type(), list()) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 create_object(Req, State, ObjectType, DomainName) ->
+    lager:debug("Entry nebula2_utils:create_object"),
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path_info(Req),
     {ok, Body, Req2} = cowboy_req:body(Req),
@@ -92,21 +93,26 @@ create_object(Req, State, ObjectType, DomainName) ->
 %% @doc Extract the Parent URI from the path.
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
+    lager:debug("Entry nebula2_utils:extract_parentURI"),
     lager:debug("Path: ~p", [Path]),
     extract_parentURI(Path, "") ++ "/".
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
+    lager:debug("Entry nebula2_utils:extract_parentURI"),
     Acc;
 extract_parentURI([H|T], Acc) when is_binary(H) ->
+    lager:debug("Entry nebula2_utils:extract_parentURI"),
     Acc2 = Acc ++ "/" ++ binary_to_list(H),
     extract_parentURI(T, Acc2);
 extract_parentURI([H|T], Acc) ->
+    lager:debug("Entry nebula2_utils:extract_parentURI"),
     Acc2 = Acc ++ "/" ++ H,
     extract_parentURI(T, Acc2).
 
 %% @doc Get the object name.
 -spec get_object_name(list(), string()) -> string().
 get_object_name(Parts, Path) ->
+    lager:debug("Entry nebula2_utils:get_object_name"),
     case Parts of
         [] ->
             "/";
@@ -121,12 +127,14 @@ get_object_name(Parts, Path) ->
 %% @doc Get the object's oid.
 -spec nebula2_utils:get_object_oid(map()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(State) ->
+    lager:debug("Entry nebula2_utils:get_object_oid"),
     {_, Path} = State,
     get_object_oid(Path, State).
 
 %% @doc Get the object's oid.
 -spec nebula2_utils:get_object_oid(string(), tuple()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) ->
+    lager:debug("Entry nebula2_utils:get_object_oid"),
     Oid = case nebula2_riak:search(Path, State) of
             {error,_} -> 
                 {notfound, ""};
@@ -140,7 +148,7 @@ get_object_oid(Path, State) ->
 %% @doc Construct the object's parent URI.
 -spec get_parent_uri(list()) -> string().
 get_parent_uri(Parts) ->
-    lager:debug("get_parent_uri: Parts: ~p", [Parts]),
+    lager:debug("Entry nebula2_utils:get_parent_uri: Parts: ~p", [Parts]),
     ParentUri = case length(Parts) of
                     0 ->
                         "";     %% Root has no parent
@@ -155,6 +163,7 @@ get_parent_uri(Parts) ->
 %% @doc Return current time in ISO 8601:2004 extended representation.
 -spec nebula2_utils:get_time() -> string().
 get_time() ->
+    lager:debug("Entry nebula2_utils:get_time"),
     {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:timestamp()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
@@ -162,7 +171,7 @@ get_time() ->
 %% @doc Make a primary key for storing a new object.
 -spec nebula2_utils:make_key() -> object_oid().
 make_key() ->
-    lager:debug("Function make_key"),
+    lager:debug("Entry nebula2_utils:make_key"),
     Uid = re:replace(uuid:to_string(uuid:uuid4()), "-", "", [global, {return, list}]),
     Temp = Uid ++ ?OID_SUFFIX ++ "0000",
     Crc = integer_to_list(crc16:crc16(Temp), 16),
@@ -170,10 +179,10 @@ make_key() ->
 
 update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     %% Must be the root, since there is no parent.
-        lager:debug("update_parent: root: Nothing to update"),
+    lager:debug("Entry nebula2_utils:update_parent: root: Nothing to update"),
     ok;
 update_parent(ParentId, Path, ObjectType, Pid) ->
-    lager:debug("update_parent: ~p ~p ~p ~p", [ParentId, Path, ObjectType, Pid]),
+    lager:debug("Entry nebula2_utils:update_parent: ~p ~p ~p ~p", [ParentId, Path, ObjectType, Pid]),
     N = case length(string:tokens(Path, "/")) of
             0 ->
                 "";
@@ -192,7 +201,7 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                _ -> 
                    N
            end,
-    {ok, Parent} = nebula2_riak:get_mapped(Pid, ParentId),
+    {ok, Parent} = nebula2_riak:get(Pid, ParentId),
     lager:debug("update_parent got parent: ~p", [Parent]),
     lager:debug("updating parent with child: ~p", [Name]),
     X = maps:get(<<"children">>, Parent, ""),
@@ -219,12 +228,13 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
     lager:debug("NewParent2: ~p", [NewParent2]),
     lager:debug("To Encode: ~p", [O]),
     lager:debug("new parent: ~p", [NewParent2]),
-    {ok, _Oid} = nebula2_riak:update(Pid, ParentId, NewParent2),
-    ok.
+    nebula2_riak:update(Pid, ParentId, NewParent2).
+
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 get_capability_uri(ObjectType) ->
+    lager:debug("Entry nebula2_utils:get_capability_uri"),
     case ObjectType of
         ?CONTENT_TYPE_CDMI_CAPABILITY ->
             ?DOMAIN_SUMMARY_CAPABILITY_URI;
@@ -237,6 +247,7 @@ get_capability_uri(ObjectType) ->
     end.
 
 path_to_list(Path) ->
+    lager:debug("Entry nebula2_utils:path_to_list"),
     path_to_list(Path, []).
 
 path_to_list([], Acc) ->
@@ -249,6 +260,7 @@ path_to_list([H|T], Acc) ->
     path_to_list(T, Acc2).
 
 sanitize_body([], Body) ->
+    lager:debug("Entry nebula2_utils:anatize_body"),
     Body;
 sanitize_body([H|T], Body) ->
     sanitize_body(T, maps:remove(H, Body)).

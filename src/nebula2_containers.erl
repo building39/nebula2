@@ -21,13 +21,15 @@
 %% @doc Get a CDMI container
 -spec nebula2_containers:get_container(pid(), object_oid()) -> {ok, json_value()}.
 get_container(Pid, Oid) ->
+    lager:debug("Entry nebula2_containers:get_container"),
     {ok, Data} = nebula2_riak:get(Pid, Oid),
-    jsx:decode(list_to_binary(Data), [return_maps]).
+    Data.
 
 %% @doc Create a new CDMI container
 -spec nebula2_containers:new_container(Req, State) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 new_container(Req, State) ->
+    lager:debug("Entry nebula2_containers:new_container"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     DomainName = "fake domain",
     nebula2_utils:create_object(Req, State, ObjectType, DomainName).
@@ -35,9 +37,8 @@ new_container(Req, State) ->
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_container(Pid, Oid, NewData) ->
-    lager:debug("nebula2_containers:update_container: Pid: ~p Oid: ~p NewData: ~p", [Pid, Oid, NewData]),
-    {ok, D} = nebula2_riak:get(Pid, Oid),
-    OldData = jsx:decode(list_to_binary(D), [return_maps]),
+    lager:debug("Entry nebula2_containers:update_container: Pid: ~p Oid: ~p NewData: ~p", [Pid, Oid, NewData]),
+    {ok, OldData} = nebula2_riak:get(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
     MetaData = maps:merge(OldMetaData, NewMetaData),
