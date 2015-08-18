@@ -44,9 +44,7 @@ update_container(Pid, Oid, NewData) ->
     MetaData = maps:merge(OldMetaData, NewMetaData),
     Data = maps:merge(OldData, NewData),
     Data2 = maps:put(<<"metadata">>, MetaData, Data),
-    Return = nebula2_riak:update(Pid, Oid, Data2),
-    lager:debug("Return: ~p", [Return]),
-    {ok, NewData}.
+    nebula2_riak:update(Pid, Oid, Data2).
 
 %% ====================================================================
 %% Internal functions

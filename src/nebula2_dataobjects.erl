@@ -48,9 +48,7 @@ update_dataobject(Pid, Oid, NewData) ->
     Length = length(Value) - 1,
     ValueRange = list_to_binary(lists:flatten(io_lib:format("0-~p", [Length]))),
     Data3 = maps:put(<<"valuerange">>, ValueRange, Data2),
-    Return = nebula2_riak:update(Pid, Oid, Data3),
-    lager:debug("Return: ~p", [Return]),
-    {ok, NewData}.
+    nebula2_riak:update(Pid, Oid, Data3).
 
 %% ====================================================================
 %% Internal functions

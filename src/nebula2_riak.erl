@@ -96,7 +96,7 @@ search(Path, State) ->
 -spec nebula2_riak:update(pid(),
                           object_oid(),      %% Oid
                           map()              %% Data to store
-                         ) -> {ok, object_oid()}.
+                         ) -> ok | {error, term()}.
 update(Pid, Oid, Data) ->
     lager:debug("Entry nebula2_riak:update"),
     lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
