@@ -34,9 +34,17 @@ new_container(Req, State) ->
 
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {ok, json_value()}.
-update_container(Pid, ObjectId, Data) ->
-    lager:debug("nebula2_containers:update_container: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
-    NewData = Data,
+update_container(Pid, Oid, NewData) ->
+    lager:debug("nebula2_containers:update_container: Pid: ~p Oid: ~p NewData: ~p", [Pid, Oid, NewData]),
+    {ok, D} = nebula2_riak:get(Pid, Oid),
+    OldData = jsx:decode(list_to_binary(D), [return_maps]),
+    OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
+    NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
+    MetaData = maps:merge(OldMetaData, NewMetaData),
+    Data = maps:merge(OldData, NewData),
+    Data2 = maps:put(<<"metadata">>, MetaData, Data),
+    Return = nebula2_riak:update(Pid, Oid, Data2),
+    lager:debug("Return: ~p", [Return]),
     {ok, NewData}.
 
 %% ====================================================================

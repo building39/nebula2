@@ -101,6 +101,7 @@ forbidden(Req, State) ->
     {false, Req, State}.
 %%    {true, Req, State}.
     
+%% content types accepted
 from_cdmi_capability(Req, State) ->
     {Pid, EnvMap} = State,
     lager:debug("Entry from_cdmi_capability...~p", [Pid]),
@@ -113,12 +114,20 @@ from_cdmi_capability(Req, State) ->
     {true, Req, State}.
 
 from_cdmi_container(Req, State) ->
-    {_Pid, _EnvMap} = State,
-%%    Body = maps:get(<<"body">>, EnvMap),
-%%    lager:debug("from_cdmi_container Body: ~p", [Body]),
-    Response = nebula2_containers:new_container(Req, State),
+    {Pid, EnvMap} = State,
+    lager:debug("from_cdmi_container"),
+    lager:debug("exists? ~p", [maps:get(<<"exists">>, EnvMap)]),
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Response = case maps:get(<<"exists">>, EnvMap) of
+                    true ->
+                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+                        BodyMap = jsx:decode(Body, [return_maps]),
+                        nebula2_containers:update_container(Pid, ObjectId, BodyMap);
+                    false ->
+                        nebula2_containers:new_container(Req2, State)
+               end,
     lager:debug("Entry from_cdmi_container: ~p", [Response]),
-    {true, Req, State}.
+    {true, Req2, State}.
 
 from_cdmi_domain(Req, State) ->
     Response = nebula2_domains:new_domain(Req, State),
@@ -168,19 +177,20 @@ is_authorized_handler(AuthString, Req, State) ->
     end.
 
 is_conflict(Req, State) ->
-    {_Pid, EnvMap} = State,
-    lager:debug("Entry is_conflict: ~p", [EnvMap]),
-    Method = maps:get(<<"method">>, EnvMap),
-    Exists = maps:get(<<"exists">>, EnvMap),
-    Conflicts = handle_is_conflict(Method, Exists),
-    {Conflicts, Req, State}
-.
-handle_is_conflict(<<"PUT">>, Exists) ->
-    lager:debug("handle_is_conflict: PUT exists is ~p", [Exists]),
-    Exists;
-handle_is_conflict(Method, Exists) ->
-        lager:debug("handle_is_conflict:catchall Method ~p exists is ~p", [Method, Exists]),
-    false.
+    lager:debug("Entry is_conflict"),
+    {false, Req, State}.
+%%    {_Pid, EnvMap} = State,
+%%    lager:debug("Entry is_conflict: ~p", [EnvMap]),
+%%    Method = maps:get(<<"method">>, EnvMap),
+%%    Exists = maps:get(<<"exists">>, EnvMap),
+%%    Conflicts = handle_is_conflict(Method, Exists),
+%%    {Conflicts, Req, State}.
+%%handle_is_conflict(<<"PUT">>, Exists) ->
+%%    lager:debug("handle_is_conflict: PUT exists is ~p", [Exists]),
+%%    Exists;
+%%handle_is_conflict(Method, Exists) ->
+%%        lager:debug("handle_is_conflict:catchall Method ~p exists is ~p", [Method, Exists]),
+%%    false.
 
 known_methods(Req, State) ->
     lager:debug("Entry known_methods"),
@@ -250,27 +260,33 @@ resource_exists(Req, State) ->
     {Pid, EnvMap} = State,
     lager:debug("Entry resource_exists state: ~p", [EnvMap]),
     ParentURI = maps:get(<<"parentURI">>, EnvMap),
-    Response = resource_exists_handler(ParentURI, State),
-    NewEnvMap = maps:put(<<"exists">>, Response, EnvMap),
-    {Response, Req, {Pid, NewEnvMap}}.
+    {Response, NewState} = resource_exists_handler(ParentURI, State),
+    {_, NewEnvMap} = NewState,
+    lager:debug("Response: ~p", [Response]),
+    lager:debug("NewEnvMap: ~p", [NewEnvMap]),
+    NewEnvMap2 = maps:put(<<"exists">>, Response, NewEnvMap),
+    lager:debug("Exit resource_exists. response: ~p", [Response]),
+    {Response, Req, {Pid, NewEnvMap2}}.
 
 resource_exists_handler("/cdmi_objectid/", State) ->
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
     case nebula2_riak:get(Pid, Oid) of
                    {error, _Status} ->
-                       false;
-                   {ok, _} ->
-                       true
+                       {false, State};
+                   {ok, Data} ->
+                       Map = jsx:decode(list_to_binary(Data), [return_maps]),
+                       {true, {Pid, maps:put(<<"object_map">>, Map, EnvMap)}}
                end;
 resource_exists_handler(_ParentURI, State) ->
-    {_, EnvMap} = State,
+    {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     case nebula2_riak:search(Path, State) of
         {error, _Status} ->
-            false;
-        _Other ->
-            true
+            {false, State};
+        {ok, Data} ->
+            Map = jsx:decode(list_to_binary(Data), [return_maps]),
+            {true, {Pid, maps:put(<<"object_map">>, Map, EnvMap)}}
     end.
     
 %% if pooler says no members, kick back a 503. I
@@ -287,6 +303,7 @@ service_available(Req, State) ->
     end,
     {Available, Req, State}.
 
+%% content types provided
 to_cdmi_capability(Req, State) ->
     to_cdmi_object(Req, State).
 

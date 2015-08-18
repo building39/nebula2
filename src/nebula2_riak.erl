@@ -79,8 +79,7 @@ post(Pid, Oid, Data) ->
                             list_to_binary(?BUCKET_NAME)},
                            undefined,
                            Data),
-    {ok, RetObj} = riakc_pb_socket:put(Pid, Object),
-    {riakc_obj, _, Oid, _, _, _, _} = RetObj,
+    {ok, _RetObj} = riakc_pb_socket:put(Pid, Object),
     {ok, Oid}.
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
@@ -139,7 +138,14 @@ update(Pid, Oid, Data) ->
             {error, E};
         {ok, _} ->
             lager:debug("riak_update updating ~p with ~p", [Oid, Data]),
-            do_put(Pid, Oid, Data)
+            Json = jsx:encode(Data),
+            {ok, Obj} = riakc_pb_socket:get(Pid, 
+                                            {list_to_binary(?BUCKET_TYPE),
+                                             list_to_binary(?BUCKET_NAME)},
+                                            Oid),
+            lager:debug("parms: ~p", [Json]),
+            NewObj = riakc_obj:update_value(Obj, Json),
+            riakc_pb_socket:put(Pid, NewObj)
     end.
 
 %% ====================================================================
