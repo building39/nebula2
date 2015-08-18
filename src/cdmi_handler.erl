@@ -133,7 +133,7 @@ from_cdmi_container(Req, State) ->
                     false ->
                         nebula2_containers:new_container(Req2, State)
                end,
-    lager:debug("Entry from_cdmi_container: ~p", [Response]),
+    lager:debug("Exit from_cdmi_container: ~p", [Response]),
     {true, Req2, State}.
 
 from_cdmi_domain(Req, State) ->
@@ -144,10 +144,18 @@ from_cdmi_domain(Req, State) ->
 from_cdmi_object(Req, State) ->
     {Pid, EnvMap} = State,
     lager:debug("Entry from_cdmi_object...~p", [Pid]),
-    Path = maps:get(<<"path">>, EnvMap),
-    lager:debug("Get URI: ~p", [Path]),
-    pooler:return_member(riak_pool, Pid),
-    {<<"{\"jsondoc\": \"number3\"}">>, Req, State}.
+    lager:debug("exists? ~p", [maps:get(<<"exists">>, EnvMap)]),
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Response = case maps:get(<<"exists">>, EnvMap) of
+                    true ->
+                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+                        BodyMap = jsx:decode(Body, [return_maps]),
+                        nebula2_dataobjects:update_dataobject(Pid, ObjectId, BodyMap);
+                    false ->
+                        nebula2_dataobjects:new_dataobject(Req2, State)
+               end,
+    lager:debug("Exit from_cdmi_container: ~p", [Response]),
+    {true, Req, State}.
 
 generate_etag(Req, State) ->
     lager:debug("Entry generate_etag"),
