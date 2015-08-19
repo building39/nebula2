@@ -13,17 +13,9 @@
 %% API functions
 %% ====================================================================
 -export([
-            get_container/2,
             new_container/2,
             update_container/3
         ]).
-
-%% @doc Get a CDMI container
--spec nebula2_containers:get_container(pid(), object_oid()) -> {ok, json_value()}.
-get_container(Pid, Oid) ->
-    lager:debug("Entry nebula2_containers:get_container"),
-    {ok, Data} = nebula2_riak:get(Pid, Oid),
-    Data.
 
 %% @doc Create a new CDMI container
 -spec nebula2_containers:new_container(Req, State) -> {boolean(), Req, State}
