@@ -41,7 +41,8 @@ create_object(Req, State, ObjectType, DomainName) ->
     lager:debug("Entry nebula2_utils:create_object"),
     {Pid, _Opts} = State,
     {Path, _} = cowboy_req:path_info(Req),
-    {ok, Body, Req2} = cowboy_req:body(Req),
+    {ok, B, Req2} = cowboy_req:body(Req),
+    Body = jsx:decode(B, [return_maps]),
     ParentUri = nebula2_utils:get_parent_uri(Path),
     case nebula2_utils:get_object_oid(ParentUri, State) of
         {ok, ParentId} ->
@@ -52,7 +53,7 @@ create_object(Req, State, ObjectType, DomainName) ->
                                   <<"parentID">>,
                                   <<"parentURI">>,
                                   <<"completionStatus">>],
-                                 jsx:decode(Body, [return_maps])),
+                                 Body),
             Oid = nebula2_utils:make_key(),
             Location = list_to_binary(nebula2_app:cdmi_location()),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
@@ -139,7 +140,8 @@ get_object_oid(Path, State) ->
             {error,_} -> 
                 {notfound, ""};
             {ok, Data} ->
-                {ok, maps:get(<<"objectID">>, maps:from_list(jsx:decode(list_to_binary(Data))))}
+                lager:debug("Data: ~p", [Data]),
+                {ok, maps:get(<<"objectID">>, Data)}
           end,
     lager:debug("get_object_oid: ~p", [Oid]),
     lager:debug("get_object_oid: Path: ~p", [Path]),
@@ -164,7 +166,7 @@ get_parent_uri(Parts) ->
 -spec nebula2_utils:get_time() -> string().
 get_time() ->
     lager:debug("Entry nebula2_utils:get_time"),
-    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:timestamp()),
+    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
 
