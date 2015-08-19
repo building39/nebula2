@@ -137,8 +137,8 @@ from_cdmi_container(Req, State) ->
     {true, Req2, State}.
 
 from_cdmi_domain(Req, State) ->
-    Response = nebula2_domains:new_domain(Req, State),
-    lager:debug("Entry from_cdmi_domain: ~p", [Response]),
+    lager:debug("Entry from_cdmi_domain"),
+    _Response = nebula2_domains:new_domain(Req, State),
     {true, Req, State}.
 
 from_cdmi_object(Req, State) ->
@@ -346,7 +346,7 @@ to_cdmi_object(Req, State) ->
     lager:debug("Response: ~p", [Response]),
     Response.
 
--spec to_cdmi_object_handler(map(), tuple(), string(), string()) -> {map(), term(), pid()} | {notfound, term(), pid()}.
+-spec to_cdmi_object_handler(map(), {pid(), map()}, string(), string()) -> {map(), term(), pid()} | {notfound, term(), pid()}.
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     lager:debug("Entry to_cdmi_object_handler"),
     {Pid, EnvMap} = State,
