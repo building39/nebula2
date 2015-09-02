@@ -21,6 +21,7 @@
          get_object_oid/2,
          get_parent_uri/1,
          get_time/0,
+         handle_content_type/1,
          make_key/0,
          update_parent/4
         ]).
@@ -169,6 +170,19 @@ get_time() ->
     {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
+
+%% Get the content type for the request
+-spec handle_content_type({pid(),map()}) -> string().
+handle_content_type(State) ->
+    {_, EnvMap} = State,
+    case maps:get(<<"content-type">>, EnvMap, "") of
+        "" ->
+            Path = maps:get(<<"path">>, EnvMap),
+            {ok, Data} = nebula2_riak:search(Path, State),
+            binary_to_list(maps:get(<<"objectType">>, Data));
+        CT ->
+            binary_to_list(CT)
+    end.
 
 %% @doc Make a primary key for storing a new object.
 -spec nebula2_utils:make_key() -> object_oid().

@@ -13,24 +13,27 @@
 %% API functions
 %% ====================================================================
 -export([
-            get_domain/2,
+            delete_domain/2,
             new_domain/2,
             update_domain/3
         ]).
 
-%% @doc Get a CDMI domain
--spec nebula2_domains:get_domain(pid(), object_oid()) -> {ok, json_value()}.
-get_domain(Pid, Oid) ->
-    lager:debug("Entry nebula2_domains:get_domain"),
-    {ok, Data} = nebula2_riak:get(Pid, Oid),
-    Data.
+%% @doc Delete a CDMI domain
+-spec nebula2_domains:delete_domain(cowboy_req:req(), {pid(), map()}) -> ok | {error, term()}.
+delete_domain(Req, State) ->
+    lager:debug("Entry nebula2_domains:delete_domain"),
+    {Pid, EnvMap} = State,
+    Data = maps:get(<<"object_map">>, EnvMap),
+    Oid = maps:get(<<"objectID">>, Data),
+    handle_delete(nebula2_riak:delete(Pid, Oid), Req, State).
 
 %% @doc Create a new CDMI domain
 -spec nebula2_domains:new_domain(Req, State) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 new_domain(Req, State) ->
     lager:debug("Entry nebula2_domains:new_domain"),
-    DomainName = "fake domain",
+    {_Pid, EnvMap} = State,
+    DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
     nebula2_utils:create_object(Req, State, ObjectType, DomainName).
 
@@ -45,7 +48,12 @@ update_domain(Pid, ObjectId, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
+handle_delete(ok, Req, State) ->
+    lager:debug("Entry nebula2_domains:handle_delete - delete succeeded"),
+    {true, Req, State};
+handle_delete({error, Error}, Req, State) ->
+    lager:debug("Entry nebula2_domains:handle_delete - delete failed reason: ~p", [Error]),
+    {false, Req, State}.
 
 %% ====================================================================
 %% eunit tests
