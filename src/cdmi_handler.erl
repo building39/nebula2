@@ -152,8 +152,17 @@ from_cdmi_container(Req, State) ->
 
 from_cdmi_domain(Req, State) ->
     lager:debug("Entry from_cdmi_domain"),
-    _Response = nebula2_domains:new_domain(Req, State),
-    {true, Req, State}.
+    {_, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    Path = maps:get(<<"path">>, EnvMap),
+    case string:substr(Path, length(Path)) of
+        "/" ->
+            nebula2_domains:new_domain(Req, State),
+            {true, Req, State};
+        _  ->
+            {ok, Reply} = cowboy_req:reply(400, [], <<"Bad Request\n">>, Req),
+            {halt, Reply, State}
+    end.
 
 from_cdmi_object(Req, State) ->
     {Pid, EnvMap} = State,
