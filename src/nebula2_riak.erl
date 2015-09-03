@@ -109,11 +109,7 @@ do_put(Pid, Oid, Data) ->
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
-            mcd:delete(?MEMCACHE, Oid),
-            {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-            lager:debug("updated cache with oid: ~p~nData: ~n~p", [Oid, _R]),
-            %{ok, Readback} = mcd:get(?MEMCACHE, Oid),
-            %lager:debug("read back from cache: ~n~p", [Readback]),
+            mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
             {ok, Oid};
         {error, Term} ->
             {error, Term}
@@ -169,11 +165,7 @@ update(Pid, Oid, Data) ->
                                             Oid),
             % lager:debug("parms: ~p", [Json]),
             NewObj = riakc_obj:update_value(Obj, Json),
-            %mcd:delete(?MEMCACHE, Oid),
-            {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-            lager:debug("updated cache with oid: ~p~nData: ~n~p", [Oid, _R]),
-            %{ok, Readback} = mcd:get(?MEMCACHE, Oid),
-            %lager:debug("read back from cache: ~n~p", [Readback]),
+            mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
