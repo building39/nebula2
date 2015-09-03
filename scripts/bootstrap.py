@@ -300,6 +300,13 @@ class Bootstrap(object):
             self._create_system_domain_members()
         else:
             print("Dry run: Created system domain members container.")
+            
+        # Create the system domain summary container
+        print("...Priming cdmi_domains/system_domain/cdmi_domain_summary")
+        if self.commit:
+            self._create_system_domain_summary()
+        else:
+            print("Dry run: Created system domain summary container.")
 
         # Create the system administrator member
         print("...Priming the system administrator")
@@ -467,6 +474,36 @@ class Bootstrap(object):
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_members/' % (self.host, int(self.port))
+        self.system_domain_members_oid = self._create(headers, url, doc, acls)
+        
+    def _create_system_domain_summary(self):
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': 'cdmi_domain_summary/',
+               'objectType': OBJECT_TYPE_CONTAINER,
+               'parentURI': '/cdmi_domains/system_domain/',
+               'parentID': self.system_domain_oid}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/' % (self.host, int(self.port))
+        self.system_domain_summary_oid = self._create(headers, url, doc, acls)
+        for period in ['yearly', 'montly', 'weekly', 'daily']:
+            self._create_system_domain_summary_subcontainer(period)
+        
+    def _create_system_domain_summary_subcontainer(self, period):
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': period,
+               'objectType': OBJECT_TYPE_CONTAINER,
+               'parentURI': '/cdmi_domains/system_domain/summary',
+               'parentID': self.system_domain_summary_oid}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/%s' % (self.host, int(self.port), period)
         self.system_domain_members_oid = self._create(headers, url, doc, acls)
         
     def _create_system_administrator_member(self):
@@ -674,7 +711,7 @@ class Bootstrap(object):
         self.domain_caps_oid = self._create(headers, url, doc, acls)
            
     def _create(self, headers, url, doc, acls):
-#        import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.2.0.201507041133/pysrc')
+#        import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.3.0.201508182223/pysrc')
 #        import pydevd; pydevd.settrace()
         new_headers = headers.copy()
         auth_string = 'Basic %s' % encodestring('%s:%s' % (self.adminid, self.adminpw))
