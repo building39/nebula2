@@ -71,3 +71,39 @@
 -define(CDMI_INDEX, "cdmi_idx").
 -define(NAME_PREFIX, "cdmi").
 
+%% ACE types
+-define(CDMI_ACE_ACCESS_ALLOW, 16#00000000).
+-define(CDMI_ACE_ACCESS_DENY,  16#00000001).
+-define(CDMI_ACE_SYSTEM_AUDIT, 16#00000002).
+
+%% ACE flags
+-define(CDMI_ACE_FLAGS_NONE,                  16#00000000).
+-define(CDMI_ACE_FLAGS_OBJECT_INHERIT_ACE,    16#00000001).
+-define(CDMI_ACE_FLAGS_CONTAINER_INHERIT_ACE, 16#00000002).
+-define(CDMI_ACE_FLAGS_NO_PROPAGATE_ACE,      16#00000004).
+-define(CDMI_ACE_FLAGS_INHERIT_ONLY_ACE,      16#00000008).
+-define(CDMI_ACE_FLAGS_IDENTIFIER_GROUP,      16#00000040).
+-define(CDMI_ACE_FLAGS_INHERITED_ACE,         16#00000080).
+
+%% ACE masks
+-define(CDMI_ACE_READ_OBJECT,                 16#00000001).
+-define(CDMI_ACE_LIST_CONTAINER,              16#00000001).
+-define(CDMI_ACE_WRITE_OBJECT,                16#00000002).
+-define(CDMI_ACE_ADD_OBJECT,                  16#00000002).
+-define(CDMI_ACE_APPEND_DATA,                 16#00000004).
+-define(CDMI_ACE_ADD_SUBCONTAINER,            16#00000004).
+-define(CDMI_ACE_READ_METADATA,               16#00000008).
+-define(CDMI_ACE_WRITE_METADATA,              16#00000010).
+-define(CDMI_ACE_EXECUTE,                     16#00000020).
+-define(CDMI_ACE_TRAVERSE_CONTAINER,          16#00000020).
+-define(CDMI_ACE_DELETE_OBJECT,               16#00000040).
+-define(CDMI_ACE_DELETE_SUBCONTAINER,         16#00000040).
+-define(CDMI_ACE_READ_ATTRIBUTES,             16#00000080).
+-define(CDMI_ACE_WRITE_ATTRIBUTES,            16#00000100).
+-define(CDMI_ACE_WRITE_RETENTION,             16#00000200).
+-define(CDMI_ACE_WRITE_RETENTION_HOLD,        16#00000400).
+-define(CDMI_ACE_DELETE,                      16#00001000).
+-define(CDMI_ACE_READ_ACL,                    16#00002000).
+-define(CDMI_ACE_WRITE_ACL,                   16#00040000).
+-define(CDMI_ACE_WRITE_OWNER,                 16#00080000).
+-define(CDMI_ACE_SYNCHRONIZE,                 16#00100000).
