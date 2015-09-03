@@ -21,7 +21,7 @@
 %% @doc Get a CDMI dataobject
 -spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> {ok, json_value()}.
 get_dataobject(Pid, Oid) ->
-    lager:debug("Entry nebula2_dataobjects:get_dataobject"),
+    lager:debug("Entry"),
     {ok, Data} = nebula2_riak:get(Pid, Oid),
     Data.
 
@@ -29,7 +29,7 @@ get_dataobject(Pid, Oid) ->
 -spec nebula2_dataobjects:new_dataobject(Req, State) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 new_dataobject(Req, State) ->
-    lager:debug("Entry nebula2_dataobjects:new_dataobject"),
+    % lager:debug("Entry nebula2_dataobjects:new_dataobject"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     DomainName = "fake domain",
     nebula2_utils:create_object(Req, State, ObjectType, DomainName).
@@ -37,7 +37,8 @@ new_dataobject(Req, State) ->
 %% @doc Update a CDMI dataobject
 -spec nebula2_dataobjects:update_dataobject(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_dataobject(Pid, Oid, NewData) ->
-    lager:debug("Entry nebula2_dataobjects:update_dataobject: Pid: ~p Oid: ~p NewData: ~p", [Pid, Oid, NewData]),
+    lager:debug("Entry"),
+    % lager:debug("Entry nebula2_dataobjects:update_dataobject: Pid: ~p Oid: ~p NewData: ~p", [Pid, Oid, NewData]),
     {ok, OldData} = nebula2_riak:get(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),

@@ -25,10 +25,11 @@
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_binary(Oid) ->
-    lager:debug("Entry nebula2_riak:delete"),
+    % lager:debug("Entry nebula2_riak:delete"),
     delete(Pid, binary_to_list(Oid));
 delete(Pid, Oid) ->
-    lager:debug("Entry nebula2_riak:delete"),
+    % lager:debug("Entry nebula2_riak:delete"),
+    mcd:delete(?MEMCACHE, Oid),
     riakc_pb_socket:delete(Pid,
                            {list_to_binary(?BUCKET_TYPE),
                             list_to_binary(?BUCKET_NAME)},
@@ -37,18 +38,22 @@ delete(Pid, Oid) ->
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, json_value()}|{error, term()}.
 get(Pid, Oid) when is_binary(Oid) ->
-    lager:debug("Entry nebula2_riak:get"),
+    % lager:debug("Entry nebula2_riak:get"),
     get(Pid, binary_to_list(Oid));
 get(Pid, Oid) ->
     lager:debug("Entry nebula2_riak:get"),
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
-            lager:debug("Got cache hit on get: Data: ~p", [Data]),
+            lager:debug("Got cache hit on get: Oid: ~p~nData: ~n~p", [Oid, Data]),
             {ok, Data};
         _ ->
-            case raw_get(Pid, Oid) of
+            case riakc_pb_socket:get(Pid,
+                                     {list_to_binary(?BUCKET_TYPE),
+                                      list_to_binary(?BUCKET_NAME)},
+                                      list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
+                    %mcd:delete(?MEMCACHE, Oid),
                     {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
                     {ok, Data};
                 {error, Term} ->
@@ -59,7 +64,7 @@ get(Pid, Oid) ->
 %% @doc Get the domain maps.
 -spec nebula2_riak:get_domain_maps(pid()) -> list().
 get_domain_maps(Pid) ->
-    lager:debug("nebula2_riak:get_domain_maps Pid: ~p", [Pid]),
+    % lager:debug("nebula2_riak:get_domain_maps Pid: ~p", [Pid]),
     case execute_search(Pid, ?DOMAIN_MAPS_QUERY) of
         {ok, Result} ->
             maps:get(<<"value">>, Result);
@@ -70,11 +75,11 @@ get_domain_maps(Pid) ->
 %% @doc Ping the riak cluster.
 -spec nebula2_riak:ping(pid()) -> boolean().
 ping(Pid) ->
-    lager:debug("Entry nebula2_riak:ping"),
+    % lager:debug("Entry nebula2_riak:ping"),
     case riakc_pb_socket:ping(Pid) of
-        pong -> lager:debug("Connected to Riak..."),
+        pong -> % lager:debug("Connected to Riak..."),
                 true;
-        R -> lager:debug("Can't ping Riak: ~p", [R]),
+        _R -> % lager:debug("Can't ping Riak: ~p", [R]),
              false
     end.
 
@@ -84,19 +89,19 @@ ping(Pid) ->
                       object_oid(),   %% Oid
                       map()           %% Data to store
                      ) -> {'error', _} | {'ok', _}.
-put(Pid, ObjectName, Oid, Data) ->
-    lager:debug("Entry nebula2_riak:put Creating object ~p", [ObjectName]),
+put(Pid, _ObjectName, Oid, Data) ->
+    % lager:debug("Entry nebula2_riak:put Creating object ~p", [ObjectName]),
     do_put(Pid, Oid, Data).
 
 -spec nebula2_riak:do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
 do_put(Pid, Oid, Data) when is_binary(Oid) ->
-    lager:debug("Entry nebula2_riak:do_put"),
+    % lager:debug("Entry nebula2_riak:do_put"),
     do_put(Pid, binary_to_list(Oid), Data);
 do_put(Pid, Oid, Data) ->
     lager:debug("Entry nebula2_riak:do_put"),
-    lager:debug("nebula2_riak:do_put Data is ~p", [Data]),
+    % lager:debug("nebula2_riak:do_put Data is ~p", [Data]),
     Json = jsx:encode(Data),
-    lager:debug("nebula2_riak:do_put JSON is ~p", [Json]),
+    % lager:debug("nebula2_riak:do_put JSON is ~p", [Json]),
     Object = riakc_obj:new({list_to_binary(?BUCKET_TYPE),
                             list_to_binary(?BUCKET_NAME)},
                             list_to_binary(Oid),
@@ -104,6 +109,11 @@ do_put(Pid, Oid, Data) ->
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
+            mcd:delete(?MEMCACHE, Oid),
+            {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
+            lager:debug("updated cache with oid: ~p~nData: ~n~p", [Oid, _R]),
+            %{ok, Readback} = mcd:get(?MEMCACHE, Oid),
+            %lager:debug("read back from cache: ~n~p", [Readback]),
             {ok, Oid};
         {error, Term} ->
             {error, Term}
@@ -112,27 +122,27 @@ do_put(Pid, Oid, Data) ->
 %% @doc Search an index for objects.
 -spec nebula2_riak:search(string(), {pid(), map()}) -> {error, 404|500}|{ok, string()}.
 search(Path, State) ->
-    lager:debug("Entry nebula2_riak:search"),
-    lager:debug("Search: Path: ~p", [Path]),
-    lager:debug("Search: State: ~p", [State]),
+    % lager:debug("Entry nebula2_riak:search"),
+    % lager:debug("Search: Path: ~p", [Path]),
+    % lager:debug("Search: State: ~p", [State]),
     {Pid, EnvMap} = State,
     Query = create_query(Path, EnvMap),
-    lager:debug("nebula2_riak:search searching for key: ~p", [Query]),
+    % lager:debug("nebula2_riak:search searching for key: ~p", [Query]),
     Result =  execute_search(Pid, Query),
-    lager:debug("nebula2_riak:search result: ~p", [Result]),
+    % lager:debug("nebula2_riak:search result: ~p", [Result]),
     Result.
 
-search(Path, State, nodomain) ->
-    lager:debug("Entry nebula2_riak:search"),
-    lager:debug("Search: Path: ~p", [Path]),
-    lager:debug("Search: State: ~p", [State]),
+search(_Path, State, nodomain) ->
+    % lager:debug("Entry nebula2_riak:search"),
+    % lager:debug("Search: Path: ~p", [Path]),
+    % lager:debug("Search: State: ~p", [State]),
     {Pid, EnvMap} = State,
     ParentURI = maps:get(<<"parentURI">>, EnvMap),
     ObjectName = maps:get(<<"objectName">>, EnvMap),
     Query = "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName,
-    lager:debug("nebula2_riak:search searching for key: ~p", [Query]),
+    % lager:debug("nebula2_riak:search searching for key: ~p", [Query]),
     Result =  execute_search(Pid, Query),
-    lager:debug("nebula2_riak:search result: ~p", [Result]),
+    % lager:debug("nebula2_riak:search result: ~p", [Result]),
     Result.
 
 %% @doc Update an existing key/value pair.
@@ -140,22 +150,30 @@ search(Path, State, nodomain) ->
                           object_oid(),      %% Oid
                           map()              %% Data to store
                          ) -> ok | {error, term()}.
+update(Pid, Oid, Data) when is_binary(Oid) ->
+    % lager:debug("Entry nebula2_riak:do_put"),
+    update(Pid, binary_to_list(Oid), Data);
 update(Pid, Oid, Data) ->
     lager:debug("Entry nebula2_riak:update"),
-    lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
+    % lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
     case get(Pid, Oid) of
         {error, E} ->
-            lager:debug("riak_put got error ~p from search", [E]),
+            % lager:debug("riak_put got error ~p from search", [E]),
             {error, E};
         {ok, _} ->
-            lager:debug("riak_update updating ~p with ~p", [Oid, Data]),
+            % lager:debug("riak_update updating ~p with ~p", [Oid, Data]),
             Json = jsx:encode(Data),
             {ok, Obj} = riakc_pb_socket:get(Pid, 
                                             {list_to_binary(?BUCKET_TYPE),
                                              list_to_binary(?BUCKET_NAME)},
                                             Oid),
-            lager:debug("parms: ~p", [Json]),
+            % lager:debug("parms: ~p", [Json]),
             NewObj = riakc_obj:update_value(Obj, Json),
+            %mcd:delete(?MEMCACHE, Oid),
+            {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
+            lager:debug("updated cache with oid: ~p~nData: ~n~p", [Oid, _R]),
+            %{ok, Readback} = mcd:get(?MEMCACHE, Oid),
+            %lager:debug("read back from cache: ~n~p", [Readback]),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
@@ -166,13 +184,13 @@ update(Pid, Oid, Data) ->
 %% @doc Create a search key.
 -spec nebula2_riak:create_query(string(), map()) -> string().
 create_query(Path, EnvMap) ->
-    lager:debug("Entry nebula2_riak:create_query"),
+    % lager:debug("Entry nebula2_riak:create_query"),
     Parts = string:tokens(Path, "/"),
-    lager:debug("Path: ~p Parts: ~p", [Path, Parts]),
+    % lager:debug("Path: ~p Parts: ~p", [Path, Parts]),
     ParentURI = nebula2_utils:get_parent_uri(Parts),
-    lager:debug("ParentURI: ~p", [ParentURI]),
+    % lager:debug("ParentURI: ~p", [ParentURI]),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
-    lager:debug("ObjectName: ~p", [ObjectName]),
+    % lager:debug("ObjectName: ~p", [ObjectName]),
     Method = maps:get(<<"method">>, EnvMap),
     ObjectType = case Method of
                      <<"GET">> ->
@@ -192,14 +210,14 @@ create_query(ObjectName, _, _, _) when ObjectName == "";
                                        ObjectName == "/"; 
                                        ObjectName == <<"">>; 
                                        ObjectName == <<"/">> ->
-    lager:debug("Entry nebula2_riak:create_query"),
+    % lager:debug("Entry nebula2_riak:create_query"),
     "objectName:\\/";
 create_query(ObjectName, ContentType, ParentURI, _) when ContentType =:= <<?CONTENT_TYPE_CDMI_CAPABILITY>>; 
                                                          ContentType =:= <<"*/*">> ->
-    lager:debug("Entry create_query: capability object"),
+    % lager:debug("Entry create_query: capability object"),
     "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
-create_query(ObjectName, ContentType, ParentURI, EnvMap) ->
-    lager:debug("Entry create_query: ~p", [ContentType]),
+create_query(ObjectName, _ContentType, ParentURI, EnvMap) ->
+    % lager:debug("Entry create_query: ~p", [ContentType]),
     DomainURI = maps:get(<<"domainURI">>, EnvMap),
     "domainURI:\\" ++ DomainURI ++ " AND parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName.
     
@@ -208,20 +226,20 @@ create_query(ObjectName, ContentType, ParentURI, EnvMap) ->
                                   search_predicate()  %% URI.
                                  ) -> {error, 404|500} |{ok, string()}.
 execute_search(Pid, Query) ->
-    lager:debug("Entry nebula2_riak:execute_search"),
+    % lager:debug("Entry nebula2_riak:execute_search"),
     Index = list_to_binary(?CDMI_INDEX),
-    lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
+    % lager:debug("Query: ~p Index: ~p", [Query, ?CDMI_INDEX]),
     {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
     Response = case Results#search_results.num_found of
                     0 ->
-                        lager:debug("search found zero results"),
+                        % lager:debug("search found zero results"),
                         {error, 404}; %% Return 404
                     1 ->
                         [{_, Doc}] = Results#search_results.docs,
-                        lager:debug("search found one result: ~p", [Doc]),
+                        % lager:debug("search found one result: ~p", [Doc]),
                         fetch(Pid, Doc);
-                    N ->
-                        lager:debug("search returned ~p results", [N]),
+                    _N ->
+                        % lager:debug("search returned ~p results", [_N]),
                         {error, 500} %% Something's funky - return 500
     end,
     Response.
@@ -230,25 +248,9 @@ execute_search(Pid, Query) ->
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, string()}.
 fetch(Pid, Data) ->
     lager:debug("Entry nebula2_riak:fetch: fetching key: ~p", [Data]),
-    ObjectId = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
-    Response = case nebula2_riak:get(Pid, ObjectId) of
-                   {ok, Data} ->
-                       {ok, _R} = mcd:set(?MEMCACHE, ObjectId, {ok, Data}, ?MEMCACHE_EXPIRY),
-                       {ok, Data};
-                   Other ->
-                       Other
-               end,
+    Oid = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
+    Response = nebula2_riak:get(Pid, Oid),
     Response.
-
-%% Raw riak get.
--spec raw_get(pid(), object_oid()) -> {ok, riakc_obj()} | {error, term()}.
-raw_get(Pid, Oid) ->
-    %% TODO: check memcached for the object.
-    lager:debug("Entry nebula2_riak:raw_get"),
-    riakc_pb_socket:get(Pid,
-                        {list_to_binary(?BUCKET_TYPE),
-                         list_to_binary(?BUCKET_NAME)},
-                        list_to_binary(Oid)).
 
 %% ====================================================================
 %% eunit tests

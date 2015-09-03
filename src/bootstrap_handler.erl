@@ -29,7 +29,7 @@
         ]).
 
 init(_, _Req, _Opts) ->
-    lager:debug("bootstrap initing..."),
+    % lager:debug("bootstrap initing..."),
     {upgrade, protocol, cowboy_rest}.
 
 %% Bootstrap can only PUT new objects.
@@ -54,15 +54,15 @@ from_cdmi_domain(Req, State) ->
 from_cdmi_object(Req, State) ->
     {Pid, _EnvMap} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
-    lager:debug("bootstrap: from_cdmi_object: Body: ~p", [Body]),
+    % lager:debug("bootstrap: from_cdmi_object: Body: ~p", [Body]),
     Data = jsx:decode(Body, [return_maps]),
     Oid = nebula2_utils:make_key(),
-    lager:debug("bootstrap: from_cdmi_object: Oid: ~p", [Oid]),
+    % lager:debug("bootstrap: from_cdmi_object: Oid: ~p", [Oid]),
     Data2 = maps:put(<<"objectID">>, list_to_binary(Oid), Data),
     ParentID = maps:get(<<"parentID">>, Data2, <<"">>),
-    lager:debug("bootstrap: parentID: ~p", [ParentID]),
+    % lager:debug("bootstrap: parentID: ~p", [ParentID]),
     {Path, Req3} = cowboy_req:path(Req2),
-    lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
+    % lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
     ObjectType = maps:get(<<"objectType">>, Data2),
     ObjectName = maps:get(<<"objectName">>, Data2),
     {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
@@ -84,7 +84,7 @@ known_methods(Req, State) ->
     {[<<"PUT">>], Req, State}.
 
 resource_exists(Req, State) ->
-    lager:debug("bootstrap: resource_exists:"),
+    % lager:debug("bootstrap: resource_exists:"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     Response = case nebula2_riak:search(Path, State) of

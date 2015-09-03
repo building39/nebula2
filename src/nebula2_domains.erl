@@ -21,7 +21,7 @@
 %% @doc Delete a CDMI domain
 -spec nebula2_domains:delete_domain(cowboy_req:req(), {pid(), map()}) -> ok | {error, term()}.
 delete_domain(Req, State) ->
-    lager:debug("Entry nebula2_domains:delete_domain"),
+    % lager:debug("Entry nebula2_domains:delete_domain"),
     {Pid, EnvMap} = State,
     Data = maps:get(<<"object_map">>, EnvMap),
     Oid = maps:get(<<"objectID">>, Data),
@@ -31,7 +31,7 @@ delete_domain(Req, State) ->
 -spec nebula2_domains:new_domain(Req, State) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 new_domain(Req, State) ->
-    lager:debug("Entry nebula2_domains:new_domain"),
+    % lager:debug("Entry nebula2_domains:new_domain"),
     {_Pid, EnvMap} = State,
     DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
@@ -39,9 +39,9 @@ new_domain(Req, State) ->
 
 %% @doc Update a CDMI domain
 -spec nebula2_domains:update_domain(pid(), object_oid(), map()) -> {ok, json_value()}.
-update_domain(Pid, ObjectId, Data) ->
-    lager:debug("Entry nebula2_domains:update_domain"),
-    lager:debug("nebula2_domains:update_domain: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
+update_domain(_Pid, _ObjectId, Data) ->
+    % lager:debug("Entry nebula2_domains:update_domain"),
+    % lager:debug("nebula2_domains:update_domain: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
     {ok, NewData}.
 
@@ -49,10 +49,10 @@ update_domain(Pid, ObjectId, Data) ->
 %% Internal functions
 %% ====================================================================
 handle_delete(ok, Req, State) ->
-    lager:debug("Entry nebula2_domains:handle_delete - delete succeeded"),
+    % lager:debug("Entry nebula2_domains:handle_delete - delete succeeded"),
     {true, Req, State};
-handle_delete({error, Error}, Req, State) ->
-    lager:debug("Entry nebula2_domains:handle_delete - delete failed reason: ~p", [Error]),
+handle_delete({error, _Error}, Req, State) ->
+    % lager:debug("Entry nebula2_domains:handle_delete - delete failed reason: ~p", [Error]),
     {false, Req, State}.
 
 %% ====================================================================

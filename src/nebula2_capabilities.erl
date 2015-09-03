@@ -28,6 +28,7 @@
 %% @doc Get a CDMI capability
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
 get_capability(Pid, Oid) ->
+    lager:debug("Entry"),
     {ok, Data} = nebula2_riak:get(Pid, Oid),
     Data.
 
@@ -38,14 +39,14 @@ new_capability(Req, State) ->
     Oid = nebula2_utils:make_key(),
     {Pid, EnvMap} = State,
     {Path, _} = cowboy_req:path_info(Req),
-    lager:debug("Capability Path is ~p" , [Path]),
+    % lager:debug("Capability Path is ~p" , [Path]),
     ObjectName = case Path of
                     [] ->
                         "/";
                     U  -> 
                         "/" ++ build_path(U)
                  end,
-    lager:debug("ObjectName is ~p", [ObjectName]),
+    % lager:debug("ObjectName is ~p", [ObjectName]),
     {ok, Body, Req2} = cowboy_req:body(Req),
     Data = jsx:decode(Body, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
@@ -55,9 +56,9 @@ new_capability(Req, State) ->
             {false, Req2, State};
         ParentUri ->
             ParentId = nebula2_utils:get_object_oid(State),
-            lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
-            lager:debug("                        Container Name: ~p", [ObjectName]),
-            lager:debug("                        OID: ~p", Oid),
+            % lager:debug("Creating new capability. ParentUri: ~p ParentId: ~p", [ParentUri, ParentId]),
+            % lager:debug("                        Container Name: ~p", [ObjectName]),
+            % lager:debug("                        OID: ~p", Oid),
             Data2 = maps:from_list([{<<"capabilities">>, Data},
                      {<<"objectType">>, list_to_binary(ObjectType)},
                      {<<"objectID">>, list_to_binary(Oid)},
@@ -74,8 +75,8 @@ new_capability(Req, State) ->
 
 %% @doc Update a CDMI capability
 -spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {ok, json_value()}.
-update_capability(Pid, ObjectId, Data) ->
-    lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
+update_capability(_Pid, _ObjectId, Data) ->
+    % lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
     {ok, NewData}.
 
