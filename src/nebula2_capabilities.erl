@@ -33,8 +33,7 @@ get_capability(Pid, Oid) ->
     Data.
 
 %% @doc Create a new CDMI capability
--spec nebula2_capabilities:new_capability(Req, State) -> {boolean(), Req, State}
-        when Req::cowboy_req:req().
+-spec nebula2_capabilities:new_capability(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_capability(Req, State) ->
     Oid = nebula2_utils:make_key(),
     {Pid, EnvMap} = State,
