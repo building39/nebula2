@@ -25,7 +25,6 @@
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_binary(Oid) ->
-    ?LOG_ENTRY,
     delete(Pid, binary_to_list(Oid));
 delete(Pid, Oid) ->
     mcd:delete(?MEMCACHE, Oid),
@@ -37,7 +36,6 @@ delete(Pid, Oid) ->
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
 get(Pid, Oid) when is_binary(Oid) ->
-    ?LOG_ENTRY,
     get(Pid, binary_to_list(Oid));
 get(Pid, Oid) ->
     case mcd:get(?MEMCACHE, Oid) of
@@ -60,7 +58,6 @@ get(Pid, Oid) ->
 %% @doc Get the domain maps.
 -spec nebula2_riak:get_domain_maps(pid()) -> list().
 get_domain_maps(Pid) ->
-    ?LOG_ENTRY,
     case execute_search(Pid, ?DOMAIN_MAPS_QUERY) of
         {ok, Result} ->
             maps:get(<<"value">>, Result);
@@ -71,7 +68,6 @@ get_domain_maps(Pid) ->
 %% @doc Ping the riak cluster.
 -spec nebula2_riak:ping(pid()) -> boolean().
 ping(Pid) ->
-    ?LOG_ENTRY,
     case riakc_pb_socket:ping(Pid) of
         pong -> % lager:debug("Connected to Riak..."),
                 true;
@@ -86,15 +82,12 @@ ping(Pid) ->
                       map()           %% Data to store
                      ) -> {'error', _} | {'ok', _}.
 put(Pid, _ObjectName, Oid, Data) ->
-    ?LOG_ENTRY,
     do_put(Pid, Oid, Data).
 
 -spec nebula2_riak:do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
 do_put(Pid, Oid, Data) when is_binary(Oid) ->
-    ?LOG_ENTRY,
     do_put(Pid, binary_to_list(Oid), Data);
 do_put(Pid, Oid, Data) ->
-    ?LOG_ENTRY,
     % lager:debug("nebula2_riak:do_put Data is ~p", [Data]),
     Json = jsx:encode(Data),
     % lager:debug("nebula2_riak:do_put JSON is ~p", [Json]),
@@ -114,7 +107,6 @@ do_put(Pid, Oid, Data) ->
 %% @doc Search an index for objects.
 -spec nebula2_riak:search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
 search(Path, State) ->
-    ?LOG_ENTRY,
     {Pid, EnvMap} = State,
     Query = create_query(Path, EnvMap),
     % lager:debug("Query: ~p", [Query]),
@@ -123,7 +115,6 @@ search(Path, State) ->
 %% @doc Search an index for objects, but don't search on domainUri
 -spec nebula2_riak:search(string(), cdmi_state(), nodomain) -> {error, 404|500}|{ok, map()}.
 search(_Path, State, nodomain) ->
-    ?LOG_ENTRY,
     {Pid, EnvMap} = State,
     ParentURI = maps:get(<<"parentURI">>, EnvMap),
     ObjectName = maps:get(<<"objectName">>, EnvMap),
@@ -137,10 +128,8 @@ search(_Path, State, nodomain) ->
                           map()              %% Data to store
                          ) -> ok | {error, term()}.
 update(Pid, Oid, Data) when is_binary(Oid) ->
-    ?LOG_ENTRY,
     update(Pid, binary_to_list(Oid), Data);
 update(Pid, Oid, Data) ->
-    ?LOG_ENTRY,
     % lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
     case get(Pid, Oid) of
         {error, E} ->
@@ -163,7 +152,6 @@ update(Pid, Oid, Data) ->
 %% @doc Create a search key.
 -spec nebula2_riak:create_query(string(), map()) -> string().
 create_query(Path, EnvMap) ->
-    ?LOG_ENTRY,
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Parts),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
@@ -186,14 +174,11 @@ create_query(ObjectName, _, _, _) when ObjectName == "";
                                        ObjectName == "/"; 
                                        ObjectName == <<"">>; 
                                        ObjectName == <<"/">> ->
-    ?LOG_ENTRY,
     "objectName:\\/";
 create_query(ObjectName, ContentType, ParentURI, _) when ContentType =:= <<?CONTENT_TYPE_CDMI_CAPABILITY>>; 
                                                          ContentType =:= <<"*/*">> ->
-    ?LOG_ENTRY,
     "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
 create_query(ObjectName, _ContentType, ParentURI, EnvMap) ->
-    ?LOG_ENTRY,
     DomainURI = maps:get(<<"domainURI">>, EnvMap),
     "domainURI:\\" ++ DomainURI ++ " AND parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName.
     
@@ -202,7 +187,6 @@ create_query(ObjectName, _ContentType, ParentURI, EnvMap) ->
                                   search_predicate()  %% URI.
                                  ) -> {error, 404|500} |{ok, map()}.
 execute_search(Pid, Query) ->
-    ?LOG_ENTRY,
     lager:debug("Query: ~p", [Query]),
     Index = list_to_binary(?CDMI_INDEX),
     {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
@@ -220,7 +204,6 @@ execute_search(Pid, Query) ->
 %% @doc Fetch document.
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, map()}.
 fetch(Pid, Data) ->
-    ?LOG_ENTRY,
     Oid = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
     Response = nebula2_riak:get(Pid, Oid),
     Response.

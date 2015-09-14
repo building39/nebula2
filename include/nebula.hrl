@@ -23,10 +23,6 @@
 -type search_predicate() :: nonempty_string().
 -type cdmi_state()       :: {pid(), map()}.
 
-%% Debug macros
--define(LOG_ENTRY, lager:debug("Entry")).
--define(LOG_EXIT, lager:debug("Exit")).
-
 %% Miscellaneous macros
 -define(DEFAULT_ADMINISTRATOR, "administrator").
 -define(DEFAULT_LOCATION, "US-TX").

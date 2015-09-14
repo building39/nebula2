@@ -21,14 +21,12 @@
 %% @doc Get a CDMI dataobject
 -spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> {ok, json_value()}.
 get_dataobject(Pid, Oid) ->
-    ?LOG_ENTRY,
     {ok, Data} = nebula2_riak:get(Pid, Oid),
     Data.
 
 %% @doc Create a new CDMI dataobject
 -spec nebula2_dataobjects:new_dataobject(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_dataobject(Req, State) ->
-    ?LOG_ENTRY,
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     DomainName = "fake domain",
     nebula2_utils:create_object(Req, State, ObjectType, DomainName).
@@ -36,7 +34,6 @@ new_dataobject(Req, State) ->
 %% @doc Update a CDMI dataobject
 -spec nebula2_dataobjects:update_dataobject(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_dataobject(Pid, Oid, NewData) ->
-    ?LOG_ENTRY,
     {ok, OldData} = nebula2_riak:get(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),

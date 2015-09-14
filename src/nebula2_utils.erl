@@ -31,7 +31,6 @@
 %% @doc Check if a string begins with a certain substring.
 -spec nebula2_utils:beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
-    ?LOG_ENTRY,
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -41,7 +40,6 @@ beginswith(Str, Substr) ->
 -spec nebula2_utils:create_object(map(), State, object_type(), list()) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
 create_object(Body, State, ObjectType, DomainName) ->
-    ?LOG_ENTRY,
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
@@ -112,7 +110,6 @@ handle_delete(Pid, Data, State, [Child | Tail]) ->
 %% @doc Delete a child from its parent
 -spec delete_child_from_parent(object_oid(), string(), string(), pid()) -> ok | {error, term()}.
 delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
-    ?LOG_ENTRY,
     N = case length(string:tokens(Path, "/")) of
             0 ->
                 "";
@@ -149,7 +146,6 @@ delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
 %% @doc Extract the Parent URI from the path.
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
-    ?LOG_ENTRY,
     extract_parentURI(Path, "") ++ "/".
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
@@ -164,7 +160,6 @@ extract_parentURI([H|T], Acc) ->
 %% @doc Get the object name.
 -spec get_object_name(list(), string()) -> string().
 get_object_name(Parts, Path) ->
-    ?LOG_ENTRY,
     case Parts of
         [] ->
             "/";
@@ -179,14 +174,12 @@ get_object_name(Parts, Path) ->
 %% @doc Get the object's oid.
 -spec nebula2_utils:get_object_oid(map()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(State) ->
-    ?LOG_ENTRY,
     {_, Path} = State,
     get_object_oid(Path, State).
 
 %% @doc Get the object's oid.
 -spec nebula2_utils:get_object_oid(string(), tuple()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) ->
-    ?LOG_ENTRY,
     Oid = case nebula2_riak:search(Path, State) of
             {error,_} -> 
                 {notfound, ""};
@@ -201,7 +194,6 @@ get_object_oid(Path, State) ->
 %% @doc Construct the object's parent URI.
 -spec get_parent_uri(list()) -> string().
 get_parent_uri(Parts) ->
-    ?LOG_ENTRY,
     ParentUri = case length(Parts) of
                     0 ->
                         "";     %% Root has no parent
@@ -216,7 +208,6 @@ get_parent_uri(Parts) ->
 %% @doc Return current time in ISO 8601:2004 extended representation.
 -spec nebula2_utils:get_time() -> string().
 get_time() ->
-    ?LOG_ENTRY,
     {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
@@ -224,7 +215,6 @@ get_time() ->
 %% Get the content type for the request
 -spec handle_content_type({pid(),map()}) -> string().
 handle_content_type(State) ->
-    ?LOG_ENTRY,
     {_, EnvMap} = State,
     case maps:get(<<"content-type">>, EnvMap, "") of
         "" ->
@@ -238,7 +228,6 @@ handle_content_type(State) ->
 %% @doc Make a primary key for storing a new object.
 -spec nebula2_utils:make_key() -> object_oid().
 make_key() ->
-    ?LOG_ENTRY,
     Uid = re:replace(uuid:to_string(uuid:uuid4()), "-", "", [global, {return, list}]),
     Temp = Uid ++ ?OID_SUFFIX ++ "0000",
     Crc = integer_to_list(crc16:crc16(Temp), 16),
@@ -248,10 +237,8 @@ make_key() ->
 -spec update_parent(object_oid(), string(), string(), pid()) -> ok | {error, term()}.
 update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     %% Must be the root, since there is no parent.
-    ?LOG_ENTRY,
     ok;
 update_parent(ParentId, Path, ObjectType, Pid) ->
-    ?LOG_ENTRY,
     % lager:debug("Entry nebula2_utils:update_parent: ~p ~p ~p ~p", [ParentId, Path, ObjectType, Pid]),
     N = case length(string:tokens(Path, "/")) of
             0 ->
@@ -302,7 +289,6 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
 %% Internal functions
 %% ====================================================================
 get_capability_uri(ObjectType) ->
-    ?LOG_ENTRY,
     case ObjectType of
         ?CONTENT_TYPE_CDMI_CAPABILITY ->
             ?DOMAIN_SUMMARY_CAPABILITY_URI;
@@ -327,10 +313,8 @@ path_to_list([H|T], Acc) ->
     path_to_list(T, Acc2).
 
 sanitize_body([], Body) ->
-    ?LOG_ENTRY,
     Body;
 sanitize_body([H|T], Body) ->
-    ?LOG_ENTRY,
     sanitize_body(T, maps:remove(H, Body)).
 
 %% ====================================================================
