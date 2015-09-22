@@ -24,6 +24,7 @@
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
 -spec nebula2_domains:delete_domain(cowboy_req:req(), cdmi_state()) -> ok | {error, term()}.
 delete_domain(Req, State) ->
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     Data = nebula2_riak:search(Path, State),
@@ -45,6 +46,7 @@ delete_domain(Req, State) ->
 %% @doc Create a new CDMI domain
 -spec nebula2_domains:new_domain(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_domain(Req, State) ->
+    lager:debug("Entry"),
     {_Pid, EnvMap} = State,
     DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
@@ -62,6 +64,7 @@ new_domain(Req, State) ->
 %% @doc Update a CDMI domain
 -spec nebula2_domains:update_domain(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_domain(_Pid, _ObjectId, Data) ->
+    lager:debug("Entry"),
     NewData = Data,
     {ok, NewData}.
 
@@ -69,8 +72,10 @@ update_domain(_Pid, _ObjectId, Data) ->
 %% Internal functions
 %% ====================================================================
 handle_delete(ok, Req, State) ->
+    lager:debug("Entry"),
     {true, Req, State};
 handle_delete({error, _Error}, Req, State) ->
+    lager:debug("Entry"),
     {false, Req, State}.
 
 %% ====================================================================

@@ -35,6 +35,7 @@ get_capability(Pid, Oid) ->
 %% @doc Create a new CDMI capability
 -spec nebula2_capabilities:new_capability(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_capability(Req, State) ->
+    lager:debug("Entry"),
     Oid = nebula2_utils:make_key(),
     {Pid, EnvMap} = State,
     {Path, _} = cowboy_req:path_info(Req),
@@ -75,6 +76,7 @@ new_capability(Req, State) ->
 %% @doc Update a CDMI capability
 -spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_capability(_Pid, _ObjectId, Data) ->
+    lager:debug("Entry"),
     % lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
     {ok, NewData}.
@@ -83,6 +85,7 @@ update_capability(_Pid, _ObjectId, Data) ->
 %% Internal functions
 %% ====================================================================
 build_path(L) ->
+    lager:debug("Entry"),
     build_path(L, []).
 build_path([], Acc) ->
     Acc;

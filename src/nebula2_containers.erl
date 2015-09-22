@@ -21,6 +21,7 @@
 -spec nebula2_containers:new_container(Req, cdmi_state()) -> {boolean(), Req, cdmi_state()}
         when Req::cowboy_req:req().
 new_container(Req, State) ->
+    lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     DomainName = "fake domain",
     nebula2_utils:create_object(Req, State, ObjectType, DomainName).
@@ -28,6 +29,7 @@ new_container(Req, State) ->
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_container(Pid, Oid, NewData) ->
+    lager:debug("Entry"),
     {ok, OldData} = nebula2_riak:get(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
