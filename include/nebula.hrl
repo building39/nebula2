@@ -29,7 +29,6 @@
 -define(CDMI_VERSION, "1.1").
 -define(FUZZCAT_SNMP_NUMBER, "045241").
 -define(HEX_REGEXP, "[0-9a-f]*").
--define(OID_LENGTH, 48).
 -define(OID_SUFFIX, "00" ++ ?FUZZCAT_SNMP_NUMBER ++ "0048").
 -define(UUID_LENGTH, 32).
 
