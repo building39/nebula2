@@ -23,8 +23,7 @@
 new_container(Req, State) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
-    DomainName = "fake domain",
-    Response = case nebula2_utils:create_object(Req, State, ObjectType, DomainName) of
+    Response = case nebula2_utils:create_object(Req, State, ObjectType) of
                    {true, Req2, Data} ->
                        {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
                    false ->

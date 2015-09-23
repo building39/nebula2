@@ -291,14 +291,17 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
 
 -spec nebula2_utils:create_object(cowboy_req:req(), State, object_type(), string(), string()) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
+create_object(Req, State, ObjectType, DomainName, Parent) when is_list(DomainName)->
+    D = list_to_binary(DomainName),
+    create_object(Req, State, ObjectType, D, Parent);
 create_object(Req, State, ObjectType, DomainName, Parent) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
-    ParentId = list_to_binary(maps:get(<<"parentID">>, Parent)),
+    lager:debug("DomainName: ~p", [DomainName]),
+    ParentId = maps:get(<<"parentID">>, Parent),
     ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
-    lager:debug("Parent Metadata: ~p", [ParentMetadata]),
     {ok, B, Req2} = cowboy_req:body(Req),
     Body = jsx:decode(B, [return_maps]),
     Parts = string:tokens(Path, "/"),
@@ -333,7 +336,7 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                                        {<<"parentID">>, ParentId},
                                        {<<"parentURI">>, list_to_binary(ParentUri)},
                                        {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
-                                       {<<"domainURI">>, list_to_binary(DomainName)},
+                                       {<<"domainURI">>, DomainName},
                                        {<<"completionStatus">>, <<"Complete">>}]),
                       Data),
     Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
@@ -354,19 +357,6 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI
     end.
-
-%%path_to_list(Path) ->
-%%     lager:debug("Entry"),
-%%    path_to_list(Path, []).
-
-%%path_to_list([], Acc) ->
-%%    Acc;
-%%path_to_list([H|T], Acc) when is_binary(H)->
-%%    Acc2 = [Acc, binary_to_list(H)],
-%%    path_to_list(T, Acc2);
-%%path_to_list([H|T], Acc) ->
-%%    Acc2 = [Acc, H],
-%%    path_to_list(T, Acc2).
 
 sanitize_body([], Body) ->
     Body;
