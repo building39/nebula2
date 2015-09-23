@@ -14,6 +14,7 @@
 %% ====================================================================
 -export([
          beginswith/2,
+         create_object/3,
          create_object/4,
          delete/2,
          delete_child_from_parent/4,
@@ -38,61 +39,35 @@ beginswith(Str, Substr) ->
     end.
 
 %% @doc Create a CDMI object
--spec nebula2_utils:create_object(cowboy_req:req(), State, object_type(), list()) -> {boolean(), Req, State}
+-spec nebula2_utils:create_object(cowboy_req:req(), State, object_type()) -> {boolean(), Req, State}
         when Req::cowboy_req:req().
-create_object(Req, State, ObjectType, DomainName) ->
+create_object(Req, State, ObjectType) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
     case nebula2_utils:get_object_oid(ParentUri, State) of
         {ok, ParentId} ->
             {ok, Parent} = nebula2_riak:get(Pid, ParentId),
-            ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
-            lager:debug("Parent Metadata: ~p", [ParentMetadata]),
-            {ok, B, Req2} = cowboy_req:body(Req),
-            Body = jsx:decode(B, [return_maps]),
-            Parts = string:tokens(Path, "/"),
-            ObjectName = string:concat(lists:last(Parts), "/"),
-            Data = sanitize_body([<<"objectID">>,
-                                  <<"objectName">>,
-                                  <<"parentID">>,
-                                  <<"parentURI">>,
-                                  <<"completionStatus">>],
-                                 Body),
-            Oid = nebula2_utils:make_key(),
-            Location = list_to_binary(nebula2_app:cdmi_location()),
-            Tstamp = list_to_binary(nebula2_utils:get_time()),
-            Owner = maps:get(<<"auth_as">>, EnvMap, ""),
-            NewMetadata = maps:from_list([{<<"cdmi_atime">>, Tstamp},
-                                          {<<"cdmi_ctime">>, Tstamp},
-                                          {<<"cdmi_mtime">>, Tstamp},
-                                          {<<"nebula_data_location">>, [Location]},
-                                          {<<"cdmi_owner">>, Owner}
-                                         ]),
-            OldMetadata = maps:get(<<"metadata">>, Body, maps:new()),
-            Metadata2 = maps:merge(OldMetadata, NewMetadata),
-            Metadata3 = maps:merge(ParentMetadata, Metadata2),
-            lager:debug("Merged Metadata: ~p", [Metadata2]),
-            CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
-                                none ->   get_capability_uri(ObjectType);
-                                Curi ->   Curi
-                              end,
-            Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
-                                               {<<"objectID">>, list_to_binary(Oid)},
-                                               {<<"objectName">>, list_to_binary(ObjectName)},
-                                               {<<"parentID">>, ParentId},
-                                               {<<"parentURI">>, list_to_binary(ParentUri)},
-                                               {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
-                                               {<<"domainURI">>, list_to_binary(DomainName)},
-                                               {<<"completionStatus">>, <<"Complete">>}]),
-                               Data),
-            Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
-            {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data3),
-            ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
+            DomainName = maps:get(<<"domainURI">>, Parent, ""),
+            create_object(Req, State, ObjectType, DomainName, Parent);
+        {notfound, _} ->
+            % lager:debug("create_object: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
-            {true, Req2, Data3};
+            false
+    end.
+
+-spec nebula2_utils:create_object(cowboy_req:req(), State, object_type(), map()) -> {boolean(), Req, State}
+        when Req::cowboy_req:req().
+create_object(Req, State, ObjectType, DomainName) ->
+    lager:debug("Entry"),
+    {Pid, EnvMap} = State,
+    Path = maps:get(<<"path">>, EnvMap),
+    ParentUri = nebula2_utils:get_parent_uri(Path),
+    case nebula2_utils:get_object_oid(ParentUri, State) of
+        {ok, ParentId} ->
+            {ok, Parent} = nebula2_riak:get(Pid, ParentId),
+            create_object(Req, State, ObjectType, DomainName, Parent);
         {notfound, _} ->
             % lager:debug("create_object: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
@@ -313,6 +288,60 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+-spec nebula2_utils:create_object(cowboy_req:req(), State, object_type(), string(), string()) -> {boolean(), Req, State}
+        when Req::cowboy_req:req().
+create_object(Req, State, ObjectType, DomainName, Parent) ->
+    lager:debug("Entry"),
+    {Pid, EnvMap} = State,
+    Path = maps:get(<<"path">>, EnvMap),
+    ParentUri = nebula2_utils:get_parent_uri(Path),
+    ParentId = list_to_binary(maps:get(<<"parentID">>, Parent)),
+    ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
+    lager:debug("Parent Metadata: ~p", [ParentMetadata]),
+    {ok, B, Req2} = cowboy_req:body(Req),
+    Body = jsx:decode(B, [return_maps]),
+    Parts = string:tokens(Path, "/"),
+    ObjectName = string:concat(lists:last(Parts), "/"),
+    Data = sanitize_body([<<"objectID">>,
+                          <<"objectName">>,
+                          <<"parentID">>,
+                          <<"parentURI">>,
+                          <<"completionStatus">>],
+                         Body),
+    Oid = nebula2_utils:make_key(),
+    Location = list_to_binary(nebula2_app:cdmi_location()),
+    Tstamp = list_to_binary(nebula2_utils:get_time()),
+    Owner = maps:get(<<"auth_as">>, EnvMap, ""),
+    NewMetadata = maps:from_list([{<<"cdmi_atime">>, Tstamp},
+                                  {<<"cdmi_ctime">>, Tstamp},
+                                  {<<"cdmi_mtime">>, Tstamp},
+                                  {<<"nebula_data_location">>, [Location]},
+                                  {<<"cdmi_owner">>, Owner}
+                                 ]),
+    OldMetadata = maps:get(<<"metadata">>, Body, maps:new()),
+    Metadata2 = maps:merge(OldMetadata, NewMetadata),
+    Metadata3 = maps:merge(ParentMetadata, Metadata2),
+    lager:debug("Merged Metadata: ~p", [Metadata2]),
+    CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
+                        none ->   get_capability_uri(ObjectType);
+                        Curi ->   Curi
+                      end,
+    Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
+                                       {<<"objectID">>, list_to_binary(Oid)},
+                                       {<<"objectName">>, list_to_binary(ObjectName)},
+                                       {<<"parentID">>, ParentId},
+                                       {<<"parentURI">>, list_to_binary(ParentUri)},
+                                       {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
+                                       {<<"domainURI">>, list_to_binary(DomainName)},
+                                       {<<"completionStatus">>, <<"Complete">>}]),
+                      Data),
+    Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
+    {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data3),
+    ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
+    pooler:return_member(riak_pool, Pid),
+    {true, Req2, Data3}.
+
 get_capability_uri(ObjectType) ->
     lager:debug("Entry"),
     case ObjectType of

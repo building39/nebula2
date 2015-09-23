@@ -489,7 +489,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/' % (self.host, int(self.port))
         self.system_domain_summary_oid = self._create(headers, url, doc, acls)
-        for period in ['yearly', 'montly', 'weekly', 'daily']:
+        for period in ['yearly/', 'monthly/', 'weekly/', 'daily/']:
             self._create_system_domain_summary_subcontainer(period)
         
     def _create_system_domain_summary_subcontainer(self, period):
@@ -499,12 +499,12 @@ class Bootstrap(object):
                'completionStatus': 'complete',
                'objectName': period,
                'objectType': OBJECT_TYPE_CONTAINER,
-               'parentURI': '/cdmi_domains/system_domain/summary',
+               'parentURI': '/cdmi_domains/system_domain/cdmi_domain_summary/',
                'parentID': self.system_domain_summary_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/%s' % (self.host, int(self.port), period)
-        self.system_domain_members_oid = self._create(headers, url, doc, acls)
+        self._create(headers, url, doc, acls)
         
     def _create_system_administrator_member(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
