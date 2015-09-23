@@ -31,7 +31,13 @@ new_dataobject(Req, State) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     DomainName = "fake domain",
-    nebula2_utils:create_object(Req, State, ObjectType, DomainName).
+    Response = case nebula2_utils:create_object(Req, State, ObjectType, DomainName) of
+                   {true, Req2, Data} ->
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
+                   false ->
+                       {false, Req, State}
+               end,
+    Response.
 
 %% @doc Update a CDMI dataobject
 -spec nebula2_dataobjects:update_dataobject(pid(), object_oid(), map()) -> {ok, json_value()}.

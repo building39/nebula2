@@ -50,13 +50,11 @@ new_domain(Req, State) ->
     {_Pid, EnvMap} = State,
     DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
-    {ok, B, Req2} = cowboy_req:body(Req),
-    Body = jsx:decode(B, [return_maps]),
-    Response = case nebula2_utils:create_object(Body, State, ObjectType, DomainName) of
-                   {true, Data} ->
+    Response = case nebula2_utils:create_object(Req, State, ObjectType, DomainName) of
+                   {true, Req2, Data} ->
                        {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
                    false ->
-                       {false, Req2, State}
+                       {false, Req, State}
                end,
     Response.
     

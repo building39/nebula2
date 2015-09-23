@@ -38,7 +38,6 @@
          to_cdmi_object/2]).
 
 init(_, _Req, _Opts) ->
-    % lager:debug("initing..."),
     {upgrade, protocol, cowboy_rest}.
 
 rest_init(Req, _State) ->
@@ -60,16 +59,13 @@ rest_init(Req, _State) ->
     Path = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
     Map5 = maps:put(<<"path">>, Path, Map4),
     Map6 = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
-    % lager:debug("domainURI is ~p", [maps:get(<<"domainURI">>, Map6)]),
     Parts = string:tokens(Path, "/"),
-    % lager:debug("Parts: ~p", [Parts]),
-    ParentURI = nebula2_utils:get_parent_uri(Parts),
+    ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
     Map7 = maps:put(<<"parentURI">>, ParentURI, Map6),
     Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    % lager:debug("rest_init: EnvMap: ~p", [Map10]),
     {ok, Req8, {PoolMember, Map10}}.
 
 allowed_methods(Req, State) ->
@@ -134,17 +130,23 @@ from_cdmi_capability(Req, State) ->
 
 from_cdmi_container(Req, State) ->
     lager:debug("Entry"),
-    {Pid, EnvMap} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
-    _Response = case maps:get(<<"exists">>, EnvMap) of
-                    true ->
-                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                        BodyMap = jsx:decode(Body, [return_maps]),
-                        nebula2_containers:update_container(Pid, ObjectId, BodyMap);
-                    false ->
-                        nebula2_containers:new_container(Req2, State)
-               end,
-    {true, Req2, State}.
+    {_, EnvMap} = State,
+    ObjectName = maps:get(<<"objectName">>, EnvMap),
+    LastChar = string:substr(ObjectName, string:len(ObjectName)),
+    case LastChar of
+        "/" ->
+            Response = case maps:get(<<"exists">>, EnvMap) of
+                            true ->
+                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+                                nebula2_containers:update_container(Req, State, ObjectId);
+                            false ->
+                                nebula2_containers:new_container(Req, State)
+                       end,
+            Response;
+        _ ->
+            {ok, Reply} = cowboy_req:reply(400, [], <<"container name must end with '/'\n">>, Req),
+            {halt, Reply, State}
+    end.
 
 from_cdmi_domain(Req, State) ->
     lager:debug("Entry"),
@@ -270,15 +272,12 @@ multiple_choices(Req, State) ->
 previously_existed(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     Path = maps:get(<<"path">>, EnvMap) ++ "/",
     ObjectName = maps:get(<<"objectName">>, EnvMap) ++ "/",
-    lager:debug("ObjectName", [ObjectName]),
     EnvMap2 = maps:update(<<"objectName">>, ObjectName, EnvMap),
     EnvMap3 = maps:update(<<"path">>, Path, EnvMap2),
     State2 = {Pid, EnvMap3},
     {Response, Req3, State3} = resource_exists(Req, State2),
-    lager:debug("Response: ~p", [Response]),
     {Pid, EnvMap4} = State3,
     EnvMap5 = case Response of 
                 true ->
@@ -292,7 +291,6 @@ previously_existed(Req, State) ->
 resource_exists(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("Path: ~p", [maps:get(<<"path">>, EnvMap)]),
     ParentURI = maps:get(<<"parentURI">>, EnvMap),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,
@@ -408,7 +406,6 @@ to_cdmi_object_handler(Req, State, Path, _) ->
 basic(Auth, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
     DomainUri = maps:get(<<"domainURI">>, EnvMap) ++ "cdmi_domain_members/" ++ UserId,
     lager:debug("DomainUri: ~p", [DomainUri]),

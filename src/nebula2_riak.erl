@@ -167,7 +167,7 @@ update(Pid, Oid, Data) ->
 create_query(Path, EnvMap) ->
     lager:debug("Entry"),
     Parts = string:tokens(Path, "/"),
-    ParentURI = nebula2_utils:get_parent_uri(Parts),
+    ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
     Method = maps:get(<<"method">>, EnvMap),
     ObjectType = case Method of
