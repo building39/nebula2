@@ -66,7 +66,7 @@ new_capability(Req, State) ->
                      {<<"parentID">>, list_to_binary(ParentId)},
                      {<<"parentURI">>, list_to_binary(ParentUri)}
                     ]),
-            {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data2),
+            {ok, Oid} = nebula2_riak:put(Pid, Oid, Data2),
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
             Req3 = cowboy_req:set_resp_body(list_to_binary(maps:to_list(Data2)), Req2),

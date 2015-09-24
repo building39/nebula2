@@ -16,7 +16,7 @@
 -export([delete/2,
          get/2,
          get_domain_maps/1,
-         put/4,
+         put/3,
          ping/1,
          search/2,
          search/3,
@@ -82,11 +82,10 @@ ping(Pid) ->
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),
-                      object_name(),  %% Object
                       object_oid(),   %% Oid
                       map()           %% Data to store
                      ) -> {'error', _} | {'ok', _}.
-put(Pid, _ObjectName, Oid, Data) ->
+put(Pid, Oid, Data) ->
     lager:debug("Entry"),
     do_put(Pid, Oid, Data).
 
@@ -124,11 +123,12 @@ search(Path, State) ->
 
 %% @doc Search an index for objects, but don't search on domainUri
 -spec nebula2_riak:search(string(), cdmi_state(), nodomain) -> {error, 404|500}|{ok, map()}.
-search(_Path, State, nodomain) ->
+search(Path, State, nodomain) ->
     lager:debug("Entry"),
-    {Pid, EnvMap} = State,
-    ParentURI = maps:get(<<"parentURI">>, EnvMap),
-    ObjectName = maps:get(<<"objectName">>, EnvMap),
+    {Pid, _} = State,
+    Parts = string:tokens(Path, "/"),
+    ParentURI = nebula2_utils:get_parent_uri(Path),
+    ObjectName = nebula2_utils:get_object_name(Parts, Path),
     Query = "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName,
     Result =  execute_search(Pid, Query),
     Result.

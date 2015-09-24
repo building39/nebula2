@@ -342,7 +342,7 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                                        {<<"completionStatus">>, <<"Complete">>}]),
                       Data),
     Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
-    {ok, Oid} = nebula2_riak:put(Pid, ObjectName, Oid, Data3),
+    {ok, Oid} = nebula2_riak:put(Pid, Oid, Data3),
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
     {true, Req2, Data3}.
