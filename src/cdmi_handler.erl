@@ -316,15 +316,27 @@ resource_exists_handler(ParentUri, Req, State) ->
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     lager:debug("Path: ~p", [Path]),
-    case nebula2_utils:beginswith(ParentUri, "/cdmi_domains/") of
-        true ->
+    TopParent = lists:nth(1, string:tokens(ParentUri, "/")),
+    lager:debug("TopParent: ~p", [TopParent]),
+    case TopParent of
+        "cdmi_domains" ->
+            lager:debug("Looking for a domain..."),
             case nebula2_riak:search(Path, State, nodomain) of
                 {ok, Data} ->
                     {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
                 _ ->
                     {false, Req, State}
             end;
-        false ->
+        "cdmi_capabilities" ->
+            lager:debug("Looking for a capability..."),
+            case nebula2_riak:search(Path, State, nodomain) of
+                {ok, Data} ->
+                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                _ ->
+                    {false, Req, State}
+            end;
+        _Other ->
+            lager:debug("Looking for something else..."),
             case nebula2_riak:search(Path, State) of
                 {ok, Data} ->
                     {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
@@ -391,6 +403,15 @@ to_cdmi_object_handler(Req, State, Path, "/cdmi_domains/") ->
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
     end;
+to_cdmi_object_handler(Req, State, Path, "/cdmi_capabilities/") ->
+    lager:debug("Entry"),
+    case nebula2_riak:search(Path, State, nodomain) of
+        {ok, Map} ->
+            Data = jsx:encode(Map),
+            {Data, Req, State};
+        {error, Status} ->
+            {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
+    end;
 to_cdmi_object_handler(Req, State, Path, _) ->
     lager:debug("Entry"),
     case nebula2_riak:search(Path, State) of
@@ -418,7 +439,6 @@ basic(Auth, State) ->
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
     DomainUri = maps:get(<<"domainURI">>, EnvMap) ++ "cdmi_domain_members/" ++ UserId,
-    lager:debug("DomainUri: ~p", [DomainUri]),
     Result = case nebula2_riak:search(DomainUri, State) of
                  {ok, Json} ->
                      {true, Json};
@@ -487,7 +507,7 @@ map_build_get_data(<<"children">>, Range, Map) ->
     {End, _} = string:to_integer(E),
     Num = End - Start + 1,
     Data = maps:get(<<"children">>, Map, ""),
-    lists:sublist(Data, Start, Num);
+    lists:sublist(Data, (Start+1), Num);
 map_build_get_data(<<"metadata">>, MDField, Map) ->
     lager:debug("MDField: %p", [MDField]),
     MetaData = maps:get(<<"metadata">>, Map, ""),

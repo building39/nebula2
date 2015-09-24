@@ -52,9 +52,9 @@
 -define(CONTENT_TYPE_CDMI_DOMAIN_JSON,     "application/cdmi-domain+json").
 
 %% Capability URIs
--define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container").
--define(DATAOBJECT_CAPABILITY_URI, "/cdmi_capabilities/dataobject").
--define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain").
+-define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/").
+-define(DATAOBJECT_CAPABILITY_URI, "/cdmi_capabilities/dataobject/").
+-define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain/").
 -define(DOMAIN_SUMMARY_CAPABILITY_URI, "/cdmi_capabilities/domain/summary").
 -define(PERMANENT_CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/permanent").
 

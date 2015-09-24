@@ -118,8 +118,8 @@ DEFAULT_CAPABILITIES = {
 CONTAINER_CAPABILITIES = {
     "cdmi_acl": "true",
     "cdmi_atime": "true",
-    "cdmi_copy_container": "true",
-    "cdmi_copy_dataobject": "true",
+#    "cdmi_copy_container": "true",
+#    "cdmi_copy_dataobject": "true",
     "cdmi_create_container": "true",
     "cdmi_create_databoject": "true",
     "cdmi_ctime": "true",
@@ -128,12 +128,12 @@ CONTAINER_CAPABILITIES = {
     "cdmi_list_children": "true",
     "cdmi_list_children_range": "true",
     "cdmi_modify_metadata": "true",
-    "cdmi_move_container": "true",
-    "cdmi_move_dataobject": "true",
+#    "cdmi_move_container": "true",
+#    "cdmi_move_dataobject": "true",
     "cdmi_mtime": "true",
     "cdmi_read_metadata": "true",
     "cdmi_size": "true",
-    "cdmi_versioning": "all"
+#    "cdmi_versioning": "all"
 }
 
 DATAOBJECT_CAPABILITIES = {
