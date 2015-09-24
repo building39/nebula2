@@ -396,8 +396,12 @@ to_cdmi_object_handler(Req, State, Path, _) ->
     case nebula2_riak:search(Path, State) of
         {ok, Map} ->
             {_, EnvMap} = State,
-            lager:debug("Qs: ~p", [maps:get(<<"qs">>, EnvMap)]),
-            Data = jsx:encode(Map),
+            Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
+            lager:debug("Qs: ~p", [Qs]),
+            Map2 = handle_query_string(Map, Qs),
+            lager:debug("Map: ~p", [Map]),
+            lager:debug("Map2: ~p", [Map2]),
+            Data = jsx:encode(Map2),
             {Data, Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
@@ -425,7 +429,6 @@ basic(Auth, State) ->
         false ->
             {false, ""};
         {true, Data} ->
-            lager:debug("Data is ~p", [Data]),
             Value = maps:get(<<"value">>, Data),
             VMap = jsx:decode(Value, [return_maps]),
             Creds = binary_to_list(maps:get(<<"cdmi_member_credentials">>, VMap)),
@@ -449,6 +452,48 @@ get_domain(Maps, HostUrl) ->
     {ok, UrlParts} = http_uri:parse(HostUrl),
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
+
+%% @doc Handle query string
+-spec handle_query_string(map(), term()) -> map().
+handle_query_string(Data, <<>>) ->
+    Data;
+handle_query_string(Data, []) ->
+    Data;
+handle_query_string(Data, Qs) ->
+    Parameters = string:tokens(Qs, ";"),
+    lager:debug("Parameters: ~p", [Parameters]),
+    map_build(Parameters, Data, maps:new()).
+
+%% @doc Build the output data based on the query string.
+-spec map_build(list(), map(), map()) -> map().
+map_build([], _, NewMap) ->
+    NewMap;
+map_build([H|T], Map, NewMap) ->
+    QueryItem = string:tokens(H, ":"),
+    FieldName = list_to_binary(lists:nth(1, QueryItem)),
+    Data = case length(QueryItem) of
+               1 ->
+                   maps:get(FieldName, Map, "");
+               2 ->
+                   lager:debug("FieldName: ~p", [FieldName]),
+                   map_build_get_data(FieldName, lists:nth(2, QueryItem), Map)
+           end,
+    NewMap2 = maps:put(FieldName, Data, NewMap),
+    map_build(T, Map, NewMap2).
+
+map_build_get_data(<<"children">>, Range, Map) ->
+    [S, E] = string:tokens(Range, "-"),
+    {Start, _} = string:to_integer(S),
+    {End, _} = string:to_integer(E),
+    Num = End - Start + 1,
+    Data = maps:get(<<"children">>, Map, ""),
+    lists:sublist(Data, Start, Num);
+map_build_get_data(<<"metadata">>, MDField, Map) ->
+    lager:debug("MDField: %p", [MDField]),
+    MetaData = maps:get(<<"metadata">>, Map, ""),
+    maps:get(list_to_binary(MDField), MetaData, "");
+map_build_get_data(FieldName, _, Map) ->
+    maps:get(FieldName, Map, "").
 
 %% @doc Map the domain URI
 -spec map_domain_uri(pid(), string()) -> string().
