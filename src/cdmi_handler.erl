@@ -57,7 +57,8 @@ rest_init(Req, _State) ->
     Map4 = maps:put(<<"hosturl">>, HostUrl_S, Map3),
     P = string:tokens(binary_to_list(ReqPath), "/"),
     Path = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
-    Map5 = maps:put(<<"path">>, Path, Map4),
+    Path2 = lists:nth(1, string:tokens(Path, "?")),
+    Map5 = maps:put(<<"path">>, Path2, Map4), %% strip out query string if present
     Map6 = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Path),
@@ -66,7 +67,10 @@ rest_init(Req, _State) ->
     Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
     Map9 = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    {ok, Req8, {PoolMember, Map10}}.
+    {Qs, Req9} = cowboy_req:qs(Req8),
+    Map11 = maps:put(<<"qs">>, Qs, Map10),
+    lager:debug("Qs: ~p", [Qs]),
+    {ok, Req9, {PoolMember, Map11}}.
 
 allowed_methods(Req, State) ->
     lager:debug("Entry"),
@@ -391,6 +395,8 @@ to_cdmi_object_handler(Req, State, Path, _) ->
     lager:debug("Entry"),
     case nebula2_riak:search(Path, State) of
         {ok, Map} ->
+            {_, EnvMap} = State,
+            lager:debug("Qs: ~p", [maps:get(<<"qs">>, EnvMap)]),
             Data = jsx:encode(Map),
             {Data, Req, State};
         {error, Status} ->
