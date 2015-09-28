@@ -81,10 +81,19 @@ rest_init(Req, _State) ->
                         if 
                             KeyExists == true ->        
                                 ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
-                                ParentCapabilities = nebula2_db:search(ParentCapabilitiesURI, {PoolMember, Map11}),
+                                lager:debug("Parent capabilities URI: ~p", [ParentCapabilitiesURI]),
+                                ParentCapabilities = nebula2_db:search(ParentCapabilitiesURI,
+                                                                       {PoolMember, Map11},
+                                                                       nodomain),
                                 lager:debug("Capabilities: ~p", [ParentCapabilities]),
-                                Map13 = maps:put(<<"parent_capabilities">>, ParentCapabilities, Map12),
-                                Map13;
+                                case ParentCapabilities of
+                                    {ok, CapData} ->
+                                        CapMap = maps:get(<<"capabilities">>, CapData, maps:new()),
+                                        Map13 = maps:put(<<"parent_capabilities">>, CapMap, Map12),
+                                        Map13;
+                                    {error, _} ->
+                                        Map12
+                                end;
                             true ->
                                 Map12
                         end;
