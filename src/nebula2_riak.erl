@@ -67,8 +67,7 @@ get(Pid, Oid) ->
                                    list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = riakc_obj:get_value(Object),
-                    Map = jsx:decode(Data, [return_maps]),
-                    {ok, Map};
+                    {ok, Data};
                 {error, Term} ->
                     {error, Term}
     end.
@@ -79,8 +78,8 @@ get_domain_maps(Pid) ->
     lager:debug("Entry"),
     case execute_search(Pid, ?DOMAIN_MAPS_QUERY) of
         {ok, Result} ->
-            lager:debug("Result: ~p", [Result]),
-            maps:get(<<"value">>, Result);
+            Data = jsx:decode(Result, [return_maps]),
+            maps:get(<<"value">>, Data);
         _ ->
             []
     end.
@@ -110,9 +109,7 @@ do_put(Pid, Oid, Data) ->
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
-            lager:debug("setting cache2 with ~p", [Data]),
             mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-            lager:debug("cache set1: ~p", [Data]),
             {ok, Oid};
         {error, Term} ->
             {error, Term}
@@ -162,7 +159,6 @@ update(Pid, Oid, Data) ->
             NewObj = riakc_obj:update_value(Obj, Data),
             Map = jsx:decode(Data, [return_maps]),
             mcd:set(?MEMCACHE, Oid, Map, ?MEMCACHE_EXPIRY),
-            lager:debug("cache set2: ~p", [Map]),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
@@ -174,6 +170,7 @@ update(Pid, Oid, Data) ->
 -spec nebula2_riak:create_query(string(), map()) -> string().
 create_query(Path, EnvMap) ->
     lager:debug("Entry"),
+    lager:debug("Path: ~p", [Path]),
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),

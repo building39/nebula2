@@ -50,7 +50,6 @@ delete(Pid, Oid) ->
 get_domain_maps(Pid) ->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    lager:debug("Mod: ~p", [Mod]),
     Mod:get_domain_maps(Pid).
 
 %% @doc Read an object
@@ -63,15 +62,12 @@ read(Pid, Oid) ->
     lager:debug("Entry"),
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
-            lager:debug("Got Cache hit: ~p", [Data]),
             {ok, Data};
         _ ->
             case Mod:get(Pid, list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = jsx:decode(Object, [return_maps]),
-                    lager:debug("setting cache3 with ~p", [Data]),
                     {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-                    lager:debug("cache set3: ~p", [Data]),
                     {ok, Data};
                 {error, Term} ->
                     {error, Term}
@@ -83,15 +79,24 @@ read(Pid, Oid) ->
 search(Path, State) ->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    Mod:search(Path, State).
+    case Mod:search(Path, State) of
+        {ok, Data} ->
+            {ok, jsx:decode(Data, [return_maps])};
+        Response ->
+            Response
+    end.
 
 %% @doc Search an index for objects, but don't search on domainUri
 -spec search(string(), cdmi_state(), nodomain) -> {error, 404|500}|{ok, map()}.
 search(Path, State, nodomain) ->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    Mod:search(Path, State, nodomain).
-
+    case Mod:search(Path, State, nodomain) of
+        {ok, Data} ->
+            {ok, jsx:decode(Data, [return_maps])};
+        Response ->
+            Response
+    end.
 
 %% @doc Update an object.
 -spec update(pid(),
@@ -107,9 +112,7 @@ update(Pid, Oid, Data) ->
     lager:debug("Entry"),
     case Mod:update(Pid, Oid, jsx:encode(Data)) of
         {ok, _} ->
-            lager:debug("setting cache4 with ~p", [Data]),
             mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-            lager:debug("cache set4: ~p", [Data]),
             ok;
         Failure ->
             Failure

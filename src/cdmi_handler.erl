@@ -70,10 +70,33 @@ rest_init(Req, _State) ->
     {Qs, Req9} = cowboy_req:qs(Req8),
     Map11 = maps:put(<<"qs">>, Qs, Map10),
     lager:debug("Qs: ~p", [Qs]),
-    {ok, Req9, {PoolMember, Map11}}.
+    Parent = nebula2_db:search(ParentURI, {PoolMember, Map11}),
+    lager:debug("Parent: ~p", [Parent]),
+    FinalMap = case Parent of
+                    {ok, Data} ->
+                        ParentID = maps:get(<<"objectID">>, Data),
+                        lager:debug("parentID: ~p", [ParentID]),
+                        Map12 = maps:put(<<"parentID">>, ParentID, Map11),
+                        KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
+                        if 
+                            KeyExists == true ->        
+                                ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
+                                ParentCapabilities = nebula2_db:search(ParentCapabilitiesURI, {PoolMember, Map11}),
+                                lager:debug("Capabilities: ~p", [ParentCapabilities]),
+                                Map13 = maps:put(<<"parent_capabilities">>, ParentCapabilities, Map12),
+                                Map13;
+                            true ->
+                                Map12
+                        end;
+                   {error, _} ->
+                       Map11
+               end,
+    {ok, Req9, {PoolMember, FinalMap}}.
 
 allowed_methods(Req, State) ->
+    {Pid, EnvMap} = State,
     lager:debug("Entry"),
+    lager:debug("Pid: ~p EnvMap: ~p", [Pid, EnvMap]),
     {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
 
 allow_missing_post(Req, State) ->
