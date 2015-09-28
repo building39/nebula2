@@ -305,7 +305,7 @@ resource_exists_handler("/cdmi_objectid/", Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
-    case nebula2_riak:get(Pid, Oid) of
+    case nebula2_db:read(Pid, Oid) of
         {error, _Status} ->
             {false, Req, State};
         {ok, Data} ->
@@ -321,7 +321,7 @@ resource_exists_handler(ParentUri, Req, State) ->
     case TopParent of
         "cdmi_domains" ->
             lager:debug("Looking for a domain..."),
-            case nebula2_riak:search(Path, State, nodomain) of
+            case nebula2_db:search(Path, State, nodomain) of
                 {ok, Data} ->
                     {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
                 _ ->
@@ -329,7 +329,7 @@ resource_exists_handler(ParentUri, Req, State) ->
             end;
         "cdmi_capabilities" ->
             lager:debug("Looking for a capability..."),
-            case nebula2_riak:search(Path, State, nodomain) of
+            case nebula2_db:search(Path, State, nodomain) of
                 {ok, Data} ->
                     {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
                 _ ->
@@ -337,7 +337,7 @@ resource_exists_handler(ParentUri, Req, State) ->
             end;
         _Other ->
             lager:debug("Looking for something else..."),
-            case nebula2_riak:search(Path, State) of
+            case nebula2_db:search(Path, State) of
                 {ok, Data} ->
                     {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
                 _ ->
@@ -355,7 +355,7 @@ service_available(Req, {error_no_members, _}) ->
 service_available(Req, State) ->
     lager:debug("<--------------------- Request Start ---------------------------->"),
     {Pid, _EnvMap} = State,
-    Available = case nebula2_riak:ping(Pid) of
+    Available = case nebula2_db:available(Pid) of
         true -> true;
         _ -> false
     end,
@@ -387,7 +387,7 @@ to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
-    case nebula2_riak:get(Pid, Oid) of
+    case nebula2_db:read(Pid, Oid) of
         {ok, Map} ->
             Data = list_to_binary(jsx:encode(Map)),
             {Data, Req, State};
@@ -396,7 +396,7 @@ to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     end;
 to_cdmi_object_handler(Req, State, Path, "/cdmi_domains/") ->
     lager:debug("Entry"),
-    case nebula2_riak:search(Path, State, nodomain) of
+    case nebula2_db:search(Path, State, nodomain) of
         {ok, Map} ->
             Data = jsx:encode(Map),
             {Data, Req, State};
@@ -405,7 +405,7 @@ to_cdmi_object_handler(Req, State, Path, "/cdmi_domains/") ->
     end;
 to_cdmi_object_handler(Req, State, Path, "/cdmi_capabilities/") ->
     lager:debug("Entry"),
-    case nebula2_riak:search(Path, State, nodomain) of
+    case nebula2_db:search(Path, State, nodomain) of
         {ok, Map} ->
             Data = jsx:encode(Map),
             {Data, Req, State};
@@ -414,7 +414,7 @@ to_cdmi_object_handler(Req, State, Path, "/cdmi_capabilities/") ->
     end;
 to_cdmi_object_handler(Req, State, Path, _) ->
     lager:debug("Entry"),
-    case nebula2_riak:search(Path, State) of
+    case nebula2_db:search(Path, State) of
         {ok, Map} ->
             {_, EnvMap} = State,
             Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
@@ -440,7 +440,7 @@ basic(Auth, State) ->
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
     DomainUri = maps:get(<<"domainURI">>, EnvMap) ++ "cdmi_domain_members/" ++ UserId,
-    Result = case nebula2_riak:search(DomainUri, State) of
+    Result = case nebula2_db:search(DomainUri, State) of
                  {ok, Json} ->
                      {true, Json};
                  {error, _Status} ->
@@ -483,7 +483,7 @@ handle_atime(Map, State) ->
             Map;
         CapURI ->
             Path = binary_to_list(CapURI),
-            {ok, Data} = nebula2_riak:search(Path, State, nodomain),
+            {ok, Data} = nebula2_db:search(Path, State, nodomain),
             Capabilities = maps:get(<<"capabilities">>, Data),
             ATime = maps:get(<<"cdmi_atime">>, Capabilities, <<"false">>),
             case ATime of
@@ -495,7 +495,7 @@ handle_atime(Map, State) ->
                     Tstamp = list_to_binary(nebula2_utils:get_time()),
                     MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
                     Map2 = maps:put(<<"metadata">>, MD2, Map),
-                    nebula2_riak:put(Pid,  maps:get(<<"objectID">>, Map2), Map2),
+                    nebula2_db:create(Pid,  maps:get(<<"objectID">>, Map2), Map2),
                     Map2
             end
     end.
@@ -546,7 +546,7 @@ map_build_get_data(FieldName, _, Map) ->
 -spec map_domain_uri(pid(), string()) -> string().
 map_domain_uri(Pid, HostUrl) ->
     lager:debug("Entry"),
-    Maps = nebula2_riak:get_domain_maps(Pid),
+    Maps = nebula2_db:get_domain_maps(Pid),
     get_domain(Maps, HostUrl).
 
 req_domain(<<"[]">>, _) ->

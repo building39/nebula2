@@ -61,10 +61,6 @@
 %% System domain URI
 -define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain").
 
-%% Domain Maps Query
--define(DOMAIN_MAPS_QUERY, "domainURI:\\" ++ ?SYSTEM_DOMAIN_URI ++
-            "/ AND parentURI:\\/system_configuration/ AND objectName:\\domain_maps").
-
 %% ACE types
 -define(CDMI_ACE_ACCESS_ALLOW, 16#00000000).
 -define(CDMI_ACE_ACCESS_DENY,  16#00000001).

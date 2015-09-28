@@ -38,13 +38,13 @@ update_container(Req, State, Oid) ->
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = jsx:decode(Body, [return_maps]),
-    {ok, OldData} = nebula2_riak:get(Pid, Oid),
+    {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
     MetaData = maps:merge(OldMetaData, NewMetaData),
     Data = maps:merge(OldData, NewData),
     Data2 = maps:put(<<"metadata">>, MetaData, Data),
-    Response = case nebula2_riak:update(Pid, Oid, Data2) of
+    Response = case nebula2_db:update(Pid, Oid, Data2) of
                    ok ->
                        {true, Req2, State};
                    _  ->

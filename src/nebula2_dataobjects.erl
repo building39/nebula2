@@ -22,7 +22,7 @@
 -spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> {ok, json_value()}.
 get_dataobject(Pid, Oid) ->
     lager:debug("Entry"),
-    {ok, Data} = nebula2_riak:get(Pid, Oid),
+    {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
 %% @doc Create a new CDMI dataobject
@@ -43,7 +43,7 @@ new_dataobject(Req, State) ->
 -spec nebula2_dataobjects:update_dataobject(pid(), object_oid(), map()) -> {ok, json_value()}.
 update_dataobject(Pid, Oid, NewData) ->
     lager:debug("Entry"),
-    {ok, OldData} = nebula2_riak:get(Pid, Oid),
+    {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
     MetaData = maps:merge(OldMetaData, NewMetaData),
@@ -53,7 +53,7 @@ update_dataobject(Pid, Oid, NewData) ->
     Length = length(Value) - 1,
     ValueRange = list_to_binary(lists:flatten(io_lib:format("0-~p", [Length]))),
     Data3 = maps:put(<<"valuerange">>, ValueRange, Data2),
-    nebula2_riak:update(Pid, Oid, Data3).
+    nebula2_db:update(Pid, Oid, Data3).
 
 %% ====================================================================
 %% Internal functions

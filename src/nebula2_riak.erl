@@ -15,6 +15,9 @@
 -define(BUCKET_NAME, "cdmi").
 -define(CDMI_INDEX, "cdmi_idx").
 -define(NAME_PREFIX, "cdmi").
+%% Domain Maps Query
+-define(DOMAIN_MAPS_QUERY, "domainURI:\\" ++ ?SYSTEM_DOMAIN_URI ++
+            "/ AND parentURI:\\/system_configuration/ AND objectName:\\domain_maps").
 
 %% ====================================================================
 %% API functions
@@ -23,10 +26,21 @@
          get/2,
          get_domain_maps/1,
          put/3,
-         ping/1,
+         available/1,
          search/2,
          search/3,
          update/3]).
+
+%% @doc Ping the riak cluster.
+-spec nebula2_riak:available(pid()) -> boolean().
+available(Pid) ->
+    lager:debug("Entry"),
+    case riakc_pb_socket:ping(Pid) of
+        pong -> % lager:debug("Connected to Riak..."),
+                true;
+        _R -> % lager:debug("Can't ping Riak: ~p", [R]),
+             false
+    end.
 
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
@@ -48,21 +62,15 @@ get(Pid, Oid) when is_binary(Oid) ->
     get(Pid, binary_to_list(Oid));
 get(Pid, Oid) ->
     lager:debug("Entry"),
-    case mcd:get(?MEMCACHE, Oid) of
-        {ok, Data} ->
-            {ok, Data};
-        _ ->
-            case riakc_pb_socket:get(Pid,
-                                     {list_to_binary(?BUCKET_TYPE),
-                                      list_to_binary(?BUCKET_NAME)},
-                                      list_to_binary(Oid)) of
+    case riakc_pb_socket:get(Pid, {list_to_binary(?BUCKET_TYPE),
+                                   list_to_binary(?BUCKET_NAME)},
+                                   list_to_binary(Oid)) of
                 {ok, Object} ->
-                    Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
-                    {ok, _R} = mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
-                    {ok, Data};
+                    Data = riakc_obj:get_value(Object),
+                    Map = jsx:decode(Data, [return_maps]),
+                    {ok, Map};
                 {error, Term} ->
                     {error, Term}
-            end
     end.
 
 %% @doc Get the domain maps.
@@ -71,19 +79,10 @@ get_domain_maps(Pid) ->
     lager:debug("Entry"),
     case execute_search(Pid, ?DOMAIN_MAPS_QUERY) of
         {ok, Result} ->
+            lager:debug("Result: ~p", [Result]),
             maps:get(<<"value">>, Result);
         _ ->
             []
-    end.
-
-%% @doc Ping the riak cluster.
--spec nebula2_riak:ping(pid()) -> boolean().
-ping(Pid) ->
-    case riakc_pb_socket:ping(Pid) of
-        pong -> % lager:debug("Connected to Riak..."),
-                true;
-        _R -> % lager:debug("Can't ping Riak: ~p", [R]),
-             false
     end.
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
@@ -111,7 +110,9 @@ do_put(Pid, Oid, Data) ->
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
+            lager:debug("setting cache2 with ~p", [Data]),
             mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
+            lager:debug("cache set1: ~p", [Data]),
             {ok, Oid};
         {error, Term} ->
             {error, Term}
@@ -154,13 +155,14 @@ update(Pid, Oid, Data) ->
         {error, E} ->
             {error, E};
         {ok, _} ->
-            Json = jsx:encode(Data),
             {ok, Obj} = riakc_pb_socket:get(Pid, 
                                             {list_to_binary(?BUCKET_TYPE),
                                              list_to_binary(?BUCKET_NAME)},
                                             Oid),
-            NewObj = riakc_obj:update_value(Obj, Json),
-            mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
+            NewObj = riakc_obj:update_value(Obj, Data),
+            Map = jsx:decode(Data, [return_maps]),
+            mcd:set(?MEMCACHE, Oid, Map, ?MEMCACHE_EXPIRY),
+            lager:debug("cache set2: ~p", [Map]),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 

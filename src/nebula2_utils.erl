@@ -48,7 +48,7 @@ create_object(Req, State, ObjectType) ->
     ParentUri = nebula2_utils:get_parent_uri(Path),
     case nebula2_utils:get_object_oid(ParentUri, State) of
         {ok, ParentId} ->
-            {ok, Parent} = nebula2_riak:get(Pid, ParentId),
+            {ok, Parent} = nebula2_db:read(Pid, ParentId),
             DomainName = maps:get(<<"domainURI">>, Parent, ""),
             create_object(Req, State, ObjectType, DomainName, Parent);
         {notfound, _} ->
@@ -66,7 +66,7 @@ create_object(Req, State, ObjectType, DomainName) ->
     ParentUri = nebula2_utils:get_parent_uri(Path),
     case nebula2_utils:get_object_oid(ParentUri, State) of
         {ok, ParentId} ->
-            {ok, Parent} = nebula2_riak:get(Pid, ParentId),
+            {ok, Parent} = nebula2_db:read(Pid, ParentId),
             create_object(Req, State, ObjectType, DomainName, Parent);
         {notfound, _} ->
             % lager:debug("create_object: Did not find parent"),
@@ -85,15 +85,15 @@ delete(Data, State) ->
 %% TODO: Make delete asynchronous
 handle_delete(Pid, Data, _, []) ->
     lager:debug("Entry"),
-    nebula2_riak:delete(Pid, maps:get(<<"objecdID">>, Data));
+    nebula2_db:delete(Pid, maps:get(<<"objecdID">>, Data));
 handle_delete(Pid, Data, State, [Child | Tail]) ->
     lager:debug("Entry"),
     ChildPath = maps:get(<<"objectName">>, Data) ++ Child,
-    ChildData = nebula2_riak:search(ChildPath, State),
+    ChildData = nebula2_db:search(ChildPath, State),
     GrandChildren = maps:get(<<"children">>, ChildData, []),
     handle_delete(Pid, ChildData, State, GrandChildren),
     handle_delete(Pid, Data, State, Tail),
-    nebula2_riak:delete(Pid, maps:get(<<"objecdID">>, Data)).
+    nebula2_db:delete(Pid, maps:get(<<"objecdID">>, Data)).
 
 %% @doc Delete a child from its parent
 -spec delete_child_from_parent(object_oid(), string(), string(), pid()) -> ok | {error, term()}.
@@ -115,8 +115,7 @@ delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
                _ -> 
                    N
            end,
-    {ok, Parent} = nebula2_riak:get(Pid, ParentId),
-    _X = maps:get(<<"children">>, Parent, ""),
+    {ok, Parent} = nebula2_db:read(Pid, ParentId),
     Children = maps:get(<<"children">>, Parent, ""),
     NewParent1 = case Children of
                      [] ->
@@ -131,7 +130,7 @@ delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          maps:put(<<"childrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
-    nebula2_riak:update(Pid, ParentId, NewParent2).
+    nebula2_db:update(Pid, ParentId, NewParent2).
 %% @doc Extract the Parent URI from the path.
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
@@ -173,7 +172,7 @@ get_object_oid(State) ->
 -spec nebula2_utils:get_object_oid(string(), tuple()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) ->
     lager:debug("Entry"),
-    Oid = case nebula2_riak:search(Path, State) of
+    Oid = case nebula2_db:search(Path, State) of
             {error,_} -> 
                 {notfound, ""};
             {ok, Data} ->
@@ -216,7 +215,7 @@ handle_content_type(State) ->
     case maps:get(<<"content-type">>, EnvMap, "") of
         "" ->
             Path = maps:get(<<"path">>, EnvMap),
-            {ok, Data} = nebula2_riak:search(Path, State),
+            {ok, Data} = nebula2_db:search(Path, State),
             binary_to_list(maps:get(<<"objectType">>, Data));
         CT ->
             binary_to_list(CT)
@@ -258,11 +257,9 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                _ -> 
                    N
            end,
-    {ok, Parent} = nebula2_riak:get(Pid, ParentId),
-    % lager:debug("update_parent got parent: ~p", [Parent]),
+    {ok, Parent} = nebula2_db:read(Pid, ParentId),
+    lager:debug("update_parent got parent: ~p", [Parent]),
     % lager:debug("updating parent with child: ~p", [Name]),
-    _X = maps:get(<<"children">>, Parent, ""),
-    % lager:debug("capabilities update_parent: _X: ~p", [_X]),
     Children = case maps:get(<<"children">>, Parent, "") of
                      "" ->
                          [list_to_binary(Name)];
@@ -283,7 +280,7 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
     NewParent2 = maps:put(<<"childrange">>, list_to_binary(ChildRange), NewParent1),
     % lager:debug("NewParent2: ~p", [NewParent2]),
     % lager:debug("new parent: ~p", [NewParent2]),
-    nebula2_riak:update(Pid, ParentId, NewParent2).
+    nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% ====================================================================
 %% Internal functions
@@ -343,7 +340,7 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                                        {<<"completionStatus">>, <<"Complete">>}]),
                       Data),
     Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
-    {ok, Oid} = nebula2_riak:put(Pid, Oid, Data3),
+    {ok, Oid} = nebula2_db:create(Pid, Oid, Data3),
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
     {true, Req2, Data3}.

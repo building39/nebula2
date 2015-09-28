@@ -27,7 +27,7 @@ delete_domain(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
-    Data = nebula2_riak:search(Path, State),
+    Data = nebula2_db:search(Path, State),
     Oid = maps:get(<<"objectID">>, Data),
     Metadata = maps:get(<<"metadata">>, Data),
     ReassignTo = maps:get(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
@@ -35,7 +35,7 @@ delete_domain(Req, State) ->
         nil ->
             case maps:get(<<"children">>, Data, []) of
                 [] ->
-                    handle_delete(nebula2_riak:delete(Pid, Oid), Req, State);
+                    handle_delete(nebula2_db:delete(Pid, Oid), Req, State);
                 _ ->
                     {error, 400}
             end;
