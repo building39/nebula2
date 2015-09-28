@@ -65,12 +65,6 @@
 -define(DOMAIN_MAPS_QUERY, "domainURI:\\" ++ ?SYSTEM_DOMAIN_URI ++
             "/ AND parentURI:\\/system_configuration/ AND objectName:\\domain_maps").
 
-%% riak parameters
--define(BUCKET_TYPE, "cdmi").
--define(BUCKET_NAME, "cdmi").
--define(CDMI_INDEX, "cdmi_idx").
--define(NAME_PREFIX, "cdmi").
-
 %% ACE types
 -define(CDMI_ACE_ACCESS_ALLOW, 16#00000000).
 -define(CDMI_ACE_ACCESS_DENY,  16#00000001).
