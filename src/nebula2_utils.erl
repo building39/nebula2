@@ -315,9 +315,14 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                           <<"completionStatus">>],
                          Body),
     Oid = nebula2_utils:make_key(),
-    Location = list_to_binary(nebula2_app:cdmi_location()),
+    Location = list_to_binary(application:get_env(nebula2, cdmi_location, ?DEFAULT_LOCATION)),
+    lager:debug("Location: ~p", [Location]),
     Tstamp = list_to_binary(nebula2_utils:get_time()),
     Owner = maps:get(<<"auth_as">>, EnvMap, ""),
+    CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
+                        none ->   get_capability_uri(ObjectType);
+                        Curi ->   Curi
+                      end,
     NewMetadata = maps:from_list([{<<"cdmi_atime">>, Tstamp},
                                   {<<"cdmi_ctime">>, Tstamp},
                                   {<<"cdmi_mtime">>, Tstamp},
@@ -328,10 +333,6 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
     lager:debug("Merged Metadata: ~p", [Metadata2]),
-    CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
-                        none ->   get_capability_uri(ObjectType);
-                        Curi ->   Curi
-                      end,
     Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, list_to_binary(Oid)},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
