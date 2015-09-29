@@ -136,12 +136,16 @@ delete_completed(Req, State) ->
 delete_resource(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    Path = maps:get(<<"object_map">>, EnvMap),
+    Path = maps:get(<<"path">>, EnvMap),
+    Data = maps:get(<<"object_map">>, EnvMap),
+    ObjectType = maps:get(<<"objectType">>, Data),
+    lager:debug("Object Type: ~p", [ObjectType]),
    
     case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
         true ->
             nebula2_domains:delete_domain(Req, State);
         false ->
+            nebula2_utils:delete(State),
             {ok, Req, State}
     end.
 

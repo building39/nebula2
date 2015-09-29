@@ -16,7 +16,7 @@
          beginswith/2,
          create_object/3,
          create_object/4,
-         delete/2,
+         delete/1,
          delete_child_from_parent/4,
          extract_parentURI/1,
          get_object_name/2,
@@ -33,6 +33,7 @@
 -spec nebula2_utils:beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
     lager:debug("Entry"),
+    lager:debug("Str: ~p Substr: ~p", [Str, Substr]),
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -75,9 +76,12 @@ create_object(Req, State, ObjectType, DomainName) ->
     end.
 
 %% @doc Delete an object and all objects underneath it.
--spec delete(map(), cdmi_state()) -> ok | {error, term()}.
-delete(Data, State) ->
+-spec delete(cdmi_state()) -> ok | {error, term()}.
+delete(State) ->
     lager:debug("Entry"),
+    {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    Data = maps:get(<<"object_map">>, EnvMap),
     {Pid, _} = State,
     Children = maps:get(<<"children">>, Data, []),
     handle_delete(Pid, Data, State, Children).
@@ -85,7 +89,7 @@ delete(Data, State) ->
 %% TODO: Make delete asynchronous
 handle_delete(Pid, Data, _, []) ->
     lager:debug("Entry"),
-    nebula2_db:delete(Pid, maps:get(<<"objecdID">>, Data));
+    nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data));
 handle_delete(Pid, Data, State, [Child | Tail]) ->
     lager:debug("Entry"),
     ChildPath = maps:get(<<"objectName">>, Data) ++ Child,
