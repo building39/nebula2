@@ -42,7 +42,7 @@ class CheckNebula(object):
         self.parents_missing = 0
         self.capabilities_missing = 0
         self.domains_missing = 0
-        
+        self.child_count_mismatch = 0
         
     def check(self, object='/'):
         (status, body) = self.get(object)
@@ -72,6 +72,21 @@ class CheckNebula(object):
                 else:
                     self.domains_missing += 1
             children = body.get('children', [])
+            childrenrange = body.get('childrenrange', None)
+            num_children = len(children)
+            if childrenrange:
+                #import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.3.0.201508182223/pysrc')
+                #import pydevd; pydevd.settrace()
+                (start, end) = childrenrange.split('-')
+                x = int(end) - int(start) + 1
+                if x != num_children:
+                    print("Actual number of children: %d" % num_children)
+                    print("Calculated number of children: %d" % x)
+                    self.child_count_mismatch += 1
+            else:
+                if num_children:
+                    print("No childrenrange found for object with %d children" % num_children)
+                    self.child_count_mismatch += 1
             for child in children:
                 nextobject = '%s%s' % (object, child)
                 (status5, body) = self.get(nextobject)
@@ -81,7 +96,7 @@ class CheckNebula(object):
                 else:
                     self.children_missing += 1
         else:
-           print("listnebula received status code %d - exiting..." % r.status_code)
+           print("listnebula received status code %d - exiting..." % status_code)
            print("url is %s" % url)
            print("Found %d objects" % self.objects_found)
 
@@ -173,6 +188,8 @@ def main(argv):
     print("Domains missing:      %d" % check.domains_missing)
     print("Parents found:        %d" % check.parents_found)
     print("Parents missing:      %d" % check.parents_missing)
+    if check.child_count_mismatch:
+        print("Child count errors:   %d" % check.child_count_mismatch)
     
 if __name__ == "__main__":
     main(sys.argv[1:])

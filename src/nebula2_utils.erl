@@ -98,11 +98,15 @@ handle_delete(Pid, Data, _, []) ->
         Other ->
             Other
     end;
-handle_delete(Pid, Data, State, [Child | Tail]) ->
+handle_delete(Pid, Data, State, [Head | Tail]) ->
     lager:debug("Entry"),
-    ChildPath = maps:get(<<"objectName">>, Data) ++ Child,
-    ChildData = nebula2_db:search(ChildPath, State),
+    Child = binary_to_list(Head),
+    ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, "")),
+    ChildPath = ParentUri ++ binary_to_list(maps:get(<<"objectName">>, Data)) ++ Child,
+    lager:debug("deleting child ~p", [ChildPath]),
+    {ok, ChildData} = nebula2_db:search(ChildPath, State),
     GrandChildren = maps:get(<<"children">>, ChildData, []),
+    lager:debug("has these grandchildren: ~p", [GrandChildren]),
     handle_delete(Pid, ChildData, State, GrandChildren),
     handle_delete(Pid, Data, State, Tail),
     nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)).
