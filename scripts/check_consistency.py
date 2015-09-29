@@ -45,8 +45,6 @@ class CheckNebula(object):
         
         
     def check(self, object='/'):
-        sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.3.0.201508182223/pysrc')
-        import pydevd; pydevd.settrace()
         (status, body) = self.get(object)
         if status in [200, 201, 204]:
             print("Found object named '%s'" % object)
