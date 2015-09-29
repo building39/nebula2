@@ -120,12 +120,12 @@ delete_child_from_parent(Pid, ParentId, Name) ->
                          NewChildren = lists:delete(Name, Children),
                          maps:put(<<"children">>, NewChildren, Parent)
                  end,
-    NewParent2 = case maps:get(<<"childrange">>, Parent, "") of
+    NewParent2 = case maps:get(<<"childrenrange">>, Parent, "") of
                     "0-0" ->
-                        maps:remove(<<"childrange">>, Parent);
+                        maps:remove(<<"childrenrange">>, Parent);
                      Cr ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
-                         maps:put(<<"childrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
+                         maps:put(<<"childrenrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
     nebula2_db:update(Pid, ParentId, NewParent2).
 
@@ -266,16 +266,16 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                          lists:append(Ch, [list_to_binary(Name)])
                  end,
     % lager:debug("Children is now: ~p", [Children]),
-    ChildRange = case maps:get(<<"childrange">>, Parent, "") of
+    ChildrenRange = case maps:get(<<"childrenrange">>, Parent, "") of
                      "" ->
                          "0-0";
                      Cr ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          lists:concat(["0-", Num + 1])
                  end,
-    % lager:debug("ChildRange is now: ~p", [ChildRange]),
+    % lager:debug("ChildrenRange is now: ~p", [ChildrenRange]),
     NewParent1 = maps:put(<<"children">>, Children, Parent),
-    NewParent2 = maps:put(<<"childrange">>, list_to_binary(ChildRange), NewParent1),
+    NewParent2 = maps:put(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
     % lager:debug("NewParent2: ~p", [NewParent2]),
     % lager:debug("new parent: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
