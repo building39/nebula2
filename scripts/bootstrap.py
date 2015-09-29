@@ -25,7 +25,6 @@ except:
     sys.exit(1)
 
 import getopt
-import json
 import os
 from os import listdir
 from os.path import isfile, join
@@ -241,10 +240,10 @@ TIME_FORMAT = '%Y-%m-%dT%H:%M:%S:000000Z'
 VERSION = '1.0.0'
 
 CDMI_CAPABILITIES_DOMAIN = '/cdmi_capabilities/domain/'
-CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container'
-CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%s/permanent/' % CDMI_CAPABILITIES_CONTAINER
-CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject//'
-CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%s/permanent/' % CDMI_CAPABILITIES_DATAOBJECT
+CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container/'
+CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_CONTAINER
+CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject/'
+CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_DATAOBJECT
 CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%s/member/' % CDMI_CAPABILITIES_DATAOBJECT
 
 CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
@@ -377,6 +376,13 @@ class Bootstrap(object):
             self._create_dataobject_config_capabilities()
         else:
             print("Dry run: Created dataobject config capabilities.")
+        
+         # Create the dataobject permanent capabilities
+        print("...Priming dataobject permanent capabilities")
+        if self.commit:
+            self._create_dataobject_permanent_capabilities()
+        else:
+            print("Dry run: Created dataobject permanent capabilities.")
             
         # Create the dataobject config permanent capabilities
         print("...Priming dataobject config permanent capabilities")
@@ -629,14 +635,14 @@ class Bootstrap(object):
     def _create_dataobject_permanent_capabilities(self):
         acls = None
         doc = {'capabilities': DATAOBJECT_PERMANENT_CAPABILITIES,
-               'objectName': 'dataobject/',
+               'objectName': 'permanent/',
                'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/cdmi_capabilities/',
-               'parentID': self.caps_oid}
+               'parentURI': '/cdmi_capabilities/dataobject/',
+               'parentID': self.dataobject_caps_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/permanent/' % (self.host, int(self.port))
-        self.dataobject_caps_oid = self._create(headers, url, doc, acls)
+        self.dataobject_caps_perm_oid = self._create(headers, url, doc, acls)
         
     def _create_dataobject_config_capabilities(self):
         acls = None
@@ -745,7 +751,7 @@ class Bootstrap(object):
         else:
            print("Bootstrapping received status code %d - exiting..." % r.status_code)
            sys.exit(1)
-           sys.exit(1)
+
         return oid
 
 def usage():

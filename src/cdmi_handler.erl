@@ -344,32 +344,52 @@ resource_exists_handler(ParentUri, Req, State) ->
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     lager:debug("Path: ~p", [Path]),
-    TopParent = lists:nth(1, string:tokens(ParentUri, "/")),
-    lager:debug("TopParent: ~p", [TopParent]),
-    case TopParent of
-        "cdmi_domains" ->
-            lager:debug("Looking for a domain..."),
-            case nebula2_db:search(Path, State, nodomain) of
-                {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+    lager:debug("ParentUri: ~p", [ParentUri]),
+    case Path of
+        "/" ->
+            {true, Req, State};
+        _ ->
+            TopParent = case ParentUri of
+                           "/" ->
+                               lager:debug("ParentUri is /"),
+                                "/";
+                            _Other ->
+                                lager:debug("ParentUri: ~p", [ParentUri]),
+                                lists:nth(1, string:tokens(ParentUri, "/"))
+                        end,
+            case TopParent of
+                "/" ->
+                    lager:debug("Looking for something under the root..."),
+                    case nebula2_db:search(Path, State) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
+                "cdmi_domains" ->
+                    lager:debug("Looking for a domain..."),
+                    case nebula2_db:search(Path, State, nodomain) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
+                "cdmi_capabilities" ->
+                    lager:debug("Looking for a capability..."),
+                    case nebula2_db:search(Path, State, nodomain) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
                 _ ->
-                    {false, Req, State}
-            end;
-        "cdmi_capabilities" ->
-            lager:debug("Looking for a capability..."),
-            case nebula2_db:search(Path, State, nodomain) of
-                {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
-                _ ->
-                    {false, Req, State}
-            end;
-        _Other ->
-            lager:debug("Looking for something else..."),
-            case nebula2_db:search(Path, State) of
-                {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
-                _ ->
-                    {false, Req, State}
+                    lager:debug("Looking for something else..."),
+                    case nebula2_db:search(Path, State) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end
             end
     end.
     
@@ -511,6 +531,7 @@ handle_atime(Map, State) ->
             Map;
         CapURI ->
             Path = binary_to_list(CapURI),
+            lager:debug("Path: ~p", [Path]),
             {ok, Data} = nebula2_db:search(Path, State, nodomain),
             Capabilities = maps:get(<<"capabilities">>, Data),
             ATime = maps:get(<<"cdmi_atime">>, Capabilities, <<"false">>),
