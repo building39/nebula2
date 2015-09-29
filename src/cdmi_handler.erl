@@ -42,54 +42,54 @@ init(_, _Req, _Opts) ->
 
 rest_init(Req, _State) ->
     lager:debug("Entry cdmi_handler:rest_init: Req: ~p", [Req]),
-    PoolMember = pooler:take_member(riak_pool),
-    {Method, Req2} = cowboy_req:method(Req),
-    {Url, Req4} = cowboy_req:url(Req2),
-    {HostUrl, Req5} = cowboy_req:host_url(Req4),
-    {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req5),
-    {ReqPath, Req7} = cowboy_req:path(Req6),
-    {AcceptType, Req8} = cowboy_req:header(<<"accept">>, Req7),
-    Map = maps:new(),
-    Url_S = binary_to_list(Url),
-    HostUrl_S = binary_to_list(HostUrl),
-    Map2 = maps:put(<<"method">>, Method, Map),
-    Map3 = maps:put(<<"url">>, Url_S, Map2),
-    Map4 = maps:put(<<"hosturl">>, HostUrl_S, Map3),
-    P = string:tokens(binary_to_list(ReqPath), "/"),
-    Path = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
-    Path2 = lists:nth(1, string:tokens(Path, "?")),
-    Map5 = maps:put(<<"path">>, Path2, Map4), %% strip out query string if present
-    Map6 = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
-    Parts = string:tokens(Path, "/"),
-    ParentURI = nebula2_utils:get_parent_uri(Path),
+    
+    PoolMember          = pooler:take_member(riak_pool),
+    {Method, Req2}      = cowboy_req:method(Req),
+    {Url, Req3}         = cowboy_req:url(Req2),
+    {HostUrl, Req4}     = cowboy_req:host_url(Req3),
+    {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req4),
+    {ReqPath, Req7}     = cowboy_req:path(Req6),
+    {AcceptType, Req8}  = cowboy_req:header(<<"accept">>, Req7),
+    {Qs, Req9}          = cowboy_req:qs(Req8),
+    
+    Url_S      = binary_to_list(Url),
+    HostUrl_S  = binary_to_list(HostUrl),
+    P          = string:tokens(binary_to_list(ReqPath), "/"),
+    Path       = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
+    Path2      = lists:nth(1, string:tokens(Path, "?")),
+    ParentURI  = nebula2_utils:get_parent_uri(Path),
+    Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
-    Map7 = maps:put(<<"parentURI">>, ParentURI, Map6),
-    Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
-    Map9 = maps:put(<<"content-type">>, ContentType, Map8),
+
+    Map   = maps:new(),
+    Map2  = maps:put(<<"method">>, Method, Map),
+    Map3  = maps:put(<<"url">>, Url_S, Map2),
+    Map4  = maps:put(<<"hosturl">>, HostUrl_S, Map3),
+    Map5  = maps:put(<<"path">>, Path2, Map4), %% strip out query string if present
+    Map6  = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
+    Map7  = maps:put(<<"parentURI">>, ParentURI, Map6),
+    Map8  = maps:put(<<"objectName">>, ObjectName, Map7),
+    Map9  = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    {Qs, Req9} = cowboy_req:qs(Req8),
     Map11 = maps:put(<<"qs">>, Qs, Map10),
-    lager:debug("Qs: ~p", [Qs]),
+    
     Parent = nebula2_db:search(ParentURI, {PoolMember, Map11}),
-    lager:debug("Parent: ~p", [Parent]),
+    
     FinalMap = case Parent of
                     {ok, Data} ->
-                        ParentID = maps:get(<<"objectID">>, Data),
-                        lager:debug("parentID: ~p", [ParentID]),
-                        Map12 = maps:put(<<"parentID">>, ParentID, Map11),
+                        ParentID  = maps:get(<<"objectID">>, Data),
+                        Map12     = maps:put(<<"parentID">>, ParentID, Map11),
                         KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
                         if 
                             KeyExists == true ->        
                                 ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
-                                lager:debug("Parent capabilities URI: ~p", [ParentCapabilitiesURI]),
-                                ParentCapabilities = nebula2_db:search(ParentCapabilitiesURI,
-                                                                       {PoolMember, Map11},
-                                                                       nodomain),
-                                lager:debug("Capabilities: ~p", [ParentCapabilities]),
+                                ParentCapabilities    = nebula2_db:search(ParentCapabilitiesURI,
+                                                                          {PoolMember, Map11},
+                                                                          nodomain),
                                 case ParentCapabilities of
                                     {ok, CapData} ->
                                         CapMap = maps:get(<<"capabilities">>, CapData, maps:new()),
-                                        Map13 = maps:put(<<"parent_capabilities">>, CapMap, Map12),
+                                        Map13  = maps:put(<<"parent_capabilities">>, CapMap, Map12),
                                         Map13;
                                     {error, _} ->
                                         Map12
@@ -115,17 +115,17 @@ allow_missing_post(Req, State) ->
 content_types_accepted(Req, State) ->
     lager:debug("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
-      {{<<"application">>, <<"cdmi-container">>, '*'}, from_cdmi_container},
-      {{<<"application">>, <<"cdmi-domain">>, '*'}, from_cdmi_domain},
-      {{<<"application">>, <<"cdmi-object">>, '*'}, from_cdmi_object}
+      {{<<"application">>, <<"cdmi-container">>, '*'},  from_cdmi_container},
+      {{<<"application">>, <<"cdmi-domain">>, '*'},     from_cdmi_domain},
+      {{<<"application">>, <<"cdmi-object">>, '*'},     from_cdmi_object}
      ], Req, State}.
 
 content_types_provided(Req, State) ->
     lager:debug("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, to_cdmi_capability},
-      {{<<"application">>, <<"cdmi-container">>, '*'}, to_cdmi_container},
-      {{<<"application">>, <<"cdmi-domain">>, '*'}, to_cdmi_domain},
-      {{<<"application">>, <<"cdmi-object">>, '*'}, to_cdmi_object}
+      {{<<"application">>, <<"cdmi-container">>, '*'},  to_cdmi_container},
+      {{<<"application">>, <<"cdmi-domain">>, '*'},     to_cdmi_domain},
+      {{<<"application">>, <<"cdmi-object">>, '*'},     to_cdmi_object}
      ], Req, State}.
 
 delete_completed(Req, State) ->
@@ -153,15 +153,11 @@ forbidden(Req, State) ->
 %% TODO: Check ACLs here
     lager:debug("Entry"),
     {false, Req, State}.
-%%    {true, Req, State}.
     
 %% content types accepted
 from_cdmi_capability(Req, State) ->
     lager:debug("Entry"),
     {_Pid, _EnvMap} = State,
-    % _Path = maps:get(<<"path">>, _EnvMap),
-%%    _Body = maps:get(<<"body">>, _EnvMap),
-    % _Response = nebula2_capabilities:new_capability(Req, State),
     {true, Req, State}.
 
 from_cdmi_container(Req, State) ->
