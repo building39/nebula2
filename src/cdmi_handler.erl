@@ -145,8 +145,12 @@ delete_resource(Req, State) ->
         true ->
             nebula2_domains:delete_domain(Req, State);
         false ->
-            nebula2_utils:delete(State),
-            {ok, Req, State}
+            case nebula2_utils:delete(State) of
+                ok ->
+                    {true, Req, State};
+                _ ->
+                    {false, Req, State}
+            end
     end.
 
 expires(Req, State) ->

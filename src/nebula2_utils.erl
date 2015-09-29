@@ -17,7 +17,7 @@
          create_object/3,
          create_object/4,
          delete/1,
-         delete_child_from_parent/4,
+         delete_child_from_parent/3,
          extract_parentURI/1,
          get_object_name/2,
          get_object_oid/1,
@@ -89,7 +89,15 @@ delete(State) ->
 %% TODO: Make delete asynchronous
 handle_delete(Pid, Data, _, []) ->
     lager:debug("Entry"),
-    nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data));
+    case nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)) of
+        ok ->
+             ParentId = maps:get(<<"parentID">>, Data, []),
+             ObjectName = maps:get(<<"objectName">>, Data),
+             delete_child_from_parent(Pid, ParentId, ObjectName),
+             ok;
+        Other ->
+            Other
+    end;
 handle_delete(Pid, Data, State, [Child | Tail]) ->
     lager:debug("Entry"),
     ChildPath = maps:get(<<"objectName">>, Data) ++ Child,
@@ -97,35 +105,20 @@ handle_delete(Pid, Data, State, [Child | Tail]) ->
     GrandChildren = maps:get(<<"children">>, ChildData, []),
     handle_delete(Pid, ChildData, State, GrandChildren),
     handle_delete(Pid, Data, State, Tail),
-    nebula2_db:delete(Pid, maps:get(<<"objecdID">>, Data)).
+    nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)).
 
 %% @doc Delete a child from its parent
--spec delete_child_from_parent(object_oid(), string(), string(), pid()) -> ok | {error, term()}.
-delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
+-spec delete_child_from_parent(pid(), object_oid(), string()) -> ok | {error, term()}.
+delete_child_from_parent(Pid, ParentId, Name) ->
     lager:debug("Entry"),
-    N = case length(string:tokens(Path, "/")) of
-            0 ->
-                "";
-            _Other ->
-                lists:last(string:tokens(Path, "/"))
-        end,
-    Name = case ObjectType of
-               ?CONTENT_TYPE_CDMI_CAPABILITY ->
-                   N ++ "/";
-               ?CONTENT_TYPE_CDMI_CONTAINER ->
-                   N ++ "/";
-               ?CONTENT_TYPE_CDMI_DOMAIN ->
-                   N ++ "/";
-               _ -> 
-                   N
-           end,
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
     Children = maps:get(<<"children">>, Parent, ""),
     NewParent1 = case Children of
                      [] ->
                          maps:remove(<<"children">>, Parent);
                      _  ->
-                         maps:put(<<"children">>, list:delete(Name, Children), Parent)
+                         NewChildren = lists:delete(Name, Children),
+                         maps:put(<<"children">>, NewChildren, Parent)
                  end,
     NewParent2 = case maps:get(<<"childrange">>, Parent, "") of
                     "0-0" ->
@@ -135,6 +128,7 @@ delete_child_from_parent(ParentId, Path, ObjectType, Pid) ->
                          maps:put(<<"childrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
     nebula2_db:update(Pid, ParentId, NewParent2).
+
 %% @doc Extract the Parent URI from the path.
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
