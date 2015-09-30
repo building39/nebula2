@@ -37,39 +37,56 @@ class CheckNebula(object):
         self.children_found = 0
         self.parents_found = 0
         self.capabilities_found = 0
+        self.capabilities_used = 0
         self.domains_found = 0
+        self.domains_used = 0
         self.children_missing = 0
         self.parents_missing = 0
         self.capabilities_missing = 0
         self.domains_missing = 0
         self.child_count_mismatch = 0
+        self.containers_found = 0
+        self.dataobjects_found = 0
+        self.unknown_objects = 0
         
     def check(self, object='/'):
         (status, body) = self.get(object)
         if status in [200, 201, 204]:
-            print("Found object named '%s'" % object)
-            self.objects_found += 1
             body = json.loads(body)
+            print("Found object named '%s'" % object)
+            ObjectType = body.get('objectType', None)
+            if ObjectType == 'application/cdmi-container':
+                self.containers_found += 1
+            elif ObjectType == 'application/cdmi-object':
+                self.dataobjects_found += 1
+            elif ObjectType == 'application/cdmi-domain':
+                self.domains_found += 1
+            elif ObjectType == 'application/cdmi-capability':
+                self.capabilities_found += 1
+            else:
+                self.unknown_objects += 1
+            self.objects_found += 1
             capUri = body.get('capabilitiesURI', None)
             if capUri:
                 (status2, body2) = self.get(capUri)
                 if status2 in [200, 201, 204]:
-                    self.capabilities_found += 1
+                    self.capabilities_used += 1
                 else:
                     self.capabilities_missing += 1
-            parentUri = body.get('parentUri', None)
+            parentUri = body.get('parentURI', None)
             if parentUri:
                 (status3, body3) = self.get(parentUri)
                 if status3 in [200, 201, 204]:
                     self.parents_found += 1
                 else:
                     self.parents_missing += 1
-            domainUri = body.get('domainUri', None)
+            domainUri = body.get('domainURI', None)
             if domainUri:
-                (status4, body4) = self.get(parentUri)
+                (status4, body4) = self.get(domainUri)
                 if status4 in [200, 201, 204]:
-                    self.domains_found += 1
+                    self.domains_used += 1
                 else:
+                    print("could not find domain %s status: %d" % (domainUri, status4))
                     self.domains_missing += 1
             children = body.get('children', [])
             childrenrange = body.get('childrenrange', None)
@@ -96,8 +113,7 @@ class CheckNebula(object):
                 else:
                     self.children_missing += 1
         else:
-           print("listnebula received status code %d - exiting..." % status_code)
-           print("url is %s" % url)
+           print("listnebula received status code %d - exiting..." % status)
            print("Found %d objects" % self.objects_found)
 
     def get(self, object):
@@ -179,15 +195,25 @@ def main(argv):
 
     check.check()
     
-    print("Found a total of      %d objects" % check.objects_found)
-    print("Children found:       %d" % check.children_found)
-    print("Children missing:     %d" % check.children_missing)
-    print("Capabilities found:   %d" % check.capabilities_found)
-    print("Capabilities missing: %d" % check.capabilities_missing)
-    print("Domains found:        %d" % check.domains_found)
-    print("Domains missing:      %d" % check.domains_missing)
-    print("Parents found:        %d" % check.parents_found)
-    print("Parents missing:      %d" % check.parents_missing)
+    print("Found a total of %d objects" % check.objects_found)
+    print("Containers:                       %d" % check.containers_found)
+    print("Data Objects:                     %d" % check.dataobjects_found)
+    print("Domains:                          %d" % check.domains_found)
+    print("Objects with valid domains:       %d" % check.domains_used)
+    print("Capabilities:                     %d" % check.capabilities_found)
+    print("Objects with valid Capabilities:  %d" % check.capabilities_used)
+    print("Children with valid parents:      %d" % check.parents_found)
+    print("Children:                         %d" % check.children_found)
+    if check.unknown_objects:
+        print("Unknown objects:      %d" % check.unknown_objects)
+    if check.children_missing:
+        print("Children missing:     %d" % check.children_missing)
+    if check.capabilities_missing:
+        print("Capabilities missing: %d" % check.capabilities_missing)
+    if check.domains_missing:
+        print("Domains missing:      %d" % check.domains_missing)
+    if check.parents_missing:
+        print("Parents missing:      %d" % check.parents_missing)
     if check.child_count_mismatch:
         print("Child count errors:   %d" % check.child_count_mismatch)
     
