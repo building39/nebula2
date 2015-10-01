@@ -26,6 +26,8 @@
          get_time/0,
          handle_content_type/1,
          make_key/0,
+         update_data_system_metadata/3,
+         update_data_system_metadata/4,
          update_parent/4
         ]).
 
@@ -232,6 +234,22 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     Uid ++ ?OID_SUFFIX ++ Crc.
 
+%% Update Metadata
+-spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
+update_data_system_metadata(CList, Data, State) ->
+    lager:debug("Entry"),
+    CapabilitiesURI = maps:get(<<"capabilitiesURI">>, Data, []),
+    nebula2_utils:update_data_system_metadata(CList, Data, CapabilitiesURI, State).
+
+-spec nebula2_utils:update_data_system_metadata(list(),map(), string(), cdmi_state()) -> map().
+update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
+    lager:debug("Entry"),
+    {ok, C1} = nebula2_db:search(CapabilitiesURI, State, nodomain),
+    lager:debug("C1: ~p", [C1]),
+    Capabilities = maps:get(<<"capabilities">>, C1),
+    CList2 = maps:to_list(maps:with(CList, Capabilities)),
+    nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
+
 %% @doc Update a parent object with a new child
 -spec update_parent(object_oid(), string(), string(), pid()) -> ok | {error, term()}.
 update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
@@ -316,23 +334,29 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
     Oid = nebula2_utils:make_key(),
     Location = list_to_binary(application:get_env(nebula2, cdmi_location, ?DEFAULT_LOCATION)),
     lager:debug("Location: ~p", [Location]),
-    Tstamp = list_to_binary(nebula2_utils:get_time()),
     Owner = maps:get(<<"auth_as">>, EnvMap, ""),
     CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
                         none ->   get_capability_uri(ObjectType);
                         Curi ->   Curi
                       end,
-    NewMetadata = maps:from_list([{<<"cdmi_atime">>, Tstamp},
-                                  {<<"cdmi_ctime">>, Tstamp},
-                                  {<<"cdmi_mtime">>, Tstamp},
+    NewMetadata = maps:from_list([
                                   {<<"nebula_data_location">>, [Location]},
                                   {<<"cdmi_owner">>, Owner}
                                  ]),
+    CList = [<<"cdmi_atime">>,
+             <<"cdmi_ctime">>,
+             <<"cdmi_mtime">>,
+             <<"cdmi_acount">>,
+             <<"cdmi_mcount">>,
+             <<"cdmi_size">>
+    ],
+    lager:debug("Data: ~p", [Data]),
+    Data2 = nebula2_utils:update_data_system_metadata(CList, Data, CapabilitiesURI, State),
     OldMetadata = maps:get(<<"metadata">>, Body, maps:new()),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
     lager:debug("Merged Metadata: ~p", [Metadata2]),
-    Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
+    Data3 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, list_to_binary(Oid)},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
                                        {<<"parentID">>, ParentId},
@@ -340,12 +364,12 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                                        {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
                                        {<<"domainURI">>, DomainName},
                                        {<<"completionStatus">>, <<"Complete">>}]),
-                      Data),
-    Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
-    {ok, Oid} = nebula2_db:create(Pid, Oid, Data3),
+                      Data2),
+    Data4 = maps:put(<<"metadata">>, Metadata3, Data3),
+    {ok, Oid} = nebula2_db:create(Pid, Oid, Data4),
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
-    {true, Req2, Data3}.
+    {true, Req2, Data4}.
 
 get_capability_uri(ObjectType) ->
     lager:debug("Entry"),

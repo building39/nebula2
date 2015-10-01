@@ -19,11 +19,33 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([
-            get_capability/2,
-            new_capability/2,
-            update_capability/3
-        ]).
+-export([apply_metadata_capabilities/2,
+         cdmi_acount/2,
+         cdmi_atime/2,
+         cdmi_assignedsize/2,
+         cdmi_ctime/2,
+         cdmi_data_autodelete/2,
+         cdmi_data_dispersion/2,
+         cdmi_data_holds/2,
+         cdmi_data_redundancy/2,
+         cdmi_data_retention/2,
+         cdmi_encryption/2,
+         cdmi_geographic_placement/2,
+         cdmi_immediate_redundancy/2,
+         cdmi_infrastructure_redundancy/2,
+         cdmi_latency/2,
+         cdmi_mcount/2,
+         cdmi_mtime/2,
+         cdmi_RPO/2,
+         cdmi_RTO/2,
+         cdmi_sanitization_method/2,
+         cdmi_size/2,
+         cdmi_throughput/2,
+         cdmi_value_hash/2,
+         get_capability/2,
+         new_capability/2,
+         update_capability/3
+]).
 
 %% @doc Get a CDMI capability
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
@@ -80,6 +102,287 @@ update_capability(_Pid, _ObjectId, Data) ->
     % lager:debug("nebula2_capabilities:update_capability: Pid: ~p ObjectId: ~p Data: ~p", [Pid, ObjectId, Data]),
     NewData = Data,
     {ok, NewData}.
+
+%% @doc Apply CDMI capabilities
+-spec nebula2_metadata_capabilities:apply_capabilities(list(), map()) -> map().
+apply_metadata_capabilities([], Data) ->
+    Data;
+apply_metadata_capabilities([H|T], Data) ->
+    {Func, Arg} = H,
+    A = list_to_atom(string:to_lower(binary_to_list(Arg))),
+    F = list_to_atom(binary_to_list(Func)),
+    lager:debug("Function: ~p~nArgument: ~p", [F, A]),
+    Data2 = try nebula2_capabilities:F(A, Data) of
+                NewData -> NewData
+            catch
+                error:undef ->
+                    lager:warning("No handler for metadata capability ~p with argument ~p", [Func, Arg]),
+                    Data
+            end,
+    apply_metadata_capabilities(T, Data2).
+
+%% ============================================================================
+%% The following functions are for applying any CDMI capabilities on the object
+%% ============================================================================
+
+%% @doc Apply cdmi_acount
+-spec cdmi_acount(string(), map()) -> map().
+cdmi_acount(Doit, Data) ->
+    lager:debug("Entry"),
+    lager:debug("Doit: ~p", [Doit]),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_acount processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_atime
+-spec cdmi_atime(string(), map()) -> map().
+cdmi_atime(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            MD = maps:get(<<"metadata">>, Data),
+            Tstamp = list_to_binary(nebula2_utils:get_time()),
+            MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
+            Map2 = maps:put(<<"metadata">>, MD2, Data),
+            Map2;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_assignedsize
+-spec cdmi_assignedsize(string(), map()) -> map().
+cdmi_assignedsize(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_assignedsize processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_ctime
+-spec cdmi_ctime(string(), map()) -> map().
+cdmi_ctime(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            MD = maps:get(<<"metadata">>, Data),
+            Tstamp = list_to_binary(nebula2_utils:get_time()),
+            MD2 = maps:put(<<"cdmi_ctime">>, Tstamp, MD),
+            Map2 = maps:put(<<"metadata">>, MD2, Data),
+            Map2;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_data_autodelete
+-spec cdmi_data_autodelete(string(), map()) -> map().
+cdmi_data_autodelete(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_data_autodelete processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_data_dispersion
+-spec cdmi_data_dispersion(string(), map()) -> map().
+cdmi_data_dispersion(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_data_dispersion processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_data_holds
+-spec cdmi_data_holds(string(), map()) -> map().
+cdmi_data_holds(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_data_holds processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_data_redundancy
+-spec cdmi_data_redundancy(string(), map()) -> map().
+cdmi_data_redundancy(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_data_redundancy processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_data_retention
+-spec cdmi_data_retention(string(), map()) -> map().
+cdmi_data_retention(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_data_retention processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_encryption
+-spec cdmi_encryption(list(), map()) -> map().
+cdmi_encryption(EncryptionMethods, Data) ->
+    lager:debug("Entry"),
+    lager:debug("Do cdmi_encryption processing here for ~p", [EncryptionMethods]),
+    Data.
+
+%% @doc Apply cdmi_geographic_placement
+-spec cdmi_geographic_placement(string(), map()) -> map().
+cdmi_geographic_placement(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_geographic_placement processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_immediate_redundancy
+-spec cdmi_immediate_redundancy(string(), map()) -> map().
+cdmi_immediate_redundancy(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        "" ->
+            Data;
+        _ ->
+            lager:debug("Do cdmi_immediate_redundancy processing here"),
+            Data
+    end.
+
+%% @doc Apply cdmi_infrastructure_redundancy
+-spec cdmi_infrastructure_redundancy(string(), map()) -> map().
+cdmi_infrastructure_redundancy(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        "" ->
+            Data;
+        _ ->
+            lager:debug("Do cdmi_infrastructure_redundancy processing here"),
+            Data
+    end.
+
+%% @doc Apply cdmi_latency
+-spec cdmi_latency(string(), map()) -> map().
+cdmi_latency(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_latency processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_mcount
+-spec cdmi_mcount(string(), map()) -> map().
+cdmi_mcount(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_mcount processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_mtime
+-spec cdmi_mtime(string(), map()) -> map().
+cdmi_mtime(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            MD = maps:get(<<"metadata">>, Data),
+            Tstamp = list_to_binary(nebula2_utils:get_time()),
+            MD2 = maps:put(<<"cdmi_mtime">>, Tstamp, MD),
+            Map2 = maps:put(<<"metadata">>, MD2, Data),
+            Map2;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_RPO
+-spec cdmi_RPO(string(), map()) -> map().
+cdmi_RPO(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_RPO processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_RTO
+-spec cdmi_RTO(string(), map()) -> map().
+cdmi_RTO(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_RTO processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_sanitization_method
+-spec cdmi_sanitization_method(list(), map()) -> map().
+cdmi_sanitization_method(Methods, Data) ->
+    lager:debug("Entry"),
+    lager:debug("Do cdmi_sanitization_method processing here for ~p", [Methods]),
+    Data.
+
+%% @doc Apply cdmi_size
+-spec cdmi_size(string(), map()) -> map().
+cdmi_size(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_size processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_throughput
+-spec cdmi_throughput(string(), map()) -> map().
+cdmi_throughput(Doit, Data) ->
+    lager:debug("Entry"),
+    case Doit of
+        true ->
+            lager:debug("Do cdmi_throughput processing here"),
+            Data;
+        false ->
+            Data
+    end.
+
+%% @doc Apply cdmi_value_hash
+-spec cdmi_value_hash(list(), map()) -> map().
+cdmi_value_hash(ValueHash, Data) ->
+    lager:debug("Entry"),
+    lager:debug("Do cdmi_value_hash processing here for ~p", [ValueHash]),
+    Data.
 
 %% ====================================================================
 %% Internal functions

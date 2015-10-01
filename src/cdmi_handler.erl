@@ -478,7 +478,8 @@ to_cdmi_object_handler(Req, State, Path, _) ->
             Map2 = handle_query_string(Map, Qs),
             lager:debug("Map: ~p", [Map]),
             lager:debug("Map2: ~p", [Map2]),
-            Map3 = handle_atime(Map2, State),
+            CList = [<<"cdmi_atime">>],
+            Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
             Data = jsx:encode(Map3),
             {Data, Req, State};
         {error, Status} ->
@@ -529,33 +530,6 @@ get_domain(Maps, HostUrl) ->
     {ok, UrlParts} = http_uri:parse(HostUrl),
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
-
-%% @doc Handle atime if required.
--spec handle_atime(map(), cdmi_state()) -> map().
-handle_atime(Map, State) ->
-    lager:debug("Entry"),
-    case maps:get(<<"capabilitiesURI">>, Map, "") of
-        "" ->
-            Map;
-        CapURI ->
-            Path = binary_to_list(CapURI),
-            lager:debug("Path: ~p", [Path]),
-            {ok, Data} = nebula2_db:search(Path, State, nodomain),
-            Capabilities = maps:get(<<"capabilities">>, Data),
-            ATime = maps:get(<<"cdmi_atime">>, Capabilities, <<"false">>),
-            case ATime of
-                <<"false">> ->
-                    Map;
-                <<"true">> ->
-                    {Pid, _} = State,
-                    MD = maps:get(<<"metadata">>, Map),
-                    Tstamp = list_to_binary(nebula2_utils:get_time()),
-                    MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
-                    Map2 = maps:put(<<"metadata">>, MD2, Map),
-                    nebula2_db:create(Pid,  maps:get(<<"objectID">>, Map2), Map2),
-                    Map2
-            end
-    end.
 
 %% @doc Handle query string
 -spec handle_query_string(map(), term()) -> map().

@@ -117,6 +117,9 @@ do_put(Pid, Oid, Data) ->
 
 %% @doc Search an index for objects.
 -spec nebula2_riak:search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
+search(Path, State) when is_binary(Path)->
+    Path2 = binary_to_list(Path),
+    search(Path2, State);
 search(Path, State) ->
     lager:debug("Entry"),
     lager:debug("Path: ~p", [Path]),
@@ -127,9 +130,13 @@ search(Path, State) ->
 
 %% @doc Search an index for objects, but don't search on domainUri
 -spec nebula2_riak:search(string(), cdmi_state(), nodomain) -> {error, 404|500}|{ok, map()}.
+search(Path, State, nodomain) when is_binary(Path)->
+    Path2 = binary_to_list(Path),
+    search(Path2, State, nodomain);
 search(Path, State, nodomain) ->
     lager:debug("Entry"),
     {Pid, _} = State,
+    lager:debug("Path: ~p", [Path]),
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),

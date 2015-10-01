@@ -126,7 +126,7 @@ DATA_SYSTEM_METADATA_CAPABILITIES = {
     "cdmi_RTO": "false",
     "cdmi_sanitization_method": [],
     "cdmi_throughput": "false",
-    "cdmi_value_hash": [],
+    "cdmi_value_hash": ["MD5", "RIPEMD160", "SHA1", "SHA224", "SHA256", "SHA384", "SHA512"]
 }
 
 # The following is valid for all containers, dataobjects, domains and queues
@@ -268,8 +268,7 @@ SYSTEM_CAPABILITIES = {
     "cdmi_references": "false",
     "cdmi_security_access_control": "false",
     "cdmi_security_audit": "false",
-    "cdmi_security_data_integrity": "false",
-    "cdmi_security_data_integrity": "false",
+    "cdmi_security_data_integrity": "true",
     "cdmi_security_immutability": "false",
     "cdmi_security_sanitization": "false",
     "cdmi_serialization_json": "false",
@@ -713,13 +712,41 @@ class Bootstrap(object):
         now = time.gmtime()
         timestamp = time.strftime('%Y-%m-%dT%H:%M:%s.000000Z', now)
 
-        metadata = {'cdmi_owner': self.adminid,
-                    'cdmi_acls': acls,
-                    'cdmi_atime': timestamp,
-                    'cdmi_ctime': timestamp,
-                    'cdmi_mtime': timestamp}
-        if acls:
-            metadata['cdmi_acls'] = acls
+        metadata = {'cdmi_owner': self.adminid}
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_acl'] == "true":
+            if acls:
+                metadata['cdmi_acls'] = acls
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_atime'] == "true":
+            metadata['cdmi_atime'] = timestamp
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_ctime'] == "true":
+            metadata['cdmi_ctime'] = timestamp
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_mtime'] == "true":
+            metadata['cdmi_mtime'] = timestamp
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_acount'] == "true":
+            metadata['cdmi_acount'] = 0
+        if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_mcount'] == "true":
+            metadata['cdmi_mcount'] = 0
+        if doc.has_key('value'):
+            hash_values = DATA_SYSTEM_METADATA_CAPABILITIES.get('cdmi_value_hash', [])
+            if "SHA512" in hash_values:
+                metadata['cdmi_value_hash'] = "SHA512"
+                metadata['cdmi_hash'] = hashlib.sha512(doc['value']).hexdigest()
+            elif "SHA384" in hash_values:
+                metadata['cdmi_value_hash'] = "SHA384"
+                metadata['cdmi_hash'] = hashlib.sha384(doc['value']).hexdigest()
+            elif "SHA256" in hash_values:
+                metadata['cdmi_value_hash'] = "SHA256"
+                metadata['cdmi_hash'] = hashlib.sha256(doc['value']).hexdigest()
+            elif "SHA224" in hash_values:
+                metadata['cdmi_value_hash'] = "SHA224"
+                metadata['cdmi_hash'] = hashlib.sha224(doc['value']).hexdigest()
+            elif "SHA1" in hash_values:
+                metadata['cdmi_value_hash'] = "SHA1"
+                metadata['cdmi_hash'] = hashlib.sha1(doc['value']).hexdigest()
+            elif "MD5" in hash_values:
+                metadata['cdmi_value_hash'] = "MD5"
+                metadata['cdmi_hash'] = hashlib.md5(doc['value']).hexdigest()
+
         doc['metadata'] = metadata
 
         r = requests.put(url=url,
