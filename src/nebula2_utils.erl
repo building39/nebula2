@@ -88,31 +88,6 @@ delete(State) ->
     Children = maps:get(<<"children">>, Data, []),
     handle_delete(Pid, Data, State, Children).
 
-%% TODO: Make delete asynchronous
-handle_delete(Pid, Data, _, []) ->
-    lager:debug("Entry"),
-    case nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)) of
-        ok ->
-             ParentId = maps:get(<<"parentID">>, Data, []),
-             ObjectName = maps:get(<<"objectName">>, Data),
-             delete_child_from_parent(Pid, ParentId, ObjectName),
-             ok;
-        Other ->
-            Other
-    end;
-handle_delete(Pid, Data, State, [Head | Tail]) ->
-    lager:debug("Entry"),
-    Child = binary_to_list(Head),
-    ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, "")),
-    ChildPath = ParentUri ++ binary_to_list(maps:get(<<"objectName">>, Data)) ++ Child,
-    lager:debug("deleting child ~p", [ChildPath]),
-    {ok, ChildData} = nebula2_db:search(ChildPath, State),
-    GrandChildren = maps:get(<<"children">>, ChildData, []),
-    lager:debug("has these grandchildren: ~p", [GrandChildren]),
-    handle_delete(Pid, ChildData, State, GrandChildren),
-    handle_delete(Pid, Data, State, Tail),
-    nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)).
-
 %% @doc Delete a child from its parent
 -spec delete_child_from_parent(pid(), object_oid(), string()) -> ok | {error, term()}.
 delete_child_from_parent(Pid, ParentId, Name) ->
@@ -140,15 +115,6 @@ delete_child_from_parent(Pid, ParentId, Name) ->
 extract_parentURI(Path) ->
     lager:debug("Entry"),
     extract_parentURI(Path, "") ++ "/".
--spec extract_parentURI(list(), list()) -> list().
-extract_parentURI([], Acc) ->
-    Acc;
-extract_parentURI([H|T], Acc) when is_binary(H) ->
-    Acc2 = Acc ++ "/" ++ binary_to_list(H),
-    extract_parentURI(T, Acc2);
-extract_parentURI([H|T], Acc) ->
-    Acc2 = Acc ++ "/" ++ H,
-    extract_parentURI(T, Acc2).
 
 %% @doc Get the object name.
 -spec get_object_name(list(), string()) -> string().
@@ -371,6 +337,16 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
     pooler:return_member(riak_pool, Pid),
     {true, Req2, Data4}.
 
+-spec extract_parentURI(list(), list()) -> list().
+extract_parentURI([], Acc) ->
+    Acc;
+extract_parentURI([H|T], Acc) when is_binary(H) ->
+    Acc2 = Acc ++ "/" ++ binary_to_list(H),
+    extract_parentURI(T, Acc2);
+extract_parentURI([H|T], Acc) ->
+    Acc2 = Acc ++ "/" ++ H,
+    extract_parentURI(T, Acc2).
+
 get_capability_uri(ObjectType) ->
     lager:debug("Entry"),
     case ObjectType of
@@ -383,6 +359,31 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI
     end.
+
+%% TODO: Make delete asynchronous
+handle_delete(Pid, Data, _, []) ->
+    lager:debug("Entry"),
+    case nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)) of
+        ok ->
+             ParentId = maps:get(<<"parentID">>, Data, []),
+             ObjectName = maps:get(<<"objectName">>, Data),
+             delete_child_from_parent(Pid, ParentId, ObjectName),
+             ok;
+        Other ->
+            Other
+    end;
+handle_delete(Pid, Data, State, [Head | Tail]) ->
+    lager:debug("Entry"),
+    Child = binary_to_list(Head),
+    ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, "")),
+    ChildPath = ParentUri ++ binary_to_list(maps:get(<<"objectName">>, Data)) ++ Child,
+    lager:debug("deleting child ~p", [ChildPath]),
+    {ok, ChildData} = nebula2_db:search(ChildPath, State),
+    GrandChildren = maps:get(<<"children">>, ChildData, []),
+    lager:debug("has these grandchildren: ~p", [GrandChildren]),
+    handle_delete(Pid, ChildData, State, GrandChildren),
+    handle_delete(Pid, Data, State, Tail),
+    nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)).
 
 sanitize_body([], Body) ->
     Body;
