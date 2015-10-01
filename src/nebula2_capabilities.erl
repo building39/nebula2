@@ -159,15 +159,18 @@ cdmi_acount(Doit, Data) ->
 -spec cdmi_atime(string(), map()) -> map().
 cdmi_atime(Doit, Data) ->
     lager:debug("Entry"),
+    lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
+            lager:debug("true"),
             MD = maps:get(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
             MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
-            Map2 = maps:put(<<"metadata">>, MD2, Data),
-            Map2;
+            maps:put(<<"metadata">>, MD2, Data);
         false ->
-            Data
+            MD = maps:get(<<"metadata">>, Data),
+            MD2 = maps:remove(<<"cdmi_atime">>, MD),
+            maps:put(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_assignedsize
