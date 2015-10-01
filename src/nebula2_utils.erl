@@ -19,6 +19,7 @@
          delete/1,
          delete_child_from_parent/3,
          extract_parentURI/1,
+         generate_hash/2,
          get_object_name/2,
          get_object_oid/1,
          get_object_oid/2,
@@ -116,6 +117,15 @@ extract_parentURI(Path) ->
     lager:debug("Entry"),
     extract_parentURI(Path, "") ++ "/".
 
+%% @doc Generate hash.
+-spec generate_hash(string(), string()) -> string().
+generate_hash(Method, Data) when is_binary(Data)->
+    Data2 = binary_to_list(Data),
+    nebula2_utils:generate(Method, Data2);
+generate_hash(Method, Data) ->
+    M = list_to_atom(Method),
+    string:to_lower(lists:flatten([[integer_to_list(N, 16) || <<N:4>> <= crypto:hash(M, Data)]])).
+    
 %% @doc Get the object name.
 -spec get_object_name(list(), string()) -> string().
 get_object_name(Parts, Path) ->
