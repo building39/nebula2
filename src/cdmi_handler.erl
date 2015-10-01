@@ -103,9 +103,7 @@ rest_init(Req, _State) ->
     {ok, Req9, {PoolMember, FinalMap}}.
 
 allowed_methods(Req, State) ->
-    {Pid, EnvMap} = State,
     lager:debug("Entry"),
-    lager:debug("Pid: ~p EnvMap: ~p", [Pid, EnvMap]),
     {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
 
 allow_missing_post(Req, State) ->
@@ -137,10 +135,6 @@ delete_resource(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
-    Data = maps:get(<<"object_map">>, EnvMap),
-    ObjectType = maps:get(<<"objectType">>, Data),
-    lager:debug("Object Type: ~p", [ObjectType]),
-   
     case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
         true ->
             nebula2_domains:delete_domain(Req, State);
@@ -351,23 +345,18 @@ resource_exists_handler(ParentUri, Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
-    lager:debug("Path: ~p", [Path]),
-    lager:debug("ParentUri: ~p", [ParentUri]),
     case Path of
         "/" ->
             {true, Req, State};
         _ ->
             TopParent = case ParentUri of
                            "/" ->
-                               lager:debug("ParentUri is /"),
                                 "/";
                             _Other ->
-                                lager:debug("ParentUri: ~p", [ParentUri]),
                                 lists:nth(1, string:tokens(ParentUri, "/"))
                         end,
             case TopParent of
                 "/" ->
-                    lager:debug("Looking for something under the root..."),
                     case nebula2_db:search(Path, State) of
                         {ok, Data} ->
                             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
@@ -375,7 +364,6 @@ resource_exists_handler(ParentUri, Req, State) ->
                             {false, Req, State}
                     end;
                 "cdmi_domains" ->
-                    lager:debug("Looking for a domain..."),
                     case nebula2_db:search(Path, State, nodomain) of
                         {ok, Data} ->
                             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
@@ -383,7 +371,6 @@ resource_exists_handler(ParentUri, Req, State) ->
                             {false, Req, State}
                     end;
                 "cdmi_capabilities" ->
-                    lager:debug("Looking for a capability..."),
                     case nebula2_db:search(Path, State, nodomain) of
                         {ok, Data} ->
                             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
@@ -391,7 +378,6 @@ resource_exists_handler(ParentUri, Req, State) ->
                             {false, Req, State}
                     end;
                 _ ->
-                    lager:debug("Looking for something else..."),
                     case nebula2_db:search(Path, State) of
                         {ok, Data} ->
                             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
@@ -474,10 +460,7 @@ to_cdmi_object_handler(Req, State, Path, _) ->
         {ok, Map} ->
             {_, EnvMap} = State,
             Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
-            lager:debug("Qs: ~p", [Qs]),
             Map2 = handle_query_string(Map, Qs),
-            lager:debug("Map: ~p", [Map]),
-            lager:debug("Map2: ~p", [Map2]),
             CList = [<<"cdmi_atime">>],
             Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
             Data = jsx:encode(Map3),

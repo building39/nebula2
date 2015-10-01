@@ -36,9 +36,9 @@
 available(Pid) ->
     lager:debug("Entry"),
     case riakc_pb_socket:ping(Pid) of
-        pong -> % lager:debug("Connected to Riak..."),
+        pong ->
                 true;
-        _R -> % lager:debug("Can't ping Riak: ~p", [R]),
+        _R ->
              false
     end.
 
@@ -122,7 +122,7 @@ search(Path, State) when is_binary(Path)->
     search(Path2, State);
 search(Path, State) ->
     lager:debug("Entry"),
-    lager:debug("Path: ~p", [Path]),
+    % lager:debug("Path: ~p", [Path]),
     {Pid, EnvMap} = State,
     Query = create_query(Path, EnvMap),
     % lager:debug("Query: ~p", [Query]),
@@ -136,7 +136,7 @@ search(Path, State, nodomain) when is_binary(Path)->
 search(Path, State, nodomain) ->
     lager:debug("Entry"),
     {Pid, _} = State,
-    lager:debug("Path: ~p", [Path]),
+    % lager:debug("Path: ~p", [Path]),
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
@@ -177,7 +177,7 @@ update(Pid, Oid, Data) ->
 -spec nebula2_riak:create_query(string(), map()) -> string().
 create_query(Path, EnvMap) ->
     lager:debug("Entry"),
-    lager:debug("Path: ~p", [Path]),
+    % lager:debug("Path: ~p", [Path]),
     Parts = string:tokens(Path, "/"),
     ParentURI = nebula2_utils:get_parent_uri(Path),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),

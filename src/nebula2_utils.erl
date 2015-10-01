@@ -36,7 +36,6 @@
 -spec nebula2_utils:beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
     lager:debug("Entry"),
-    lager:debug("Str: ~p Substr: ~p", [Str, Substr]),
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -56,7 +55,6 @@ create_object(Req, State, ObjectType) ->
             DomainName = maps:get(<<"domainURI">>, Parent, ""),
             create_object(Req, State, ObjectType, DomainName, Parent);
         {notfound, _} ->
-            % lager:debug("create_object: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
             false
     end.
@@ -73,7 +71,6 @@ create_object(Req, State, ObjectType, DomainName) ->
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
             create_object(Req, State, ObjectType, DomainName, Parent);
         {notfound, _} ->
-            % lager:debug("create_object: Did not find parent"),
             pooler:return_member(riak_pool, Pid),
             false
     end.
@@ -83,7 +80,6 @@ create_object(Req, State, ObjectType, DomainName) ->
 delete(State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     Data = maps:get(<<"object_map">>, EnvMap),
     {Pid, _} = State,
     Children = maps:get(<<"children">>, Data, []),
@@ -156,11 +152,8 @@ get_object_oid(Path, State) ->
             {error,_} -> 
                 {notfound, ""};
             {ok, Data} ->
-                % lager:debug("Data: ~p", [Data]),
                 {ok, maps:get(<<"objectID">>, Data)}
           end,
-    % lager:debug("get_object_oid: ~p", [Oid]),
-    % lager:debug("get_object_oid: Path: ~p", [Path]),
     Oid.
 
 %% @doc Construct the object's parent URI.
@@ -176,7 +169,6 @@ get_parent_uri(Path) ->
                     _ ->
                         nebula2_utils:extract_parentURI(lists:droplast(Parts))
                 end,
-    % lager:debug("Calculated ParentURI to be ~p", [ParentUri]),
     ParentUri.
 
 %% @doc Return current time in ISO 8601:2004 extended representation.
@@ -221,7 +213,6 @@ update_data_system_metadata(CList, Data, State) ->
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
     {ok, C1} = nebula2_db:search(CapabilitiesURI, State, nodomain),
-    lager:debug("C1: ~p", [C1]),
     Capabilities = maps:get(<<"capabilities">>, C1),
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
     nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
@@ -234,15 +225,12 @@ update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     ok;
 update_parent(ParentId, Path, ObjectType, Pid) ->
     lager:debug("Entry"),
-    % lager:debug("Entry nebula2_utils:update_parent: ~p ~p ~p ~p", [ParentId, Path, ObjectType, Pid]),
     N = case length(string:tokens(Path, "/")) of
             0 ->
                 "";
             _Other ->
                 lists:last(string:tokens(Path, "/"))
         end,
-    % lager:debug("update_parent: N: ~p", [N]),
-    % lager:debug("update_parent: child type: ~p", [ObjectType]),
     Name = case ObjectType of
                ?CONTENT_TYPE_CDMI_CAPABILITY ->
                    N ++ "/";
@@ -254,16 +242,12 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                    N
            end,
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
-    lager:debug("update_parent got parent: ~p", [Parent]),
-    % lager:debug("updating parent with child: ~p", [Name]),
     Children = case maps:get(<<"children">>, Parent, "") of
                      "" ->
                          [list_to_binary(Name)];
                      Ch ->
-                         % lager:debug("capabilities update_parent: Ch: ~p", [Ch]),
                          lists:append(Ch, [list_to_binary(Name)])
                  end,
-    % lager:debug("Children is now: ~p", [Children]),
     ChildrenRange = case maps:get(<<"childrenrange">>, Parent, "") of
                      "" ->
                          "0-0";
@@ -271,11 +255,8 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          lists:concat(["0-", Num + 1])
                  end,
-    % lager:debug("ChildrenRange is now: ~p", [ChildrenRange]),
     NewParent1 = maps:put(<<"children">>, Children, Parent),
     NewParent2 = maps:put(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
-    % lager:debug("NewParent2: ~p", [NewParent2]),
-    % lager:debug("new parent: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% ====================================================================
@@ -292,10 +273,7 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
-    lager:debug("DomainName: ~p", [DomainName]),
     ParentId = maps:get(<<"objectID">>, Parent),
-    lager:debug("ParentURI: ~p", [ParentUri]),
-    lager:debug("ParentID: ~p", [ParentId]),
     ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
     {ok, B, Req2} = cowboy_req:body(Req),
     Body = jsx:decode(B, [return_maps]),
@@ -309,7 +287,6 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                          Body),
     Oid = nebula2_utils:make_key(),
     Location = list_to_binary(application:get_env(nebula2, cdmi_location, ?DEFAULT_LOCATION)),
-    lager:debug("Location: ~p", [Location]),
     Owner = maps:get(<<"auth_as">>, EnvMap, ""),
     CapabilitiesURI = case maps:get(<<"capabilitiesURI">>, Body, none) of
                         none ->   get_capability_uri(ObjectType);
@@ -326,12 +303,10 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
              <<"cdmi_mcount">>,
              <<"cdmi_size">>
     ],
-    lager:debug("Data: ~p", [Data]),
     Data2 = nebula2_utils:update_data_system_metadata(CList, Data, CapabilitiesURI, State),
     OldMetadata = maps:get(<<"metadata">>, Body, maps:new()),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
-    lager:debug("Merged Metadata: ~p", [Metadata2]),
     Data3 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, list_to_binary(Oid)},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
@@ -387,10 +362,8 @@ handle_delete(Pid, Data, State, [Head | Tail]) ->
     Child = binary_to_list(Head),
     ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, "")),
     ChildPath = ParentUri ++ binary_to_list(maps:get(<<"objectName">>, Data)) ++ Child,
-    lager:debug("deleting child ~p", [ChildPath]),
     {ok, ChildData} = nebula2_db:search(ChildPath, State),
     GrandChildren = maps:get(<<"children">>, ChildData, []),
-    lager:debug("has these grandchildren: ~p", [GrandChildren]),
     handle_delete(Pid, ChildData, State, GrandChildren),
     handle_delete(Pid, Data, State, Tail),
     nebula2_db:delete(Pid, maps:get(<<"objectID">>, Data)).

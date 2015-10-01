@@ -108,7 +108,6 @@ lager:debug("Entry"),
     update(Pid, binary_to_list(Oid), Data);
 update(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    % lager:debug("Updating object ~p", [Oid]),
     lager:debug("Entry"),
     case Mod:update(Pid, Oid, jsx:encode(Data)) of
         {ok, _} ->
