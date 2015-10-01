@@ -159,8 +159,14 @@ forbidden(Req, State) ->
 %% content types accepted
 from_cdmi_capability(Req, State) ->
     lager:debug("Entry"),
-    {_Pid, _EnvMap} = State,
-    {true, Req, State}.
+    {_Pid, EnvMap} = State,
+    case maps:get(<<"exists">>, EnvMap) of
+        true ->
+            ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+            nebula2_capabilities:update_capability(Req, State, ObjectId);
+        false ->
+            nebula2_capabilities:new_capability(Req, State)
+    end.
 
 from_cdmi_container(Req, State) ->
     lager:debug("Entry"),

@@ -45,7 +45,9 @@ update_container(Req, State, Oid) ->
     Data = maps:merge(OldData, NewData),
     Data2 = maps:put(<<"metadata">>, MetaData, Data),
     CList = [<<"cdmi_atime">>,
-             <<"cdmi_mtime">>],
+             <<"cdmi_mtime">>,
+             <<"cdmi_acount">>,
+             <<"cdmi_mcount">>],
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
     Response = case nebula2_db:update(Pid, Oid, Data3) of
                    ok ->

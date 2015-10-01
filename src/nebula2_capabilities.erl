@@ -91,11 +91,35 @@ new_capability(Req, State) ->
     end.
 
 %% @doc Update a CDMI capability
--spec nebula2_capabilities:update_capability(pid(), object_oid(), map()) -> {ok, json_value()}.
-update_capability(_Pid, _ObjectId, Data) ->
+-spec nebula2_capabilities:update_capability(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
+update_capability(Req, State, Oid) ->
     lager:debug("Entry"),
-    NewData = Data,
-    {ok, NewData}.
+    {Pid, _} = State,
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    NewData = jsx:decode(Body, [return_maps]),
+    NewCapabilities = maps:get(<<"capabilities">>, NewData),
+    lager:debug("NewData: ~p", [NewData]),
+    {ok, OldData} = nebula2_db:read(Pid, Oid),
+    OldCapabilities = maps:get(<<"capabilities">>, OldData),
+    OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
+    NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
+    MetaData = maps:merge(OldMetaData, NewMetaData),
+    Capabilities = maps:merge(OldCapabilities, NewCapabilities),
+    Data2 = maps:put(<<"capabilities">>, Capabilities, OldData),
+    Data3 = maps:put(<<"metadata">>, MetaData, Data2),
+    CList = [<<"cdmi_atime">>,
+             <<"cdmi_mtime">>,
+             <<"cdmi_acount">>,
+             <<"cdmi_mcount">>],
+    CList2 = maps:to_list(maps:with(CList, maps:get(<<"capabilities">>, OldData))),
+    Data4 = nebula2_capabilities:apply_metadata_capabilities(CList2, Data3),
+    Response = case nebula2_db:update(Pid, Oid, Data4) of
+                   ok ->
+                       {true, Req2, State};
+                   _  ->
+                       {false, Req, State}
+               end,
+    Response.
 
 %% @doc Apply CDMI capabilities
 -spec nebula2_metadata_capabilities:apply_capabilities(list(), map()) -> map().
