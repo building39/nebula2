@@ -391,6 +391,10 @@ cdmi_size(Doit, Data) ->
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
+                    V = maps:get(<<"value">>, Data),
+                    Encoding = maps:get(<<"valuetransferencoding">>, Data),
+                    lager:debug("Value: ~p", [V]),
+                    lager:debug("Encoding: ~p", [Encoding]),
                     Value = binary_to_list(maps:get(<<"value">>, Data)),
                     Size = string:len(Value),
                     MD = maps:get(<<"metadata">>, Data),

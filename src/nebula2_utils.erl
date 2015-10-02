@@ -323,7 +323,18 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                                        {<<"completionStatus">>, <<"Complete">>},
                                        {<<"metadata">>, Metadata3}]),
                       Data),
-    Data3 = maps:put(<<"metadata">>, Metadata3, Data2),
+    Data3 = case maps:is_key(<<"value">>, Data2) of
+                true ->
+                    case maps:is_key(<<"valuetransferencoding">>, Data2) of
+                        false ->
+                            maps:put(<<"valuetransferencoding">>, <<"utf-8">>, Data2);
+                        true ->
+                            Data2
+                     end;
+                false ->
+                    Data2
+            end,
+    Data4 = maps:put(<<"metadata">>, Metadata3, Data3),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_ctime">>,
              <<"cdmi_mtime">>,
@@ -331,11 +342,11 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
              <<"cdmi_mcount">>,
              <<"cdmi_size">>
     ],
-    Data4 = nebula2_utils:update_data_system_metadata(CList, Data3, CapabilitiesURI, State),
-    {ok, Oid} = nebula2_db:create(Pid, Oid, Data4),
+    Data5 = nebula2_utils:update_data_system_metadata(CList, Data4, CapabilitiesURI, State),
+    {ok, Oid} = nebula2_db:create(Pid, Oid, Data5),
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
-    {true, Req2, Data4}.
+    {true, Req2, Data5}.
 
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
