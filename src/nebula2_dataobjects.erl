@@ -36,7 +36,6 @@ new_dataobject(Req, State) ->
                    false ->
                        {false, Req, State}
                end,
-    lager:debug("Response: ~p", [Response]),
     Response.
 
 %% @doc Update a CDMI dataobject

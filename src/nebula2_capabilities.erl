@@ -387,11 +387,22 @@ cdmi_sanitization_method(Methods, Data) ->
 -spec cdmi_size(string(), map()) -> map().
 cdmi_size(Doit, Data) ->
     lager:debug("Entry"),
-    case Doit of
-        true ->
-            lager:debug("Do cdmi_size processing here"),
-            Data;
-        false ->
+    case binary_to_list(maps:get(<<"objectType">>, Data)) of
+        ?CONTENT_TYPE_CDMI_DATAOBJECT ->
+            case Doit of
+                true ->
+                    Value = binary_to_list(maps:get(<<"value">>, Data)),
+                    Size = string:len(Value),
+                    MD = maps:get(<<"metadata">>, Data),
+                    MD2 = maps:put(<<"cdmi_size">>, Size, MD),
+                    maps:put(<<"metadata">>, MD2, Data);
+                false ->
+                    lager:debug("false"),
+                    MD = maps:get(<<"metadata">>, Data),
+                    MD2 = maps:remove(<<"cdmi_size">>, MD),
+                    maps:put(<<"metadata">>, MD2, Data)
+            end;
+        _ ->
             Data
     end.
 

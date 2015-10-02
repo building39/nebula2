@@ -44,7 +44,7 @@
 %% Content types
 -define(CONTENT_TYPE_CDMI_CAPABILITY,      "application/cdmi-capability").
 -define(CONTENT_TYPE_CDMI_CONTAINER,       "application/cdmi-container").
--define(CONTENT_TYPE_CDMI_DATAOBJECT,      "application/cdmi-dataobject").
+-define(CONTENT_TYPE_CDMI_DATAOBJECT,      "application/cdmi-object").
 -define(CONTENT_TYPE_CDMI_DOMAIN,          "application/cdmi-domain").
 -define(CONTENT_TYPE_CDMI_CAPABILITY_JSON, "application/cdmi-capability+json").
 -define(CONTENT_TYPE_CDMI_CONTAINER_JSON,  "application/cdmi-container+json").
