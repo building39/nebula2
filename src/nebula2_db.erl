@@ -104,11 +104,11 @@ search(Path, State, nodomain) ->
              map()              %% Data to store
             ) -> ok | {error, term()}.
 update(Pid, Oid, Data) when is_binary(Oid) ->
-lager:debug("Entry"),
+    lager:debug("Entry"),
     update(Pid, binary_to_list(Oid), Data);
 update(Pid, Oid, Data) ->
-    {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
+    {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:update(Pid, Oid, jsx:encode(Data)) of
         {ok, _} ->
             mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),

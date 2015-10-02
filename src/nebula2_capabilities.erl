@@ -119,6 +119,7 @@ update_capability(Req, State, Oid) ->
                    _  ->
                        {false, Req, State}
                end,
+    lager:debug("Data4: ~p", [Data4]),
     Response.
 
 %% @doc Apply CDMI capabilities
@@ -146,13 +147,16 @@ apply_metadata_capabilities([H|T], Data) ->
 -spec cdmi_acount(string(), map()) -> map().
 cdmi_acount(Doit, Data) ->
     lager:debug("Entry"),
-    lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
-            lager:debug("Do cdmi_acount processing here"),
-            Data;
+            MD = maps:get(<<"metadata">>, Data),
+            ACount = maps:get(<<"cdmi_acount">>, MD, 0) + 1,
+            MD2 = maps:put(<<"cdmi_acount">>, ACount, MD),
+            maps:put(<<"metadata">>, MD2, Data);
         false ->
-            Data
+            MD = maps:get(<<"metadata">>, Data),
+            MD2 = maps:remove(<<"cdmi_acount">>, MD),
+            maps:put(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_atime
@@ -162,7 +166,6 @@ cdmi_atime(Doit, Data) ->
     lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
-            lager:debug("true"),
             MD = maps:get(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
             MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
@@ -194,10 +197,11 @@ cdmi_ctime(Doit, Data) ->
             MD = maps:get(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
             MD2 = maps:put(<<"cdmi_ctime">>, Tstamp, MD),
-            Map2 = maps:put(<<"metadata">>, MD2, Data),
-            Map2;
+            maps:put(<<"metadata">>, MD2, Data);
         false ->
-            Data
+            MD = maps:get(<<"metadata">>, Data),
+            MD2 = maps:remove(<<"cdmi_ctime">>, MD),
+            maps:put(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_data_autodelete
@@ -321,10 +325,14 @@ cdmi_mcount(Doit, Data) ->
     lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_mcount processing here"),
-            Data;
+            MD = maps:get(<<"metadata">>, Data),
+            ACount = maps:get(<<"cdmi_mcount">>, MD, 0) + 1,
+            MD2 = maps:put(<<"cdmi_mcount">>, ACount, MD),
+            maps:put(<<"metadata">>, MD2, Data);
         false ->
-            Data
+            MD = maps:get(<<"metadata">>, Data),
+            MD2 = maps:remove(<<"cdmi_mcount">>, MD),
+            maps:put(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_mtime
@@ -339,7 +347,9 @@ cdmi_mtime(Doit, Data) ->
             Map2 = maps:put(<<"metadata">>, MD2, Data),
             Map2;
         false ->
-            Data
+            MD = maps:get(<<"metadata">>, Data),
+            MD2 = maps:remove(<<"cdmi_mtime">>, MD),
+            maps:put(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_RPO

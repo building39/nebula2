@@ -467,7 +467,8 @@ to_cdmi_object_handler(Req, State, Path, _) ->
             {_, EnvMap} = State,
             Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
             Map2 = handle_query_string(Map, Qs),
-            CList = [<<"cdmi_atime">>],
+            CList = [<<"cdmi_atime">>,
+                     <<"cdmi_acount">>],
             Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
             Data = jsx:encode(Map3),
             {Data, Req, State};

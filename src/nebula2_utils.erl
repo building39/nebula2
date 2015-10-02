@@ -210,6 +210,9 @@ update_data_system_metadata(CList, Data, State) ->
     nebula2_utils:update_data_system_metadata(CList, Data, CapabilitiesURI, State).
 
 -spec nebula2_utils:update_data_system_metadata(list(),map(), string(), cdmi_state()) -> map().
+update_data_system_metadata(_CList, Data, [], _State) ->
+    lager:debug("Entry"),
+    Data;
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
     {ok, C1} = nebula2_db:search(CapabilitiesURI, State, nodomain),
