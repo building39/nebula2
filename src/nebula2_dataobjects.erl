@@ -30,7 +30,6 @@ get_dataobject(Pid, Oid) ->
 new_dataobject(Req, State) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
-%    DomainName = "system_domain",
     Response = case nebula2_utils:create_object(Req, State, ObjectType) of
                    {true, Req2, Data} ->
                        {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};

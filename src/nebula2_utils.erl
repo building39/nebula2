@@ -287,7 +287,12 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
     ParentId = maps:get(<<"objectID">>, Parent),
     ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
     Parts = string:tokens(Path, "/"),
-    ObjectName = string:concat(lists:last(Parts), "/"),
+    ObjectName = case ObjectType of
+                     ?CONTENT_TYPE_CDMI_DATAOBJECT ->
+                         lists:last(Parts);
+                     _ ->
+                         string:concat(lists:last(Parts), "/")
+                 end,
     Data = sanitize_body([<<"objectID">>,
                           <<"objectName">>,
                           <<"parentID">>,
