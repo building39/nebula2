@@ -274,12 +274,18 @@ create_object(Req, State, ObjectType, DomainName, Parent) when is_list(DomainNam
 create_object(Req, State, ObjectType, DomainName, Parent) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    {ok, B, Req2} = cowboy_req:body(Req),
+    lager:debug("Body: ~p", [B]),
+    Body = try jsx:decode(B, [return_maps]) of
+               NewBody -> NewBody
+           catch
+               error:badarg ->
+                   throw(badjson)
+           end,
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
     ParentId = maps:get(<<"objectID">>, Parent),
     ParentMetadata = maps:get(<<"metadata">>, Parent, maps:new()),
-    {ok, B, Req2} = cowboy_req:body(Req),
-    Body = jsx:decode(B, [return_maps]),
     Parts = string:tokens(Path, "/"),
     ObjectName = string:concat(lists:last(Parts), "/"),
     Data = sanitize_body([<<"objectID">>,

@@ -163,9 +163,21 @@ from_cdmi_capability(Req, State) ->
     case maps:get(<<"exists">>, EnvMap) of
         true ->
             ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-            nebula2_capabilities:update_capability(Req, State, ObjectId);
+            try nebula2_capabilities:update_capability(Req, State, ObjectId) of
+                Resp -> Resp
+            catch
+                throw:badjson ->
+                    {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                    {halt, Reply, State}
+            end;
         false ->
-            nebula2_capabilities:new_capability(Req, State)
+            try nebula2_capabilities:new_capability(Req, State) of
+                Resp -> Resp
+            catch
+                throw:badjson ->
+                    {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                    {halt, Reply, State}
+            end
     end.
 
 from_cdmi_container(Req, State) ->
@@ -178,9 +190,21 @@ from_cdmi_container(Req, State) ->
             Response = case maps:get(<<"exists">>, EnvMap) of
                             true ->
                                 ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                                nebula2_containers:update_container(Req, State, ObjectId);
+                                try nebula2_containers:update_container(Req, State, ObjectId) of
+                                    Resp -> Resp
+                                catch
+                                    throw:badjson ->
+                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                                        {halt, Reply, State}
+                                end;
                             false ->
-                                nebula2_containers:new_container(Req, State)
+                                try nebula2_containers:new_container(Req, State) of
+                                    Resp -> Resp
+                                catch
+                                    throw:badjson ->
+                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                                        {halt, Reply, State}
+                                end
                        end,
             Response;
         _ ->
@@ -203,17 +227,46 @@ from_cdmi_domain(Req, State) ->
 
 from_cdmi_object(Req, State) ->
     lager:debug("Entry"),
-    {Pid, EnvMap} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
-    _Response = case maps:get(<<"exists">>, EnvMap) of
-                    true ->
-                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                        BodyMap = jsx:decode(Body, [return_maps]),
-                        nebula2_dataobjects:update_dataobject(Pid, ObjectId, BodyMap);
-                    false ->
-                        nebula2_dataobjects:new_dataobject(Req2, State)
-               end,
-    {true, Req, State}.
+    {_, EnvMap} = State,
+    ObjectName = maps:get(<<"objectName">>, EnvMap),
+    LastChar = string:substr(ObjectName, string:len(ObjectName)),
+    case LastChar of
+        "/" ->
+            {ok, Reply} = cowboy_req:reply(400, [], <<"data object name must not end with '/'\n">>, Req),
+            {halt, Reply, State};
+        _ ->
+            Response = case maps:get(<<"exists">>, EnvMap) of
+                            true ->
+                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+                                try nebula2_dataobjects:update_dataobject(Req, State, ObjectId) of
+                                    Resp -> Resp
+                                catch
+                                    throw:badjson ->
+                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                                        {halt, Reply, State}
+                                end;
+                            false ->
+                                try nebula2_dataobjects:new_dataobject(Req, State) of
+                                    Resp -> Resp
+                                catch
+                                    throw:badjson ->
+                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
+                                        {halt, Reply, State}
+                                end
+                       end,
+            Response
+    end.
+%%     {Pid, EnvMap} = State,
+%%     {ok, Body, Req2} = cowboy_req:body(Req),
+%%     _Response = case maps:get(<<"exists">>, EnvMap) of
+%%                     true ->
+%%                         ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+%%                         BodyMap = jsx:decode(Body, [return_maps]),
+%%                         nebula2_dataobjects:update_dataobject(Pid, ObjectId, BodyMap);
+%%                     false ->
+%%                         nebula2_dataobjects:new_dataobject(Req2, State)
+%%                end,
+%%     {true, Req, State}.
 
 generate_etag(Req, State) ->
     lager:debug("Entry"),
