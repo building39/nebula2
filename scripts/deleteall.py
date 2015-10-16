@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import requests
 
-URL = "http://nebriak1:8098/types/cdmi/buckets/cdmi/keys"
+URL = "http://nebriak3:8098/types/cdmi/buckets/cdmi/keys"
 
 params = {'keys': 'true'}
 r = requests.get(URL, params=params)
