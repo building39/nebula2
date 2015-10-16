@@ -39,20 +39,36 @@ new_dataobject(Req, State) ->
     Response.
 
 %% @doc Update a CDMI dataobject
--spec nebula2_dataobjects:update_dataobject(pid(), object_oid(), map()) -> {ok, json_value()}.
-update_dataobject(Pid, Oid, NewData) ->
+-spec nebula2_dataobjects:update_dataobject(cowboy_req:req(), cdmi_state(), object_oid()) -> {ok, json_value()}.
+update_dataobject(Req, State, Oid) ->
     lager:debug("Entry"),
+	{Pid, _EnvMap} = State,
+	{ok, Body, Req2} = cowboy_req:body(Req),
+	NewData = jsx:decode(Body, [return_maps]),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
-    NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
-    MetaData = maps:merge(OldMetaData, NewMetaData),
+	MetaData = case maps:is_key(<<"metadata">>, NewData) of
+				   true ->
+    					NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
+						maps:merge(OldMetaData, NewMetaData);
+				   false ->
+					   OldMetaData
+			   end,
     Data = maps:merge(OldData, NewData),
     Data2 = maps:put(<<"metadata">>, MetaData, Data),
-    Value = binary_to_list(jsx:encode(maps:get(<<"value">>, Data2))),
-    Length = length(Value) - 1,
-    ValueRange = list_to_binary(lists:flatten(io_lib:format("0-~p", [Length]))),
-    Data3 = maps:put(<<"valuerange">>, ValueRange, Data2),
-    nebula2_db:update(Pid, Oid, Data3).
+    CList = [<<"cdmi_atime">>,
+             <<"cdmi_mtime">>,
+             <<"cdmi_acount">>,
+             <<"cdmi_mcount">>,
+			 <<"cdmi_size">>],
+    Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
+    Response = case nebula2_db:update(Pid, Oid, Data3) of
+                   ok ->
+                       {true, Req2, State};
+                   _  ->
+                       {false, Req, State}
+               end,
+    Response.
 
 %% ====================================================================
 %% Internal functions
