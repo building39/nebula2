@@ -1,12 +1,15 @@
 .eunit
 deps
 *.o
+*.pyc
+*.pyo
 *.beam
 *.plt
 erl_crash.dump
 ebin
 rel/example_project
 .concrete/DEV_MODE
+*.orig
 .rebar
 .erlang.*
 .project

@@ -9,8 +9,7 @@
 -export([start/2]).
 -export([stop/1]).
 
--export([app_config/2,
-         cdmi_location/0
+-export([app_config/2
 ]).
 
 start(_Type, _Args) ->
@@ -30,11 +29,6 @@ start(_Type, _Args) ->
 
 stop(_State) ->
     ok.
-
-%% @doc Returns the geographical location configured for nebula.
--spec nebula2_app:cdmi_location() -> string().
-cdmi_location() -> 
-    app_config(cdmi_location, ?DEFAULT_LOCATION).
 
 %% @doc Gets a configuration item from the environment.
 -spec nebula2_app:app_config(atom(), string()) -> any().

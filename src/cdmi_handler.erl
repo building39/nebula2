@@ -38,116 +38,171 @@
          to_cdmi_object/2]).
 
 init(_, _Req, _Opts) ->
-    % lager:debug("initing..."),
     {upgrade, protocol, cowboy_rest}.
 
 rest_init(Req, _State) ->
-    % lager:debug("Entry cdmi_handler:rest_init: Req: ~p", [Req]),
-    PoolMember = pooler:take_member(riak_pool),
-    {Method, Req2} = cowboy_req:method(Req),
-    {Url, Req4} = cowboy_req:url(Req2),
-    {HostUrl, Req5} = cowboy_req:host_url(Req4),
-    {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req5),
-    {ReqPath, Req7} = cowboy_req:path(Req6),
-    {AcceptType, Req8} = cowboy_req:header(<<"accept">>, Req7),
-    Map = maps:new(),
-    Url_S = binary_to_list(Url),
-    HostUrl_S = binary_to_list(HostUrl),
-    Map2 = maps:put(<<"method">>, Method, Map),
-    Map3 = maps:put(<<"url">>, Url_S, Map2),
-    Map4 = maps:put(<<"hosturl">>, HostUrl_S, Map3),
-    P = string:tokens(binary_to_list(ReqPath), "/"),
-    Path = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
-    Map5 = maps:put(<<"path">>, Path, Map4),
-    Map6 = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
-    % lager:debug("domainURI is ~p", [maps:get(<<"domainURI">>, Map6)]),
-    Parts = string:tokens(Path, "/"),
-    % lager:debug("Parts: ~p", [Parts]),
-    ParentURI = nebula2_utils:get_parent_uri(Parts),
+    lager:debug("Entry cdmi_handler:rest_init: Req: ~p", [Req]),
+    
+    PoolMember          = pooler:take_member(riak_pool),
+    {Method, Req2}      = cowboy_req:method(Req),
+    {Url, Req3}         = cowboy_req:url(Req2),
+    {HostUrl, Req4}     = cowboy_req:host_url(Req3),
+    {ContentType, Req6} = cowboy_req:header(<<"content-type">>, Req4),
+    {ReqPath, Req7}     = cowboy_req:path(Req6),
+    {AcceptType, Req8}  = cowboy_req:header(<<"accept">>, Req7),
+    {Qs, Req9}          = cowboy_req:qs(Req8),
+    
+    Url_S      = binary_to_list(Url),
+    HostUrl_S  = binary_to_list(HostUrl),
+    P          = string:tokens(binary_to_list(ReqPath), "/"),
+    Path       = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
+    Path2      = lists:nth(1, string:tokens(Path, "?")),
+    ParentURI  = nebula2_utils:get_parent_uri(Path),
+    Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
-    Map7 = maps:put(<<"parentURI">>, ParentURI, Map6),
-    Map8 = maps:put(<<"objectName">>, ObjectName, Map7),
-    Map9 = maps:put(<<"content-type">>, ContentType, Map8),
+
+    Map   = maps:new(),
+    Map2  = maps:put(<<"method">>, Method, Map),
+    Map3  = maps:put(<<"url">>, Url_S, Map2),
+    Map4  = maps:put(<<"hosturl">>, HostUrl_S, Map3),
+    Map5  = maps:put(<<"path">>, Path2, Map4), %% strip out query string if present
+    Map6  = maps:put(<<"domainURI">>, map_domain_uri(PoolMember, HostUrl_S), Map5),
+    Map7  = maps:put(<<"parentURI">>, ParentURI, Map6),
+    Map8  = maps:put(<<"objectName">>, ObjectName, Map7),
+    Map9  = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    % lager:debug("rest_init: EnvMap: ~p", [Map10]),
-    {ok, Req8, {PoolMember, Map10}}.
+    Map11 = maps:put(<<"qs">>, Qs, Map10),
+    
+    Parent = nebula2_db:search(ParentURI, {PoolMember, Map11}),
+    
+    FinalMap = case Parent of
+                    {ok, Data} ->
+                        ParentID  = maps:get(<<"objectID">>, Data),
+                        Map12     = maps:put(<<"parentID">>, ParentID, Map11),
+                        KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
+                        if 
+                            KeyExists == true ->        
+                                ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
+                                ParentCapabilities    = nebula2_db:search(ParentCapabilitiesURI,
+                                                                          {PoolMember, Map11},
+                                                                          nodomain),
+                                case ParentCapabilities of
+                                    {ok, CapData} ->
+                                        CapMap = maps:get(<<"capabilities">>, CapData, maps:new()),
+                                        Map13  = maps:put(<<"parent_capabilities">>, CapMap, Map12),
+                                        Map13;
+                                    {error, _} ->
+                                        Map12
+                                end;
+                            true ->
+                                Map12
+                        end;
+                   {error, _} ->
+                       Map11
+               end,
+    {ok, Req9, {PoolMember, FinalMap}}.
 
 allowed_methods(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
 
 allow_missing_post(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {true, Req, State}.
 
 content_types_accepted(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
-      {{<<"application">>, <<"cdmi-container">>, '*'}, from_cdmi_container},
-      {{<<"application">>, <<"cdmi-domain">>, '*'}, from_cdmi_domain},
-      {{<<"application">>, <<"cdmi-object">>, '*'}, from_cdmi_object}
+      {{<<"application">>, <<"cdmi-container">>, '*'},  from_cdmi_container},
+      {{<<"application">>, <<"cdmi-domain">>, '*'},     from_cdmi_domain},
+      {{<<"application">>, <<"cdmi-object">>, '*'},     from_cdmi_object}
      ], Req, State}.
 
 content_types_provided(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, to_cdmi_capability},
-      {{<<"application">>, <<"cdmi-container">>, '*'}, to_cdmi_container},
-      {{<<"application">>, <<"cdmi-domain">>, '*'}, to_cdmi_domain},
-      {{<<"application">>, <<"cdmi-object">>, '*'}, to_cdmi_object}
+      {{<<"application">>, <<"cdmi-container">>, '*'},  to_cdmi_container},
+      {{<<"application">>, <<"cdmi-domain">>, '*'},     to_cdmi_domain},
+      {{<<"application">>, <<"cdmi-object">>, '*'},     to_cdmi_object}
      ], Req, State}.
 
 delete_completed(Req, State) ->
     %% TODO: make this handle large deletes, like a container with lots of objects.
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {true, Req, State}.
 
 delete_resource(Req, State) ->
-   ?LOG_ENTRY,
+    lager:debug("Entry"),
     {_, EnvMap} = State,
-    Path = maps:get(<<"object_map">>, EnvMap),
-   
+    Path = maps:get(<<"path">>, EnvMap),
     case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
         true ->
             nebula2_domains:delete_domain(Req, State);
         false ->
-            {ok, Req, State}
+            case nebula2_utils:delete(State) of
+                ok ->
+                    {true, Req, State};
+                _ ->
+                    {false, Req, State}
+            end
     end.
 
 expires(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {undefined, Req, State}.
 
 forbidden(Req, State) ->
 %% TODO: Check ACLs here
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {false, Req, State}.
-%%    {true, Req, State}.
     
 %% content types accepted
 from_cdmi_capability(Req, State) ->
-    ?LOG_ENTRY,
-    {_Pid, _EnvMap} = State,
-    % _Path = maps:get(<<"path">>, _EnvMap),
-%%    _Body = maps:get(<<"body">>, _EnvMap),
-    % _Response = nebula2_capabilities:new_capability(Req, State),
-    {true, Req, State}.
+    lager:debug("Entry"),
+    {_Pid, EnvMap} = State,
+	try
+	    case maps:get(<<"exists">>, EnvMap) of
+	        true ->
+	            ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	            nebula2_capabilities:update_capability(Req, State, ObjectId);
+	        false ->
+	            nebula2_capabilities:new_capability(Req, State)
+	    end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 from_cdmi_container(Req, State) ->
-    ?LOG_ENTRY,
-    {Pid, EnvMap} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
-    _Response = case maps:get(<<"exists">>, EnvMap) of
-                    true ->
-                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                        BodyMap = jsx:decode(Body, [return_maps]),
-                        nebula2_containers:update_container(Pid, ObjectId, BodyMap);
-                    false ->
-                        nebula2_containers:new_container(Req2, State)
-               end,
-    {true, Req2, State}.
+    lager:debug("Entry"),
+    {_, EnvMap} = State,
+    ObjectName = maps:get(<<"objectName">>, EnvMap),
+    LastChar = string:substr(ObjectName, string:len(ObjectName)),
+	try
+	    case LastChar of
+	        "/" ->
+	            Response = case maps:get(<<"exists">>, EnvMap) of
+	                            true ->
+	                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	                                nebula2_containers:update_container(Req, State, ObjectId);
+	                            false ->
+	                                nebula2_containers:new_container(Req, State)
+	                       end,
+	            Response;
+	        _ ->
+				bail(400, <<"container name must end with '/'\n">>, Req, State)
+	    end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 from_cdmi_domain(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {_, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     case string:substr(Path, length(Path)) of
@@ -155,38 +210,48 @@ from_cdmi_domain(Req, State) ->
             nebula2_domains:new_domain(Req, State),
             {true, Req, State};
         _  ->
-            {ok, Reply} = cowboy_req:reply(400, [], <<"Bad Request\n">>, Req),
-            {halt, Reply, State}
+            bail(400, <<"Bad Request\n">>, Req, State)
     end.
 
 from_cdmi_object(Req, State) ->
-    ?LOG_ENTRY,
-    {Pid, EnvMap} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
-    _Response = case maps:get(<<"exists">>, EnvMap) of
-                    true ->
-                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                        BodyMap = jsx:decode(Body, [return_maps]),
-                        nebula2_dataobjects:update_dataobject(Pid, ObjectId, BodyMap);
-                    false ->
-                        nebula2_dataobjects:new_dataobject(Req2, State)
-               end,
-    {true, Req, State}.
+    lager:debug("Entry"),
+    {_, EnvMap} = State,
+    ObjectName = maps:get(<<"objectName">>, EnvMap),
+    LastChar = string:substr(ObjectName, string:len(ObjectName)),
+	try
+	   case LastChar of
+		   "/" ->
+				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
+		   _ ->
+		        case maps:get(<<"exists">>, EnvMap) of
+		            true ->
+		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		            false ->
+		                nebula2_dataobjects:new_dataobject(Req, State)
+		        end
+		end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 generate_etag(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {undefined, Req, State}.
 
 is_authorized(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {AuthString, Req2} = cowboy_req:header(<<"authorization">>, Req),
     is_authorized_handler(AuthString, Req2, State).
 
 is_authorized_handler(undefined, Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {{false, "Basic realm=\"default\""}, Req, State};
 is_authorized_handler(AuthString, Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     AuthString2 = binary_to_list(AuthString),
     [AuthMethod, Auth] = string:tokens(AuthString2, " "),
     {Authenticated, UserId} = case string:to_lower(AuthMethod) of
@@ -206,7 +271,7 @@ is_authorized_handler(AuthString, Req, State) ->
     end.
 
 is_conflict(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {false, Req, State}.
 %%    {_Pid, EnvMap} = State,
 %%    % lager:debug("Entry is_conflict: ~p", [EnvMap]),
@@ -222,18 +287,18 @@ is_conflict(Req, State) ->
 %%    false.
 
 known_methods(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {[<<"GET">>, <<"HEAD">>, <<"POST">>, <<"PUT">>, <<"PATCH">>, <<"DELETE">>, <<"OPTIONS">>], Req, State}.
 
 last_modified(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {undefined, Req, State}.
 
 %% Malformed request.
 %% There must be an X-CDMI-Specification-Version header, and it
 %% must request version 1.1
 malformed_request(Req, State) ->
-    %?LOG_ENTRY,
+    lager:debug("Entry"),
     CDMIVersion = cowboy_req:header(<<?VERSION_HEADER>>, Req, error),
     Valid = case CDMIVersion of
         {error, _} ->
@@ -250,38 +315,44 @@ malformed_request(Req, State) ->
 %% If the request asks for a cdmi-container or cdmi-domain, and
 %% the URL does not end with a slash, it has moved permanently.
 moved_permanently(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {_Pid, EnvMap} = State,
     Moved = maps:get(<<"moved_permanently">>, EnvMap, false),
     {Moved, Req, State}.
 
 %% Has the resource has moved, temporarily?
 moved_temporarily(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {false, Req, State}.
 
 multiple_choices(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {false, Req, State}.
 
 %% Did the resource exist once upon a time?
-%% For non-CDMI object types that lack a trailing slash,
+%% For non-CDMI object types or CDMI containers that lack a trailing slash,
 %% does that resource exist with a trailing slash?
 previously_existed(Req, State) ->
-    ?LOG_ENTRY,
-    {_, EnvMap2} = State,
-    Moved = maps:get(<<"moved_permanently">>, EnvMap2, false),
-    R = case Moved of
-            false ->
-                false;
-            _ ->
-                true
-        end,
-    {R, Req, State}.
+    lager:debug("Entry"),
+    {Pid, EnvMap} = State,
+    Path = maps:get(<<"path">>, EnvMap) ++ "/",
+    ObjectName = maps:get(<<"objectName">>, EnvMap) ++ "/",
+    EnvMap2 = maps:update(<<"objectName">>, ObjectName, EnvMap),
+    EnvMap3 = maps:update(<<"path">>, Path, EnvMap2),
+    State2 = {Pid, EnvMap3},
+    {Response, Req3, State3} = resource_exists(Req, State2),
+    {Pid, EnvMap4} = State3,
+    EnvMap5 = case Response of 
+                true ->
+                    maps:put(<<"moved_permanently">>, {true, Path}, EnvMap4);
+                false ->
+                    maps:put(<<"moved_permanently">>, false, EnvMap4)
+              end,
+    {Response, Req3, {Pid, EnvMap5}}.
 
 %% Does the resource exist?
 resource_exists(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     ParentURI = maps:get(<<"parentURI">>, EnvMap),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
@@ -290,33 +361,58 @@ resource_exists(Req, State) ->
     {Response, NewReq, {Pid, NewEnvMap2}}.
 
 resource_exists_handler("/cdmi_objectid/", Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
-    case nebula2_riak:get(Pid, Oid) of
+    case nebula2_db:read(Pid, Oid) of
         {error, _Status} ->
             {false, Req, State};
         {ok, Data} ->
             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}}
     end;
 resource_exists_handler(ParentUri, Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
-    case nebula2_utils:beginswith(ParentUri, "/cdmi_domains/") of
-        true ->
-            case nebula2_riak:search(Path, State, nodomain) of
-                {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+    case Path of
+        "/" ->
+            {true, Req, State};
+        _ ->
+            TopParent = case ParentUri of
+                           "/" ->
+                                "/";
+                            _Other ->
+                                lists:nth(1, string:tokens(ParentUri, "/"))
+                        end,
+            case TopParent of
+                "/" ->
+                    case nebula2_db:search(Path, State) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
+                "cdmi_domains" ->
+                    case nebula2_db:search(Path, State, nodomain) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
+                "cdmi_capabilities" ->
+                    case nebula2_db:search(Path, State, nodomain) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end;
                 _ ->
-                    {false, Req, State}
-            end;
-        false ->
-            case nebula2_riak:search(Path, State) of
-                {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
-                _ ->
-                    {false, Req, State}
+                    case nebula2_db:search(Path, State) of
+                        {ok, Data} ->
+                            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                        _ ->
+                            {false, Req, State}
+                    end
             end
     end.
     
@@ -330,7 +426,7 @@ service_available(Req, {error_no_members, _}) ->
 service_available(Req, State) ->
     lager:debug("<--------------------- Request Start ---------------------------->"),
     {Pid, _EnvMap} = State,
-    Available = case nebula2_riak:ping(Pid) of
+    Available = case nebula2_db:available(Pid) of
         true -> true;
         _ -> false
     end,
@@ -338,19 +434,19 @@ service_available(Req, State) ->
 
 %% content types provided
 to_cdmi_capability(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     to_cdmi_object(Req, State).
 
 to_cdmi_container(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     to_cdmi_object(Req, State).
 
 to_cdmi_domain(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     to_cdmi_object(Req, State).
 
 to_cdmi_object(Req, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = maps:get(<<"path">>, EnvMap),
     Response = to_cdmi_object_handler(Req, State, Path, maps:get(<<"parentURI">>, EnvMap)),
@@ -359,10 +455,10 @@ to_cdmi_object(Req, State) ->
 
 -spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), pid()} | {notfound, term(), pid()}.
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Oid = maps:get(<<"objectName">>, EnvMap),
-    case nebula2_riak:get(Pid, Oid) of
+    case nebula2_db:read(Pid, Oid) of
         {ok, Map} ->
             Data = list_to_binary(jsx:encode(Map)),
             {Data, Req, State};
@@ -370,8 +466,17 @@ to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
     end;
 to_cdmi_object_handler(Req, State, Path, "/cdmi_domains/") ->
-    ?LOG_ENTRY,
-    case nebula2_riak:search(Path, State, nodomain) of
+    lager:debug("Entry"),
+    case nebula2_db:search(Path, State, nodomain) of
+        {ok, Map} ->
+            Data = jsx:encode(Map),
+            {Data, Req, State};
+        {error, Status} ->
+            {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
+    end;
+to_cdmi_object_handler(Req, State, Path, "/cdmi_capabilities/") ->
+    lager:debug("Entry"),
+    case nebula2_db:search(Path, State, nodomain) of
         {ok, Map} ->
             Data = jsx:encode(Map),
             {Data, Req, State};
@@ -379,10 +484,16 @@ to_cdmi_object_handler(Req, State, Path, "/cdmi_domains/") ->
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
     end;
 to_cdmi_object_handler(Req, State, Path, _) ->
-    ?LOG_ENTRY,
-    case nebula2_riak:search(Path, State) of
+    lager:debug("Entry"),
+    case nebula2_db:search(Path, State) of
         {ok, Map} ->
-            Data = jsx:encode(Map),
+            {_, EnvMap} = State,
+            Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
+            Map2 = handle_query_string(Map, Qs),
+            CList = [<<"cdmi_atime">>,
+                     <<"cdmi_acount">>],
+            Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
+            Data = jsx:encode(Map3),
             {Data, Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
@@ -392,16 +503,19 @@ to_cdmi_object_handler(Req, State, Path, _) ->
 %% Internal functions
 %% ====================================================================
 
+%% Bail out
+bail(Reason, Msg, Req, State) ->
+	{ok, Reply} = cowboy_req:reply(Reason, [], Msg, Req),
+	{halt, Reply, State}.
+
 %% Basic Authorization
 -spec basic(string(), cdmi_state()) -> {true, nonempty_string} | {false, string()}.
 basic(Auth, State) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {_, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
     DomainUri = maps:get(<<"domainURI">>, EnvMap) ++ "cdmi_domain_members/" ++ UserId,
-    lager:debug("DomainUri: ~p", [DomainUri]),
-    Result = case nebula2_riak:search(DomainUri, State) of
+    Result = case nebula2_db:search(DomainUri, State) of
                  {ok, Json} ->
                      {true, Json};
                  {error, _Status} ->
@@ -411,7 +525,6 @@ basic(Auth, State) ->
         false ->
             {false, ""};
         {true, Data} ->
-            lager:debug("Data is ~p", [Data]),
             Value = maps:get(<<"value">>, Data),
             VMap = jsx:decode(Value, [return_maps]),
             Creds = binary_to_list(maps:get(<<"cdmi_member_credentials">>, VMap)),
@@ -420,7 +533,7 @@ basic(Auth, State) ->
 
 -spec basic_auth_handler(list(), nonempty_string(), nonempty_string()) -> {true|false, nonempty_string()}.
 basic_auth_handler(Creds, UserId, Password) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     <<Mac:160/integer>> = crypto:hmac(sha, UserId, Password),
     case Creds == lists:flatten(io_lib:format("~40.16.0b", [Mac])) of
         true ->
@@ -431,26 +544,68 @@ basic_auth_handler(Creds, UserId, Password) ->
 
 -spec get_domain(list(), string()) -> string().
 get_domain(Maps, HostUrl) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {ok, UrlParts} = http_uri:parse(HostUrl),
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
 
+%% @doc Handle query string
+-spec handle_query_string(map(), term()) -> map().
+handle_query_string(Data, <<>>) ->
+    Data;
+handle_query_string(Data, []) ->
+    Data;
+handle_query_string(Data, Qs) ->
+    Parameters = string:tokens(Qs, ";"),
+    lager:debug("Parameters: ~p", [Parameters]),
+    map_build(Parameters, Data, maps:new()).
+
+%% @doc Build the output data based on the query string.
+-spec map_build(list(), map(), map()) -> map().
+map_build([], _, NewMap) ->
+    NewMap;
+map_build([H|T], Map, NewMap) ->
+    QueryItem = string:tokens(H, ":"),
+    FieldName = list_to_binary(lists:nth(1, QueryItem)),
+    Data = case length(QueryItem) of
+               1 ->
+                   maps:get(FieldName, Map, "");
+               2 ->
+                   lager:debug("FieldName: ~p", [FieldName]),
+                   map_build_get_data(FieldName, lists:nth(2, QueryItem), Map)
+           end,
+    NewMap2 = maps:put(FieldName, Data, NewMap),
+    map_build(T, Map, NewMap2).
+
+map_build_get_data(<<"children">>, Range, Map) ->
+    [S, E] = string:tokens(Range, "-"),
+    {Start, _} = string:to_integer(S),
+    {End, _} = string:to_integer(E),
+    Num = End - Start + 1,
+    Data = maps:get(<<"children">>, Map, ""),
+    lists:sublist(Data, (Start+1), Num);
+map_build_get_data(<<"metadata">>, MDField, Map) ->
+    lager:debug("MDField: %p", [MDField]),
+    MetaData = maps:get(<<"metadata">>, Map, ""),
+    maps:get(list_to_binary(MDField), MetaData, "");
+map_build_get_data(FieldName, _, Map) ->
+    maps:get(FieldName, Map, "").
+
 %% @doc Map the domain URI
 -spec map_domain_uri(pid(), string()) -> string().
 map_domain_uri(Pid, HostUrl) ->
-    ?LOG_ENTRY,
-    Maps = nebula2_riak:get_domain_maps(Pid),
+    lager:debug("Entry"),
+    Maps = nebula2_db:get_domain_maps(Pid),
     get_domain(Maps, HostUrl).
 
 req_domain(<<"[]">>, _) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     "/cdmi_domains/system_domain/";
 req_domain([], _) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     "/cdmi_domains/system_domain/";
 req_domain([H|T], HostUrl) ->
-    ?LOG_ENTRY,
+    lager:debug("Entry"),
     {Re, Domain} = lists:nth(1, maps:to_list(H)),
     case re:run(HostUrl, binary_to_list(Re)) of
         {match, _} ->

@@ -25,13 +25,15 @@ except:
     sys.exit(1)
 
 import getopt
-import json
 import os
 from os import listdir
 from os.path import isfile, join
 import requests
 import time
 
+MAX_METADATA_ITEMS = 1024
+MAX_METADATA_SIZE = 8192
+MAX_METADATA_TOTAL_SIZE = (MAX_METADATA_ITEMS * MAX_METADATA_SIZE)
 CDMI_ACE_ACCESS_ALLOW = 0x0
 CDMI_ACE_ACCESS_DENY  = 0x1
 CDMI_ACE_SYSTEM_AUDIT = 0x2
@@ -105,133 +107,177 @@ DOMAIN_AUTHD_ACL = {
     'aceflags': 'INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT',
     'acemask': 'READ'
 }
-            
-DEFAULT_CAPABILITIES = {
-    "cdmi_domains": "true",
-    "cdmi_dataobjects": "true",
-    "cdmi_object_access_by_ID":"true",
-    "cdmi_object_copy_from_local": "true",
-    "cdmi_object_move_from_ID": "true",
-    "cdmi_object_move_from_local": "true"
+
+# The following is valid for all containers, dataobjects, domains and queues
+DATA_SYSTEM_METADATA_CAPABILITIES = {
+    "cdmi_assignedsize": "false",
+    "cdmi_authentication_methods": ["anonymous", "basic"],
+    "cdmi_data_autodelete": "false",
+    "cdmi_data_dispersion": "false",
+    "cdmi_data_holds": "false",
+    "cdmi_data_redundancy": "",
+    "cdmi_data_retention": "false",
+    "cdmi_encryption": [],
+    "cdmi_geographic_placement": "false",
+    "cdmi_immediate_redundancy": "",
+    "cdmi_infrastructure_redundancy": "",
+    "cdmi_latency": "false",
+    "cdmi_RPO": "false",
+    "cdmi_RTO": "false",
+    "cdmi_sanitization_method": [],
+    "cdmi_throughput": "false",
+    "cdmi_value_hash": ["MD5", "RIPEMD160", "SHA1", "SHA224", "SHA256", "SHA384", "SHA512"]
 }
-                        
-CONTAINER_CAPABILITIES = {
+
+# The following is valid for all containers, dataobjects, domains and queues
+STORAGE_SYSTEM_METADATA_CAPABILITIES = {
     "cdmi_acl": "true",
+    "cdmi_acount": "false",
     "cdmi_atime": "true",
-    "cdmi_copy_container": "true",
-    "cdmi_copy_dataobject": "true",
-    "cdmi_create_container": "true",
-    "cdmi_create_databoject": "true",
     "cdmi_ctime": "true",
+    "cdmi_mcount": "false",
+    "cdmi_mtime": "true",
+    "cdmi_size": "true",
+}
+
+# The following is valid only for containers.
+CONTAINER_CAPABILITIES = {
+    "cdmi_copy_container": "false",
+    "cdmi_copy_dataobject": "false",
+    "cdmi_create_container": "true",
+    "cdmi_create_dataobject": "true",
+    "cdmi_create_queue": "false",
+    "cdmi_create_reference": "false",
+    "cdmi_create_value_range": "false",
     "cdmi_delete_container": "true",
-    "cdmi_delete_dataobject": "true",
+    "cdmi_export_container_cifs": "false",
+    "cdmi_export_container_nfs": "false",
+    "cdmi_export_container_iscsi": "false",
+    "cdmi_export_container_occi": "false",
+    "cdmi_export_container_webdav": "false",
+    "cdmi_deserialize_container": "false",
+    "cdmi_deserialize_dataobject": "false",
+    "cdmi_deserialize_queue": "false",
     "cdmi_list_children": "true",
     "cdmi_list_children_range": "true",
+    "cdmi_modify_deserialize_container": "false",
     "cdmi_modify_metadata": "true",
-    "cdmi_move_container": "true",
-    "cdmi_move_dataobject": "true",
-    "cdmi_mtime": "true",
+    "cdmi_move_container": "false",
+    "cdmi_move_dataobject": "false",
+    "cdmi_post_dataobject": "false",
+    "cdmi_post_queue": "false",
     "cdmi_read_metadata": "true",
-    "cdmi_size": "true",
-    "cdmi_versioning": "all"
+    "cdmi_read_value": "false",
+    "cdmi_read_value_range": "false",
+    "cdmi_serialize_container": "false",
+    "cdmi_serialize_dataobject": "false",
+    "cdmi_serialize_domain": "false",
+    "cdmi_serialize_queue": "false",
+    "cdmi_snapshot": "false"
 }
 
+# The following is valid only for dataobjects.
 DATAOBJECT_CAPABILITIES = {
-    "cdmi_acl": "true",
-    "cdmi_atime": "true",
-    "cdmi_ctime": "true",
     "cdmi_delete_dataobject": "true",
+    "cdmi_modify_deserialize_dataobject": "false",
     "cdmi_modify_metadata": "true",
     "cdmi_modify_value": "true",
     "cdmi_modify_value_range": "true",
     "cdmi_read_metadata": "true",
     "cdmi_read_value": "true",
     "cdmi_read_value_range": "true",
-    "cdmi_size": "true",
-    "cdmi_versioning": "all"
 }
 
+# The following is valid only for dataobjects.
+# Same as DATAOBJECT_CAPABILITIES, minus object delete capability.
 DATAOBJECT_PERMANENT_CAPABILITIES = {
-    "cdmi_acl": "true",
-    "cdmi_atime": "true",
-    "cdmi_ctime": "true",
+    "cdmi_modify_deserialize_dataobject": "false",
     "cdmi_modify_metadata": "true",
     "cdmi_modify_value": "true",
     "cdmi_modify_value_range": "true",
     "cdmi_read_metadata": "true",
     "cdmi_read_value": "true",
     "cdmi_read_value_range": "true",
-    "cdmi_size": "true",
-    "cdmi_versioning": "all"
 }
-                           
-DATAOBJECT_CONFIG_CAPABILITIES = {
-    "cdmi_delete_dataobject": "true",
-    "cdmi_modify_metadata": "true",
-    "cdmi_modify_value": "true",
-    "cdmi_modify_value_range": "true",
-    "cdmi_read_metadata": "true",
-    "cdmi_read_value": "true",
-    "cdmi_read_value_range": "true"
-}
-                                 
-DATAOBJECT_CONFIG_VERSION_CAPABILITIES = {
-    "cdmi_delete_dataobject": "true",
-    "cdmi_modify_metadata": "true",
-    "cdmi_modify_value": "true",
-    "cdmi_modify_value_range": "true",
-    "cdmi_read_metadata": "true",
-    "cdmi_read_value": "true",
-    "cdmi_read_value_range": "true"
-}
-                                 
-DATAOBJECT_CONFIG_PERMANENT_CAPABILITIES = {
-    "cdmi_modify_metadata": "true",
-    "cdmi_modify_value": "true",
-    "cdmi_modify_value_range": "true",
-    "cdmi_read_metadata": "true",
-    "cdmi_read_value": "true",
-    "cdmi_read_value_range": "true"
-}
-                           
+
+# The following is valid only for domain objects.
 DOMAIN_CAPABILITIES = {
-    "cdmi_acl": "true",
-    "cdmi_atime": "true",
     "cdmi_copy_domain": "false",
-    "cdmi_create_container": "true",
     "cdmi_create_domain": "true",
-    "cdmi_ctime": "true",
-    "cdmi_delete_container": "true",
     "cdmi_delete_domain": "true",
+    "cdmi_deserialize_domain": "false",
     "cdmi_domain_members": "true",
     "cdmi_domain_summary": "true",
     "cdmi_list_children": "true",
+    "cdmi_modify_deserialize_domain": "false",
     "cdmi_modify_metadata": "true",
-    "cdmi_mtime": "true",
+    "cdmi_move_domain": "false",
     "cdmi_read_metadata": "true",
-    "cdmi_size": "true",
-    "cdmi_versioning": "all"
 }
 
-MEMBER_CAPABILITIES = {
-    "cdmi_acl": "true",
-    "cdmi_atime": "true",
-    "cdmi_ctime": "true",
-    "cdmi_delete_dataobject": "true",
-    "cdmi_modify_metadata": "true",
-    "cdmi_modify_value": "true",
-    "cdmi_mtime": "true",
-    "cdmi_read_metadata": "true",
-    "cdmi_size": "true",
-    "cdmi_versioning": "all",
-    "cdmi_write_metadata": "true"
+# The following is valid only for queue objects.
+# Queues are not currently supported.
+QUEUE_CAPABILITIES = {
+    "cdmi_copy_queue": "false",
+    "cdmi_delete_queue": "false",
+    "cdmi_modify_deserialize_queue": "false",
+    "cdmi_modify_metadata": "false",
+    "cdmi_modify_value": "false",
+    "cdmi_move_queue": "false",
+    "cdmi_read_metadata": "false",
+    "cdmi_read_value": "false",
+    "cdmi_reference_queue": "false"
 }
-                       
-VERSIONS_CAPABILITIES = {
-    "cdmi_read_metadata": "true",
-    "cdmi_read_value": "true"
+
+# The following is applied to the root container only.
+SYSTEM_CAPABILITIES = {
+    "cdmi_copy_dataobject_from_queue": "false",
+    "cdmi_copy_queue_by_ID": "false",
+    "cdmi_create_reference_by_ID": "false",
+    "cdmi_create_value_range_by_ID": "false",
+    "cdmi_domains": "false",
+    "cdmi_dataobjects": "true",
+    "cdmi_deserialize_dataobject_by_ID": "false",
+    "cdmi_deserialize_queue_by_ID": "false",
+    "cdmi_export_cifs": "false",
+    "cdmi_export_iscsi": "false",
+    "cdmi_export_nfs": "false",
+    "cdmi_export_occi_iscsi": "false",
+    "cdmi_export_webdav": "false",
+    "cdmi_logging": "false",
+    "cdmi_metadata_maxitems": MAX_METADATA_ITEMS,
+    "cdmi_metadata_maxsize" : MAX_METADATA_SIZE,
+    "cdmi_metadata_maxtotalsize": MAX_METADATA_TOTAL_SIZE,
+    "cdmi_multipart_mime": "false",
+    "cdmi_notification": "false",
+    "cdmi_object_access_by_ID": "true",
+    "cdmi_object_copy_from_local": "false",
+    "cdmi_object_copy_from_remote": "false",
+    "cdmi_object_move_from_local": "false",
+    "cdmi_object_move_from_remote": "false",
+    "cdmi_object_move_from_ID": "false",
+    "cdmi_object_move_to_ID": "false",
+    "cdmi_post_dataobject_by_ID": "false",
+    "cdmi_post_queue_by_ID": "false",
+    "cdmi_query": "false",
+    "cdmi_query_regex": "false",
+    "cdmi_query_contains": "false",
+    "cdmi_query_tags": "false",
+    "cdmi_query_value": "false",
+    "cdmi_queues": "false",
+    "cdmi_references": "false",
+    "cdmi_security_access_control": "false",
+    "cdmi_security_audit": "false",
+    "cdmi_security_data_integrity": "true",
+    "cdmi_security_immutability": "false",
+    "cdmi_security_sanitization": "false",
+    "cdmi_serialization_json": "false",
+    "cdmi_serialize_container_ID": "false",
+    "cdmi_serialize_dataobject_to_ID": "false",
+    "cdmi_serialize_domain_to_ID": "false",
+    "cdmi_serialize_queue_to_ID": "false",
+    "cdmi_snapshots": "false"
 }
-                        
 
 
 HEADERS = {"X-CDMI-Specification-Version": "1.1"}
@@ -240,12 +286,13 @@ METADATA = '{"metadata": { "cdmi_owner": "%(cdmiOwner)s", %(metadata)s}}'
 TIME_FORMAT = '%Y-%m-%dT%H:%M:%S:000000Z'
 VERSION = '1.0.0'
 
-CDMI_CAPABILITIES_DOMAIN = '/cdmi_capabilities/domain'
-CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container'
-CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%s/permanent' % CDMI_CAPABILITIES_CONTAINER
-CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject'
-CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%s/permanent' % CDMI_CAPABILITIES_DATAOBJECT
-CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%s/member' % CDMI_CAPABILITIES_DATAOBJECT
+CDMI_CAPABILITIES_DOMAIN = '/cdmi_capabilities/domain/'
+CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container/'
+CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_CONTAINER
+CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject/'
+CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_DATAOBJECT
+CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%s/member/' % CDMI_CAPABILITIES_DATAOBJECT
+CDMI_CAPABILITIES_SYSTEM = '/cdmi_capabilities/'
 
 CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
 
@@ -339,7 +386,7 @@ class Bootstrap(object):
         # Create the system default capabilities
         print("...Priming capabilities")
         if self.commit:
-            self._create_capabilities()
+            self._create_system_capabilities()
         else:
             print("Dry run: Created capabilities.")
             
@@ -370,47 +417,27 @@ class Bootstrap(object):
             self._create_container_permanent_capabilities()
         else:
             print("Dry run: Created container permanent capabilities.")
-            
-        # Create the dataobject config capabilities
-        print("...Priming dataobject config capabilities")
+
+         # Create 00the dataobject permanent capabilities
+        print("...Priming dataobject permanent capabilities")
         if self.commit:
-            self._create_dataobject_config_capabilities()
+            self._create_dataobject_permanent_capabilities()
         else:
-            print("Dry run: Created dataobject config capabilities.")
+            print("Dry run: Created dataobject permanent capabilities.")
             
-        # Create the dataobject config permanent capabilities
-        print("...Priming dataobject config permanent capabilities")
+
+        # Create the domain member capabilities
+        print("...Priming domain member capabilities")
         if self.commit:
-            self._create_dataobject_config_permanent_capabilities()
-        else:
-            print("Dry run: Created dataobject config permanent capabilities.")
-            
-        # Create the dataobject config version capabilities
-        print("...Priming dataobject config version capabilities")
-        if self.commit:
-            self._create_dataobject_config_version_capabilities()
-        else:
-            print("Dry run: Created dataobject config version capabilities.")
-            
-        # Create the dataobject member capabilities
-        print("...Priming dataobject member capabilities")
-        if self.commit:
-            self._create_dataobject_member_capabilities()
+            self._create_domain_member_capabilities()
         else:
             print("Dry run: Created dataobject member capabilities.")
-            
-        # Create the dataobject versions capabilities
-        print("...Priming dataobject versions capabilities")
-        if self.commit:
-            self._create_dataobject_versions_capabilities()
-        else:
-            print("Dry run: Created dataobject versions capabilities.")
 
         return
     
     def _create_root(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL]
-        doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_SYSTEM,
                'domainURI': CDMI_SYSTEM_DOMAIN,
                'completionStatus': 'complete',
                'objectName': '/',
@@ -489,7 +516,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/' % (self.host, int(self.port))
         self.system_domain_summary_oid = self._create(headers, url, doc, acls)
-        for period in ['yearly', 'montly', 'weekly', 'daily']:
+        for period in ['yearly/', 'monthly/', 'weekly/', 'daily/']:
             self._create_system_domain_summary_subcontainer(period)
         
     def _create_system_domain_summary_subcontainer(self, period):
@@ -499,12 +526,12 @@ class Bootstrap(object):
                'completionStatus': 'complete',
                'objectName': period,
                'objectType': OBJECT_TYPE_CONTAINER,
-               'parentURI': '/cdmi_domains/system_domain/summary',
+               'parentURI': '/cdmi_domains/system_domain/cdmi_domain_summary/',
                'parentID': self.system_domain_summary_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/%s' % (self.host, int(self.port), period)
-        self.system_domain_members_oid = self._create(headers, url, doc, acls)
+        self._create(headers, url, doc, acls)
         
     def _create_system_administrator_member(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
@@ -531,8 +558,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_members/administrator' % (self.host, int(self.port))
         self.system_domain_members_oid = self._create(headers, url, doc, acls)
-           
-           
+
     def _create_system_configuration(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER_PERMANENT,
@@ -578,9 +604,9 @@ class Bootstrap(object):
         url = 'http://%s:%d/bootstrap/system_configuration/domain_maps' % (self.host, int(self.port))
         self.system_envvar_oid = self._create(headers, url, doc, acls)
            
-    def _create_capabilities(self):
+    def _create_system_capabilities(self):
         acls = None
-        doc = {'capabilities': DEFAULT_CAPABILITIES,
+        doc = {'capabilities': SYSTEM_CAPABILITIES,
                'objectName': 'cdmi_capabilities/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/',
@@ -592,7 +618,10 @@ class Bootstrap(object):
         
     def _create_container_capabilities(self):
         acls = None
-        doc = {'capabilities': CONTAINER_CAPABILITIES,
+        localdict = CONTAINER_CAPABILITIES.copy()
+        localdict.update(STORAGE_SYSTEM_METADATA_CAPABILITIES)
+        localdict.update(DATA_SYSTEM_METADATA_CAPABILITIES)
+        doc = {'capabilities': localdict,
                'objectName': 'container/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/',
@@ -604,7 +633,10 @@ class Bootstrap(object):
         
     def _create_container_permanent_capabilities(self):
         acls = None
-        doc = {'capabilities': CONTAINER_CAPABILITIES,
+        localdict = CONTAINER_CAPABILITIES.copy()
+        localdict.update(STORAGE_SYSTEM_METADATA_CAPABILITIES)
+        localdict.update(DATA_SYSTEM_METADATA_CAPABILITIES)
+        doc = {'capabilities': localdict,
                'objectName': 'permanent/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/container/',
@@ -616,7 +648,10 @@ class Bootstrap(object):
         
     def _create_dataobject_capabilities(self):
         acls = None
-        doc = {'capabilities': DATAOBJECT_CAPABILITIES,
+        localdict = DATAOBJECT_CAPABILITIES.copy()
+        localdict.update(STORAGE_SYSTEM_METADATA_CAPABILITIES)
+        localdict.update(DATA_SYSTEM_METADATA_CAPABILITIES)
+        doc = {'capabilities': localdict,
                'objectName': 'dataobject/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/',
@@ -628,55 +663,22 @@ class Bootstrap(object):
         
     def _create_dataobject_permanent_capabilities(self):
         acls = None
-        doc = {'capabilities': DATAOBJECT_PERMANENT_CAPABILITIES,
-               'objectName': 'dataobject/',
-               'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/cdmi_capabilities/',
-               'parentID': self.caps_oid}
-        headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
-        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/permanent/' % (self.host, int(self.port))
-        self.dataobject_caps_oid = self._create(headers, url, doc, acls)
-        
-    def _create_dataobject_config_capabilities(self):
-        acls = None
-        doc = {'capabilities': DATAOBJECT_CONFIG_CAPABILITIES,
-               'objectName': 'configuration/',
+        localdict = DATAOBJECT_PERMANENT_CAPABILITIES.copy()
+        localdict.update(STORAGE_SYSTEM_METADATA_CAPABILITIES)
+        localdict.update(DATA_SYSTEM_METADATA_CAPABILITIES)
+        doc = {'capabilities': localdict,
+               'objectName': 'permanent/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/dataobject/',
                'parentID': self.dataobject_caps_oid}
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
-        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/configuration/' % (self.host, int(self.port))
-        self.dataobject_config_caps_oid = self._create(headers, url, doc, acls)
-        
-    def _create_dataobject_config_version_capabilities(self):
+        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/permanent/' % (self.host, int(self.port))
+        self.dataobject_caps_perm_oid = self._create(headers, url, doc, acls)
+
+    def _create_domain_member_capabilities(self):
         acls = None
-        doc = {'capabilities': DATAOBJECT_CONFIG_VERSION_CAPABILITIES,
-               'objectName': 'configuration_version/',
-               'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/cdmi_capabilities/dataobject/configuration/',
-               'parentID': self.dataobject_config_caps_oid}
-        headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
-        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/configuration_version/' % (self.host, int(self.port))
-        self._create(headers, url, doc, acls)
-        
-    def _create_dataobject_config_permanent_capabilities(self):
-        acls = None
-        doc = {'capabilities': DATAOBJECT_CONFIG_PERMANENT_CAPABILITIES,
-               'objectName': 'permanent/',
-               'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/cdmi_capabilities/dataobject/configuration/',
-               'parentID': self.dataobject_config_caps_oid}
-        headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
-        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/configuration/permanent/' % (self.host, int(self.port))
-        self._create(headers, url, doc, acls)
-        
-    def _create_dataobject_member_capabilities(self):
-        acls = None
-        doc = {'capabilities': MEMBER_CAPABILITIES,
+        doc = {'capabilities': DATAOBJECT_CAPABILITIES,
                'objectName': 'member/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/dataobject/',
@@ -685,22 +687,13 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/member/' % (self.host, int(self.port))
         self._create(headers, url, doc, acls)
-        
-    def _create_dataobject_versions_capabilities(self):
-        acls = None
-        doc = {'capabilities': VERSIONS_CAPABILITIES,
-               'objectName': 'versions/',
-               'objectType': OBJECT_TYPE_CAPABILITY,
-               'parentURI': '/cdmi_capabilities/dataobject/',
-               'parentID': self.dataobject_caps_oid}
-        headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
-        url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/versions/' % (self.host, int(self.port))
-        self._create(headers, url, doc, acls)
-        
+
     def _create_domain_capabilities(self):
         acls = None
-        doc = {'capabilities': DOMAIN_CAPABILITIES,
+        localdict = DOMAIN_CAPABILITIES.copy()
+        localdict.update(STORAGE_SYSTEM_METADATA_CAPABILITIES)
+        localdict.update(DATA_SYSTEM_METADATA_CAPABILITIES)
+        doc = {'capabilities': localdict,
                'objectName': 'domain/',
                'objectType': OBJECT_TYPE_CAPABILITY,
                'parentURI': '/cdmi_capabilities/',
@@ -709,7 +702,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/domain/' % (self.host, int(self.port))
         self.domain_caps_oid = self._create(headers, url, doc, acls)
-           
+
     def _create(self, headers, url, doc, acls):
 #        import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.3.0.201508182223/pysrc')
 #        import pydevd; pydevd.settrace()
@@ -719,14 +712,42 @@ class Bootstrap(object):
         now = time.gmtime()
         timestamp = time.strftime('%Y-%m-%dT%H:%M:%s.000000Z', now)
 
-        metadata = {'cdmi_owner': self.adminid,
-                    'cdmi_acls': acls,
-                    'cdmi_atime': timestamp,
-                    'cdmi_ctime': timestamp,
-                    'cdmi_mtime': timestamp}
-        if acls:
-            metadata['cdmi_acls'] = acls
-        doc['metadata'] = metadata
+        if doc['objectType'] not in [OBJECT_TYPE_CAPABILITY]:
+            metadata = {'cdmi_owner': self.adminid}
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_acl'] == "true":
+                if acls:
+                    metadata['cdmi_acls'] = acls
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_atime'] == "true":
+                metadata['cdmi_atime'] = timestamp
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_ctime'] == "true":
+                metadata['cdmi_ctime'] = timestamp
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_mtime'] == "true":
+                metadata['cdmi_mtime'] = timestamp
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_acount'] == "true":
+                metadata['cdmi_acount'] = 0
+            if STORAGE_SYSTEM_METADATA_CAPABILITIES['cdmi_mcount'] == "true":
+                metadata['cdmi_mcount'] = 0
+            if doc.has_key('value'):
+                hash_values = DATA_SYSTEM_METADATA_CAPABILITIES.get('cdmi_value_hash', [])
+                if "SHA512" in hash_values:
+                    metadata['cdmi_value_hash'] = "SHA512"
+                    metadata['cdmi_hash'] = hashlib.sha512(doc['value']).hexdigest()
+                elif "SHA384" in hash_values:
+                    metadata['cdmi_value_hash'] = "SHA384"
+                    metadata['cdmi_hash'] = hashlib.sha384(doc['value']).hexdigest()
+                elif "SHA256" in hash_values:
+                    metadata['cdmi_value_hash'] = "SHA256"
+                    metadata['cdmi_hash'] = hashlib.sha256(doc['value']).hexdigest()
+                elif "SHA224" in hash_values:
+                    metadata['cdmi_value_hash'] = "SHA224"
+                    metadata['cdmi_hash'] = hashlib.sha224(doc['value']).hexdigest()
+                elif "SHA1" in hash_values:
+                    metadata['cdmi_value_hash'] = "SHA1"
+                    metadata['cdmi_hash'] = hashlib.sha1(doc['value']).hexdigest()
+                elif "MD5" in hash_values:
+                    metadata['cdmi_value_hash'] = "MD5"
+                    metadata['cdmi_hash'] = hashlib.md5(doc['value']).hexdigest()
+            doc['metadata'] = metadata
 
         r = requests.put(url=url,
                          data=json.dumps(doc),
@@ -745,7 +766,7 @@ class Bootstrap(object):
         else:
            print("Bootstrapping received status code %d - exiting..." % r.status_code)
            sys.exit(1)
-           sys.exit(1)
+
         return oid
 
 def usage():

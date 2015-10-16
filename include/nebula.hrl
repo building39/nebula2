@@ -23,17 +23,12 @@
 -type search_predicate() :: nonempty_string().
 -type cdmi_state()       :: {pid(), map()}.
 
-%% Debug macros
--define(LOG_ENTRY, lager:debug("Entry")).
--define(LOG_EXIT, lager:debug("Exit")).
-
 %% Miscellaneous macros
 -define(DEFAULT_ADMINISTRATOR, "administrator").
 -define(DEFAULT_LOCATION, "US-TX").
 -define(CDMI_VERSION, "1.1").
 -define(FUZZCAT_SNMP_NUMBER, "045241").
 -define(HEX_REGEXP, "[0-9a-f]*").
--define(OID_LENGTH, 48).
 -define(OID_SUFFIX, "00" ++ ?FUZZCAT_SNMP_NUMBER ++ "0048").
 -define(UUID_LENGTH, 32).
 
@@ -49,7 +44,7 @@
 %% Content types
 -define(CONTENT_TYPE_CDMI_CAPABILITY,      "application/cdmi-capability").
 -define(CONTENT_TYPE_CDMI_CONTAINER,       "application/cdmi-container").
--define(CONTENT_TYPE_CDMI_DATAOBJECT,      "application/cdmi-dataobject").
+-define(CONTENT_TYPE_CDMI_DATAOBJECT,      "application/cdmi-object").
 -define(CONTENT_TYPE_CDMI_DOMAIN,          "application/cdmi-domain").
 -define(CONTENT_TYPE_CDMI_CAPABILITY_JSON, "application/cdmi-capability+json").
 -define(CONTENT_TYPE_CDMI_CONTAINER_JSON,  "application/cdmi-container+json").
@@ -57,24 +52,14 @@
 -define(CONTENT_TYPE_CDMI_DOMAIN_JSON,     "application/cdmi-domain+json").
 
 %% Capability URIs
--define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container").
--define(DATAOBJECT_CAPABILITY_URI, "/cdmi_capabilities/dataobject").
--define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain").
+-define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/").
+-define(DATAOBJECT_CAPABILITY_URI, "/cdmi_capabilities/dataobject/").
+-define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain/").
 -define(DOMAIN_SUMMARY_CAPABILITY_URI, "/cdmi_capabilities/domain/summary").
 -define(PERMANENT_CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/permanent").
 
 %% System domain URI
 -define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain").
-
-%% Domain Maps Query
--define(DOMAIN_MAPS_QUERY, "domainURI:\\" ++ ?SYSTEM_DOMAIN_URI ++
-            "/ AND parentURI:\\/system_configuration/ AND objectName:\\domain_maps").
-
-%% riak parameters
--define(BUCKET_TYPE, "cdmi").
--define(BUCKET_NAME, "cdmi").
--define(CDMI_INDEX, "cdmi_idx").
--define(NAME_PREFIX, "cdmi").
 
 %% ACE types
 -define(CDMI_ACE_ACCESS_ALLOW, 16#00000000).
