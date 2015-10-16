@@ -160,57 +160,46 @@ forbidden(Req, State) ->
 from_cdmi_capability(Req, State) ->
     lager:debug("Entry"),
     {_Pid, EnvMap} = State,
-    case maps:get(<<"exists">>, EnvMap) of
-        true ->
-            ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-            try nebula2_capabilities:update_capability(Req, State, ObjectId) of
-                Resp -> Resp
-            catch
-                throw:badjson ->
-                    {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                    {halt, Reply, State}
-            end;
-        false ->
-            try nebula2_capabilities:new_capability(Req, State) of
-                Resp -> Resp
-            catch
-                throw:badjson ->
-                    {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                    {halt, Reply, State}
-            end
-    end.
+	try
+	    case maps:get(<<"exists">>, EnvMap) of
+	        true ->
+	            ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	            nebula2_capabilities:update_capability(Req, State, ObjectId);
+	        false ->
+	            nebula2_capabilities:new_capability(Req, State)
+	    end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 from_cdmi_container(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
     ObjectName = maps:get(<<"objectName">>, EnvMap),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
-    case LastChar of
-        "/" ->
-            Response = case maps:get(<<"exists">>, EnvMap) of
-                            true ->
-                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                                try nebula2_containers:update_container(Req, State, ObjectId) of
-                                    Resp -> Resp
-                                catch
-                                    throw:badjson ->
-                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                                        {halt, Reply, State}
-                                end;
-                            false ->
-                                try nebula2_containers:new_container(Req, State) of
-                                    Resp -> Resp
-                                catch
-                                    throw:badjson ->
-                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                                        {halt, Reply, State}
-                                end
-                       end,
-            Response;
-        _ ->
-            {ok, Reply} = cowboy_req:reply(400, [], <<"container name must end with '/'\n">>, Req),
-            {halt, Reply, State}
-    end.
+	try
+	    case LastChar of
+	        "/" ->
+	            Response = case maps:get(<<"exists">>, EnvMap) of
+	                            true ->
+	                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	                                nebula2_containers:update_container(Req, State, ObjectId);
+	                            false ->
+	                                nebula2_containers:new_container(Req, State)
+	                       end,
+	            Response;
+	        _ ->
+				bail(400, <<"container name must end with '/'\n">>, Req, State)
+	    end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 from_cdmi_domain(Req, State) ->
     lager:debug("Entry"),
@@ -221,8 +210,7 @@ from_cdmi_domain(Req, State) ->
             nebula2_domains:new_domain(Req, State),
             {true, Req, State};
         _  ->
-            {ok, Reply} = cowboy_req:reply(400, [], <<"Bad Request\n">>, Req),
-            {halt, Reply, State}
+            bail(400, <<"Bad Request\n">>, Req, State)
     end.
 
 from_cdmi_object(Req, State) ->
@@ -230,43 +218,25 @@ from_cdmi_object(Req, State) ->
     {_, EnvMap} = State,
     ObjectName = maps:get(<<"objectName">>, EnvMap),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
-    case LastChar of
-        "/" ->
-            {ok, Reply} = cowboy_req:reply(400, [], <<"data object name must not end with '/'\n">>, Req),
-            {halt, Reply, State};
-        _ ->
-            Response = case maps:get(<<"exists">>, EnvMap) of
-                            true ->
-                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                                try nebula2_dataobjects:update_dataobject(Req, State, ObjectId) of
-                                    Resp -> Resp
-                                catch
-                                    throw:badjson ->
-                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                                        {halt, Reply, State}
-                                end;
-                            false ->
-                                try nebula2_dataobjects:new_dataobject(Req, State) of
-                                    Resp -> Resp
-                                catch
-                                    throw:badjson ->
-                                        {ok, Reply} = cowboy_req:reply(400, [], <<"bad json\n">>, Req),
-                                        {halt, Reply, State}
-                                end
-                       end,
-            Response
-    end.
-%%     {Pid, EnvMap} = State,
-%%     {ok, Body, Req2} = cowboy_req:body(Req),
-%%     _Response = case maps:get(<<"exists">>, EnvMap) of
-%%                     true ->
-%%                         ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-%%                         BodyMap = jsx:decode(Body, [return_maps]),
-%%                         nebula2_dataobjects:update_dataobject(Pid, ObjectId, BodyMap);
-%%                     false ->
-%%                         nebula2_dataobjects:new_dataobject(Req2, State)
-%%                end,
-%%     {true, Req, State}.
+	try
+	   case LastChar of
+		   "/" ->
+				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
+		   _ ->
+		        case maps:get(<<"exists">>, EnvMap) of
+		            true ->
+		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		            false ->
+		                nebula2_dataobjects:new_dataobject(Req, State)
+		        end
+		end
+	catch
+		throw:badjson ->
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
 
 generate_etag(Req, State) ->
     lager:debug("Entry"),
@@ -532,6 +502,11 @@ to_cdmi_object_handler(Req, State, Path, _) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+
+%% Bail out
+bail(Reason, Msg, Req, State) ->
+	{ok, Reply} = cowboy_req:reply(Reason, [], Msg, Req),
+	{halt, Reply, State}.
 
 %% Basic Authorization
 -spec basic(string(), cdmi_state()) -> {true, nonempty_string} | {false, string()}.

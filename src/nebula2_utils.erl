@@ -14,6 +14,7 @@
 %% ====================================================================
 -export([
          beginswith/2,
+		 check_base64/1,
          create_object/3,
          create_object/4,
          delete/1,
@@ -40,6 +41,22 @@ beginswith(Str, Substr) ->
         Substr -> true;
         _ -> false
     end.
+
+%% Check base64 encoding
+-spec nebula2_utils:check_base64(binary() | list()) -> boolean().
+check_base64(Data) ->
+	case maps:is_key(<<"valuetransferencoding">>, Data) of
+		false ->
+			true;
+		true ->
+			try base64:decode(binary_to_list(maps:get(<<"value">>, Data))) of
+				_ -> 
+					true
+			catch
+				_:_ ->
+					false
+			  end
+	end.
 
 %% @doc Create a CDMI object
 -spec nebula2_utils:create_object(cowboy_req:req(), State, object_type()) -> {boolean(), Req, State}
@@ -202,6 +219,7 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     Uid ++ ?OID_SUFFIX ++ Crc.
 
+
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
 update_data_system_metadata(CList, Data, State) ->
@@ -282,6 +300,12 @@ create_object(Req, State, ObjectType, DomainName, Parent) ->
                error:badarg ->
                    throw(badjson)
            end,
+	case check_base64(Body) of
+		false ->
+		   throw(badencoding);
+		true ->
+			true
+	end,
     Path = maps:get(<<"path">>, EnvMap),
     ParentUri = nebula2_utils:get_parent_uri(Path),
     ParentId = maps:get(<<"objectID">>, Parent),

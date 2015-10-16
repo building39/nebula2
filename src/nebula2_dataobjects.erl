@@ -45,6 +45,7 @@ update_dataobject(Req, State, Oid) ->
 	{Pid, _EnvMap} = State,
 	{ok, Body, Req2} = cowboy_req:body(Req),
 	NewData = jsx:decode(Body, [return_maps]),
+	nebula2_utils:check_base64(NewData),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
 	MetaData = case maps:is_key(<<"metadata">>, NewData) of
