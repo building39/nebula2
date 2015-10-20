@@ -281,15 +281,16 @@ from_multipart_mixed(Req, State, ok) ->
                lager:error("data object name must not end with '/'"),
 				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
 		   _ ->
+                {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
+                Body = jsx:decode(BodyPart1, [return_maps]),
+                lager:debug("Body json: ~p", [Body]),
+                NewBody = maps:put(<<"value">>, BodyPart2, Body),
 		        case maps:get(<<"exists">>, EnvMap) of
 		            true ->
 		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody);
 		            false ->
-                        {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
-                        Body = jsx:decode(BodyPart1, [return_maps]),
-                        lager:debug("Body json: ~p", [Body]),
-                        NewBody = maps:put(<<"value">>, BodyPart2, Body),
+                        
                         nebula2_dataobjects:new_dataobject(Req, State, NewBody)
 		        end
 		end
