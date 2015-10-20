@@ -50,11 +50,18 @@ new_domain(Req, State) ->
     {_Pid, EnvMap} = State,
     DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
-    Response = case nebula2_utils:create_object(Req, State, ObjectType, DomainName) of
-                   {true, Req2, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
+    {ok, ReqBody, Req2} = cowboy_req:body(Req),
+    Body2 = try jsx:decode(ReqBody, [return_maps]) of
+                NewBody -> NewBody
+            catch
+                error:badarg ->
+                    throw(badjson)
+            end,
+    Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
+                   {true, Req3, Data} ->
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req3), State};
                    false ->
-                       {false, Req, State}
+                       {false, Req2, State}
                end,
     Response.
     

@@ -230,20 +230,30 @@ from_cdmi_object(Req, State) ->
 	try
 	   case LastChar of
 		   "/" ->
+               lager:error("data object name must not end with '/'"),
 				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
 		   _ ->
+                {ok, ReqBody, Req2} = cowboy_req:body(Req),
+                Body2 = try jsx:decode(ReqBody, [return_maps]) of
+                            NewBody -> NewBody
+                        catch
+                            error:badarg ->
+                                throw(badjson)
+                        end,
 		        case maps:get(<<"exists">>, EnvMap) of
 		            true ->
 		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		                nebula2_dataobjects:update_dataobject(Req2, State, ObjectId, Body2);
 		            false ->
-		                nebula2_dataobjects:new_dataobject(Req, State)
+		                nebula2_dataobjects:new_dataobject(Req2, State, Body2)
 		        end
 		end
 	catch
 		throw:badjson ->
+            lager:error("bad json"),
 			bail(400, <<"bad json\n">>, Req, State);
 		throw:badencoding ->
+            lager:error("bad encoding"),
 			bail(400, <<"bad encoding\n">>, Req, State)
 	end.
 
@@ -254,49 +264,53 @@ from_multipart_mixed(Req, State) ->
 	lager:debug("SysCap: ~p", [SysCap]),
 	case maps:get(<<"cdmi_multipart_mime">>, SysCap, <<"false">>) of
 		<<"true">> ->
-			lager:debug("multipart allowed"),
 			from_multipart_mixed(Req, State, ok);
 		_ ->
+            lager:error("multipart not supported"),
 			bail(501, <<"multipart not supported">>, Req, State)
 	end.
 	
 from_multipart_mixed(Req, State, ok) ->
 	lager:debug("Enter"),
 	{_, EnvMap} = State,
-	lager:debug("EnvMap: ~p", [EnvMap]),
 	ObjectName = maps:get(<<"objectName">>, EnvMap),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
 	try
 	   case LastChar of
 		   "/" ->
+               lager:error("data object name must not end with '/'"),
 				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
 		   _ ->
+                {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
+                Body = jsx:decode(BodyPart1, [return_maps]),
+                lager:debug("Body json: ~p", [Body]),
+                NewBody = maps:put(<<"value">>, BodyPart2, Body),
 		        case maps:get(<<"exists">>, EnvMap) of
 		            true ->
 		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody);
 		            false ->
-		                %% nebula2_dataobjects:new_dataobject(Req, State)
-                        Req2 = multipart(Req),
-						bail(400, <<"test">>, Req2, State)
+                        
+                        nebula2_dataobjects:new_dataobject(Req, State, NewBody)
 		        end
 		end
 	catch
 		throw:badjson ->
+            lager:error("bad json"),
 			bail(400, <<"bad json\n">>, Req, State);
 		throw:badencoding ->
+            lager:error("bad encoding"),
 			bail(400, <<"bad encoding\n">>, Req, State)
 	end.
 
-multipart(Req) ->
+multipart(Req, BodyParts) ->
     case cowboy_req:part(Req) of
         {ok, _Headers, Req2} ->
-			lager:debug("Headers: ~p", [_Headers]),
-            {ok, _Body, Req3} = cowboy_req:part_body(Req2),
-			lager:debug("Body: ~p", [_Body]),
-            multipart(Req3);
+            {ok, Body, Req3} = cowboy_req:part_body(Req2),
+            BodyParts2 = lists:append(BodyParts, [Body]),
+            multipart(Req3, BodyParts2);
         {done, Req2} ->
-            Req2
+            {Req2, BodyParts}
     end.
 
 generate_etag(Req, State) ->

@@ -68,7 +68,13 @@ new_capability(Req, State) ->
                         "/" ++ build_path(U)
                  end,
     {ok, Body, Req2} = cowboy_req:body(Req),
-    Data = jsx:decode(Body, [return_maps]),
+    Body2 = try jsx:decode(Body, [return_maps]) of
+                NewBody -> NewBody
+            catch
+                error:badarg ->
+                    throw(badjson)
+            end,
+    Data = jsx:decode(Body2, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
     case maps:get(<<"parentURI">>, EnvMap, undefined) of
         undefined ->
@@ -96,7 +102,12 @@ update_capability(Req, State, Oid) ->
     %% lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
-    NewData = jsx:decode(Body, [return_maps]),
+    NewData = try jsx:decode(Body, [return_maps]) of
+                  NewBody -> NewBody
+              catch
+                  error:badarg ->
+                      throw(badjson)
+              end,
     NewCapabilities = maps:get(<<"capabilities">>, NewData),
     %% lager:debug("NewData: ~p", [NewData]),
     {ok, OldData} = nebula2_db:read(Pid, Oid),

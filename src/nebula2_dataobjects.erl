@@ -14,8 +14,8 @@
 %% ====================================================================
 -export([
             get_dataobject/2,
-            new_dataobject/2,
-            update_dataobject/3
+            new_dataobject/3,
+            update_dataobject/4
         ]).
 
 %% @doc Get a CDMI dataobject
@@ -26,11 +26,11 @@ get_dataobject(Pid, Oid) ->
     Data.
 
 %% @doc Create a new CDMI dataobject
--spec nebula2_dataobjects:new_dataobject(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
-new_dataobject(Req, State) ->
+-spec nebula2_dataobjects:new_dataobject(cowboy_req:req(), cdmi_state(), map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
+new_dataobject(Req, State, Body) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
-    Response = case nebula2_utils:create_object(Req, State, ObjectType) of
+    Response = case nebula2_utils:create_object(Req, State, ObjectType, Body) of
                    {true, Req2, Data} ->
                        {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
                    false ->
@@ -39,12 +39,10 @@ new_dataobject(Req, State) ->
     Response.
 
 %% @doc Update a CDMI dataobject
--spec nebula2_dataobjects:update_dataobject(cowboy_req:req(), cdmi_state(), object_oid()) -> {ok, json_value()}.
-update_dataobject(Req, State, Oid) ->
+-spec nebula2_dataobjects:update_dataobject(cowboy_req:req(), cdmi_state(), object_oid(), map()) -> {ok, json_value()}.
+update_dataobject(Req, State, Oid, NewData) ->
     lager:debug("Entry"),
 	{Pid, _EnvMap} = State,
-	{ok, Body, Req2} = cowboy_req:body(Req),
-	NewData = jsx:decode(Body, [return_maps]),
 	nebula2_utils:check_base64(NewData),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
@@ -65,7 +63,7 @@ update_dataobject(Req, State, Oid) ->
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
     Response = case nebula2_db:update(Pid, Oid, Data3) of
                    ok ->
-                       {true, Req2, State};
+                       {true, Req, State};
                    _  ->
                        {false, Req, State}
                end,
