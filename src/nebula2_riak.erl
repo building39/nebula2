@@ -122,7 +122,7 @@ search(Path, State) when is_binary(Path)->
     search(Path2, State);
 search(Path, State) ->
     lager:debug("Entry"),
-    % lager:debug("Path: ~p", [Path]),
+    lager:debug("State: ~p", [State]),
     {Pid, EnvMap} = State,
     Query = create_query(Path, EnvMap),
     % lager:debug("Query: ~p", [Query]),

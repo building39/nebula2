@@ -21,23 +21,35 @@
 -spec nebula2_containers:new_container(cowboy_req:req(), cdmi_state()) -> {boolean(), Req, cdmi_state()}
         when Req::cowboy_req:req().
 new_container(Req, State) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
-    Response = case nebula2_utils:create_object(Req, State, ObjectType) of
-                   {true, Req2, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
+    {ok, ReqBody, Req2} = cowboy_req:body(Req),
+    Body2 = try jsx:decode(ReqBody, [return_maps]) of
+                NewBody -> NewBody
+            catch
+                error:badarg ->
+                    throw(badjson)
+            end,
+    Response = case nebula2_utils:create_object(Req2, State, ObjectType, Body2) of
+                   {true, Req3, Data} ->
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req3), State};
                    false ->
-                       {false, Req, State}
+                       {false, Req2, State}
                end,
     Response.
 
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
 update_container(Req, State, Oid) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
-    NewData = jsx:decode(Body, [return_maps]),
+    NewData = try jsx:decode(Body, [return_maps]) of
+                  NewBody -> NewBody
+              catch
+                  error:badarg ->
+                      throw(badjson)
+              end,
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
     NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),

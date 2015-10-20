@@ -1,0 +1,71 @@
+2015-10-17 11:05:28,138 INFO test_cdmi: [test_cdmi] description not found
+2015-10-17 11:05:28,138 DEBUG test_cdmi: Starting -----------------------------------
+	
+2015-10-17 11:05:28,138 INFO test_cdmi: [test_cdmi] nb_time not found
+2015-10-17 11:06:07,162 DEBUG test_cdmi: Starting -----------------------------------
+	Access the main URL 20 times
+2015-10-17 11:06:07,162 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 1: Get URL ...
+2015-10-17 11:06:07,248 DEBUG test_cdmi:  Failed in 0.086s
+2015-10-17 11:10:04,976 DEBUG test_cdmi: Starting -----------------------------------
+	Access the main URL 20 times
+2015-10-17 11:10:04,976 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 1: Get URL ...
+2015-10-17 11:10:05,091 DEBUG test_cdmi:  Done in 0.115s
+2015-10-17 11:10:05,091 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 2: Get URL ...
+2015-10-17 11:10:05,212 DEBUG test_cdmi:  Done in 0.121s
+2015-10-17 11:10:05,213 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 3: Get URL ...
+2015-10-17 11:10:05,332 DEBUG test_cdmi:  Done in 0.119s
+2015-10-17 11:10:05,333 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 4: Get URL ...
+2015-10-17 11:10:05,449 DEBUG test_cdmi:  Done in 0.117s
+2015-10-17 11:10:05,450 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 5: Get URL ...
+2015-10-17 11:10:05,560 DEBUG test_cdmi:  Done in 0.110s
+2015-10-17 11:10:05,560 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 6: Get URL ...
+2015-10-17 11:10:05,661 DEBUG test_cdmi:  Done in 0.101s
+2015-10-17 11:10:05,662 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 7: Get URL ...
+2015-10-17 11:10:05,789 DEBUG test_cdmi:  Done in 0.127s
+2015-10-17 11:10:05,789 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 8: Get URL ...
+2015-10-17 11:10:05,892 DEBUG test_cdmi:  Done in 0.102s
+2015-10-17 11:10:05,892 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 9: Get URL ...
+2015-10-17 11:10:06,010 DEBUG test_cdmi:  Done in 0.117s
+2015-10-17 11:10:06,010 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 10: Get URL ...
+2015-10-17 11:10:06,132 DEBUG test_cdmi:  Done in 0.122s
+2015-10-17 11:10:06,133 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 11: Get URL ...
+2015-10-17 11:10:06,246 DEBUG test_cdmi:  Done in 0.114s
+2015-10-17 11:10:06,247 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 12: Get URL ...
+2015-10-17 11:10:06,357 DEBUG test_cdmi:  Done in 0.110s
+2015-10-17 11:10:06,357 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 13: Get URL ...
+2015-10-17 11:10:06,455 DEBUG test_cdmi:  Done in 0.098s
+2015-10-17 11:10:06,455 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 14: Get URL ...
+2015-10-17 11:10:06,554 DEBUG test_cdmi:  Done in 0.099s
+2015-10-17 11:10:06,555 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 15: Get URL ...
+2015-10-17 11:10:06,656 DEBUG test_cdmi:  Done in 0.101s
+2015-10-17 11:10:06,656 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 16: Get URL ...
+2015-10-17 11:10:06,779 DEBUG test_cdmi:  Done in 0.122s
+2015-10-17 11:10:06,779 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 17: Get URL ...
+2015-10-17 11:10:06,896 DEBUG test_cdmi:  Done in 0.117s
+2015-10-17 11:10:06,897 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 18: Get URL ...
+2015-10-17 11:10:07,020 DEBUG test_cdmi:  Done in 0.123s
+2015-10-17 11:10:07,020 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 19: Get URL ...
+2015-10-17 11:10:07,129 DEBUG test_cdmi:  Done in 0.108s
+2015-10-17 11:10:07,129 DEBUG test_cdmi: GET: http://localhost:8080/cdmi/new_container7/new_object8.txt
+	Page 20: Get URL ...
+2015-10-17 11:10:07,249 DEBUG test_cdmi:  Done in 0.120s

@@ -18,6 +18,7 @@
          from_cdmi_container/2,
          from_cdmi_domain/2,
          from_cdmi_object/2,
+		 from_multipart_mixed/2,
          forbidden/2,
          generate_etag/2,
          is_authorized/2,
@@ -72,33 +73,40 @@ rest_init(Req, _State) ->
     Map9  = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
     Map11 = maps:put(<<"qs">>, Qs, Map10),
+	SysCap = case nebula2_db:search("/cdmi_capabilities/", {PoolMember, Map11}, nodomain) of 
+				 {ok, SystemCapabilities} ->
+				 	maps:get(<<"capabilities">>, SystemCapabilities, maps:new());
+				 _ ->
+				 	maps:new()
+			 end,
+	lager:debug("SysCap: ~p", [SysCap]),
+	Map12 = maps:put(<<"system_capabilities">>, SysCap, Map11),
     
-    Parent = nebula2_db:search(ParentURI, {PoolMember, Map11}),
+    Parent = nebula2_db:search(ParentURI, {PoolMember, Map12}),
     
     FinalMap = case Parent of
                     {ok, Data} ->
                         ParentID  = maps:get(<<"objectID">>, Data),
-                        Map12     = maps:put(<<"parentID">>, ParentID, Map11),
+                        Map13     = maps:put(<<"parentID">>, ParentID, Map12),
                         KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
                         if 
                             KeyExists == true ->        
                                 ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
                                 ParentCapabilities    = nebula2_db:search(ParentCapabilitiesURI,
-                                                                          {PoolMember, Map11},
+                                                                          {PoolMember, Map13},
                                                                           nodomain),
                                 case ParentCapabilities of
                                     {ok, CapData} ->
                                         CapMap = maps:get(<<"capabilities">>, CapData, maps:new()),
-                                        Map13  = maps:put(<<"parent_capabilities">>, CapMap, Map12),
-                                        Map13;
+                                        maps:put(<<"parent_capabilities">>, CapMap, Map13);
                                     {error, _} ->
-                                        Map12
+                                        Map13
                                 end;
                             true ->
                                 Map12
                         end;
                    {error, _} ->
-                       Map11
+                       Map12
                end,
     {ok, Req9, {PoolMember, FinalMap}}.
 
@@ -115,7 +123,8 @@ content_types_accepted(Req, State) ->
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
       {{<<"application">>, <<"cdmi-container">>, '*'},  from_cdmi_container},
       {{<<"application">>, <<"cdmi-domain">>, '*'},     from_cdmi_domain},
-      {{<<"application">>, <<"cdmi-object">>, '*'},     from_cdmi_object}
+      {{<<"application">>, <<"cdmi-object">>, '*'},     from_cdmi_object},
+	  {{<<"multipart">>, <<"mixed">>, '*'},             from_multipart_mixed}
      ], Req, State}.
 
 content_types_provided(Req, State) ->
@@ -221,22 +230,88 @@ from_cdmi_object(Req, State) ->
 	try
 	   case LastChar of
 		   "/" ->
+               lager:error("data object name must not end with '/'"),
 				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
 		   _ ->
+                {ok, ReqBody, Req2} = cowboy_req:body(Req),
+                Body2 = try jsx:decode(ReqBody, [return_maps]) of
+                            NewBody -> NewBody
+                        catch
+                            error:badarg ->
+                                throw(badjson)
+                        end,
 		        case maps:get(<<"exists">>, EnvMap) of
 		            true ->
 		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId);
+		                nebula2_dataobjects:update_dataobject(Req2, State, ObjectId, Body2);
 		            false ->
-		                nebula2_dataobjects:new_dataobject(Req, State)
+		                nebula2_dataobjects:new_dataobject(Req2, State, Body2)
 		        end
 		end
 	catch
 		throw:badjson ->
+            lager:error("bad json"),
 			bail(400, <<"bad json\n">>, Req, State);
 		throw:badencoding ->
+            lager:error("bad encoding"),
 			bail(400, <<"bad encoding\n">>, Req, State)
 	end.
+
+from_multipart_mixed(Req, State) ->
+	lager:debug("Enter"),
+	{_, EnvMap} = State,
+	SysCap = maps:get(<<"system_capabilities">>, EnvMap, maps:new()),
+	lager:debug("SysCap: ~p", [SysCap]),
+	case maps:get(<<"cdmi_multipart_mime">>, SysCap, <<"false">>) of
+		<<"true">> ->
+			from_multipart_mixed(Req, State, ok);
+		_ ->
+            lager:error("multipart not supported"),
+			bail(501, <<"multipart not supported">>, Req, State)
+	end.
+	
+from_multipart_mixed(Req, State, ok) ->
+	lager:debug("Enter"),
+	{_, EnvMap} = State,
+	ObjectName = maps:get(<<"objectName">>, EnvMap),
+    LastChar = string:substr(ObjectName, string:len(ObjectName)),
+	try
+	   case LastChar of
+		   "/" ->
+               lager:error("data object name must not end with '/'"),
+				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
+		   _ ->
+                {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
+                Body = jsx:decode(BodyPart1, [return_maps]),
+                lager:debug("Body json: ~p", [Body]),
+                NewBody = maps:put(<<"value">>, BodyPart2, Body),
+		        case maps:get(<<"exists">>, EnvMap) of
+		            true ->
+		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+		                nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody);
+		            false ->
+                        
+                        nebula2_dataobjects:new_dataobject(Req, State, NewBody)
+		        end
+		end
+	catch
+		throw:badjson ->
+            lager:error("bad json"),
+			bail(400, <<"bad json\n">>, Req, State);
+		throw:badencoding ->
+            lager:error("bad encoding"),
+			bail(400, <<"bad encoding\n">>, Req, State)
+	end.
+
+multipart(Req, BodyParts) ->
+    case cowboy_req:part(Req) of
+        {ok, _Headers, Req2} ->
+            {ok, Body, Req3} = cowboy_req:part_body(Req2),
+            BodyParts2 = lists:append(BodyParts, [Body]),
+            multipart(Req3, BodyParts2);
+        {done, Req2} ->
+            {Req2, BodyParts}
+    end.
 
 generate_etag(Req, State) ->
     lager:debug("Entry"),

@@ -9,7 +9,7 @@ r = requests.get(URL, params=params)
 
 try:
     data = r.json()
-except e:
+except Exception, e:
     print r.text()
     exit(0)
 
