@@ -50,14 +50,14 @@
 %% @doc Get a CDMI capability
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
 get_capability(Pid, Oid) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
 %% @doc Create a new CDMI capability
 -spec nebula2_capabilities:new_capability(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_capability(Req, State) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     Oid = nebula2_utils:make_key(),
     {Pid, EnvMap} = State,
     {Path, _} = cowboy_req:path_info(Req),
@@ -93,12 +93,12 @@ new_capability(Req, State) ->
 %% @doc Update a CDMI capability
 -spec nebula2_capabilities:update_capability(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
 update_capability(Req, State, Oid) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = jsx:decode(Body, [return_maps]),
     NewCapabilities = maps:get(<<"capabilities">>, NewData),
-    lager:debug("NewData: ~p", [NewData]),
+    %% lager:debug("NewData: ~p", [NewData]),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldCapabilities = maps:get(<<"capabilities">>, OldData),
     OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
@@ -119,7 +119,7 @@ update_capability(Req, State, Oid) ->
                    _  ->
                        {false, Req, State}
                end,
-    lager:debug("Data4: ~p", [Data4]),
+    %% lager:debug("Data4: ~p", [Data4]),
     Response.
 
 %% @doc Apply CDMI capabilities
@@ -146,7 +146,7 @@ apply_metadata_capabilities([H|T], Data) ->
 %% @doc Apply cdmi_acount
 -spec cdmi_acount(string(), map()) -> map().
 cdmi_acount(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
             MD = maps:get(<<"metadata">>, Data),
@@ -162,8 +162,8 @@ cdmi_acount(Doit, Data) ->
 %% @doc Apply cdmi_atime
 -spec cdmi_atime(string(), map()) -> map().
 cdmi_atime(Doit, Data) ->
-    lager:debug("Entry"),
-    lager:debug("Doit: ~p", [Doit]),
+    %% lager:debug("Entry"),
+    %% lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
             MD = maps:get(<<"metadata">>, Data),
@@ -179,10 +179,10 @@ cdmi_atime(Doit, Data) ->
 %% @doc Apply cdmi_assignedsize
 -spec cdmi_assignedsize(string(), map()) -> map().
 cdmi_assignedsize(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_assignedsize processing here"),
+            %% lager:debug("Do cdmi_assignedsize processing here"),
             Data;
         false ->
             Data
@@ -191,7 +191,7 @@ cdmi_assignedsize(Doit, Data) ->
 %% @doc Apply cdmi_ctime
 -spec cdmi_ctime(string(), map()) -> map().
 cdmi_ctime(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
             MD = maps:get(<<"metadata">>, Data),
@@ -207,10 +207,10 @@ cdmi_ctime(Doit, Data) ->
 %% @doc Apply cdmi_data_autodelete
 -spec cdmi_data_autodelete(string(), map()) -> map().
 cdmi_data_autodelete(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_data_autodelete processing here"),
+            %% lager:debug("Do cdmi_data_autodelete processing here"),
             Data;
         false ->
             Data
@@ -219,10 +219,10 @@ cdmi_data_autodelete(Doit, Data) ->
 %% @doc Apply cdmi_data_dispersion
 -spec cdmi_data_dispersion(string(), map()) -> map().
 cdmi_data_dispersion(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_data_dispersion processing here"),
+            %% lager:debug("Do cdmi_data_dispersion processing here"),
             Data;
         false ->
             Data
@@ -231,10 +231,10 @@ cdmi_data_dispersion(Doit, Data) ->
 %% @doc Apply cdmi_data_holds
 -spec cdmi_data_holds(string(), map()) -> map().
 cdmi_data_holds(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_data_holds processing here"),
+            %% lager:debug("Do cdmi_data_holds processing here"),
             Data;
         false ->
             Data
@@ -243,10 +243,10 @@ cdmi_data_holds(Doit, Data) ->
 %% @doc Apply cdmi_data_redundancy
 -spec cdmi_data_redundancy(string(), map()) -> map().
 cdmi_data_redundancy(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_data_redundancy processing here"),
+            %% lager:debug("Do cdmi_data_redundancy processing here"),
             Data;
         false ->
             Data
@@ -255,10 +255,10 @@ cdmi_data_redundancy(Doit, Data) ->
 %% @doc Apply cdmi_data_retention
 -spec cdmi_data_retention(string(), map()) -> map().
 cdmi_data_retention(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_data_retention processing here"),
+            %% lager:debug("Do cdmi_data_retention processing here"),
             Data;
         false ->
             Data
@@ -266,18 +266,18 @@ cdmi_data_retention(Doit, Data) ->
 
 %% @doc Apply cdmi_encryption
 -spec cdmi_encryption(list(), map()) -> map().
-cdmi_encryption(EncryptionMethods, Data) ->
-    lager:debug("Entry"),
-    lager:debug("Do cdmi_encryption processing here for ~p", [EncryptionMethods]),
+cdmi_encryption(_EncryptionMethods, Data) ->
+    %% lager:debug("Entry"),
+    %% lager:debug("Do cdmi_encryption processing here for ~p", [EncryptionMethods]),
     Data.
 
 %% @doc Apply cdmi_geographic_placement
 -spec cdmi_geographic_placement(string(), map()) -> map().
 cdmi_geographic_placement(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_geographic_placement processing here"),
+            %% lager:debug("Do cdmi_geographic_placement processing here"),
             Data;
         false ->
             Data
@@ -286,34 +286,34 @@ cdmi_geographic_placement(Doit, Data) ->
 %% @doc Apply cdmi_immediate_redundancy
 -spec cdmi_immediate_redundancy(string(), map()) -> map().
 cdmi_immediate_redundancy(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         "" ->
             Data;
         _ ->
-            lager:debug("Do cdmi_immediate_redundancy processing here"),
+            %% lager:debug("Do cdmi_immediate_redundancy processing here"),
             Data
     end.
 
 %% @doc Apply cdmi_infrastructure_redundancy
 -spec cdmi_infrastructure_redundancy(string(), map()) -> map().
 cdmi_infrastructure_redundancy(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         "" ->
             Data;
         _ ->
-            lager:debug("Do cdmi_infrastructure_redundancy processing here"),
+            %% lager:debug("Do cdmi_infrastructure_redundancy processing here"),
             Data
     end.
 
 %% @doc Apply cdmi_latency
 -spec cdmi_latency(string(), map()) -> map().
 cdmi_latency(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_latency processing here"),
+            %% lager:debug("Do cdmi_latency processing here"),
             Data;
         false ->
             Data
@@ -322,7 +322,7 @@ cdmi_latency(Doit, Data) ->
 %% @doc Apply cdmi_mcount
 -spec cdmi_mcount(string(), map()) -> map().
 cdmi_mcount(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
             MD = maps:get(<<"metadata">>, Data),
@@ -338,7 +338,7 @@ cdmi_mcount(Doit, Data) ->
 %% @doc Apply cdmi_mtime
 -spec cdmi_mtime(string(), map()) -> map().
 cdmi_mtime(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
             MD = maps:get(<<"metadata">>, Data),
@@ -355,10 +355,10 @@ cdmi_mtime(Doit, Data) ->
 %% @doc Apply cdmi_RPO
 -spec cdmi_RPO(string(), map()) -> map().
 cdmi_RPO(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_RPO processing here"),
+            %% lager:debug("Do cdmi_RPO processing here"),
             Data;
         false ->
             Data
@@ -367,10 +367,10 @@ cdmi_RPO(Doit, Data) ->
 %% @doc Apply cdmi_RTO
 -spec cdmi_RTO(string(), map()) -> map().
 cdmi_RTO(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_RTO processing here"),
+            %% lager:debug("Do cdmi_RTO processing here"),
             Data;
         false ->
             Data
@@ -378,30 +378,30 @@ cdmi_RTO(Doit, Data) ->
 
 %% @doc Apply cdmi_sanitization_method
 -spec cdmi_sanitization_method(list(), map()) -> map().
-cdmi_sanitization_method(Methods, Data) ->
-    lager:debug("Entry"),
-    lager:debug("Do cdmi_sanitization_method processing here for ~p", [Methods]),
+cdmi_sanitization_method(_Methods, Data) ->
+    %% lager:debug("Entry"),
+    %% lager:debug("Do cdmi_sanitization_method processing here for ~p", [Methods]),
     Data.
 
 %% @doc Apply cdmi_size
 -spec cdmi_size(string(), map()) -> map().
 cdmi_size(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case binary_to_list(maps:get(<<"objectType">>, Data)) of
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
-                    V = maps:get(<<"value">>, Data),
-                    Encoding = maps:get(<<"valuetransferencoding">>, Data),
-                    lager:debug("Value: ~p", [V]),
-                    lager:debug("Encoding: ~p", [Encoding]),
+                    %% V = maps:get(<<"value">>, Data),
+                    %% Encoding = maps:get(<<"valuetransferencoding">>, Data),
+                    %% lager:debug("Value: ~p", [V]),
+                    %% lager:debug("Encoding: ~p", [Encoding]),
                     Value = binary_to_list(maps:get(<<"value">>, Data)),
                     Size = string:len(Value),
                     MD = maps:get(<<"metadata">>, Data),
                     MD2 = maps:put(<<"cdmi_size">>, Size, MD),
                     maps:put(<<"metadata">>, MD2, Data);
                 false ->
-                    lager:debug("false"),
+                    %% lager:debug("false"),
                     MD = maps:get(<<"metadata">>, Data),
                     MD2 = maps:remove(<<"cdmi_size">>, MD),
                     maps:put(<<"metadata">>, MD2, Data)
@@ -413,10 +413,10 @@ cdmi_size(Doit, Data) ->
 %% @doc Apply cdmi_throughput
 -spec cdmi_throughput(string(), map()) -> map().
 cdmi_throughput(Doit, Data) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     case Doit of
         true ->
-            lager:debug("Do cdmi_throughput processing here"),
+            %% lager:debug("Do cdmi_throughput processing here"),
             Data;
         false ->
             Data
@@ -424,16 +424,16 @@ cdmi_throughput(Doit, Data) ->
 
 %% @doc Apply cdmi_value_hash
 -spec cdmi_value_hash(list(), map()) -> map().
-cdmi_value_hash(ValueHash, Data) ->
-    lager:debug("Entry"),
-    lager:debug("Do cdmi_value_hash processing here for ~p", [ValueHash]),
+cdmi_value_hash(_ValueHash, Data) ->
+    %% lager:debug("Entry"),
+    %% lager:debug("Do cdmi_value_hash processing here for ~p", [ValueHash]),
     Data.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 build_path(L) ->
-    lager:debug("Entry"),
+    %% lager:debug("Entry"),
     build_path(L, []).
 build_path([], Acc) ->
     Acc;

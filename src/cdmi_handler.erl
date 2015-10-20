@@ -290,10 +290,10 @@ from_multipart_mixed(Req, State, ok) ->
 
 multipart(Req) ->
     case cowboy_req:part(Req) of
-        {ok, Headers, Req2} ->
-			lager:debug("Headers: ~p", [Headers]),
-            {ok, Body, Req3} = cowboy_req:part_body(Req2),
-			lager:debug("Body: ~p", [Body]),
+        {ok, _Headers, Req2} ->
+			lager:debug("Headers: ~p", [_Headers]),
+            {ok, _Body, Req3} = cowboy_req:part_body(Req2),
+			lager:debug("Body: ~p", [_Body]),
             multipart(Req3);
         {done, Req2} ->
             Req2
