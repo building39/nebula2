@@ -16,8 +16,6 @@
 -define(CDMI_INDEX, "cdmi_idx").
 -define(NAME_PREFIX, "cdmi").
 %% Domain Maps Query
--define(DOMAIN_MAPS_QUERY, "domainURI:\\" ++ ?SYSTEM_DOMAIN_URI ++
-            "/ AND parentURI:\\/system_configuration/ AND objectName:\\domain_maps").
 
 %% ====================================================================
 %% API functions
@@ -28,7 +26,6 @@
          put/3,
          available/1,
          search/2,
-         search/3,
          update/3]).
 
 %% @doc Ping the riak cluster.
@@ -49,7 +46,6 @@ delete(Pid, Oid) when is_binary(Oid) ->
     delete(Pid, binary_to_list(Oid));
 delete(Pid, Oid) ->
     lager:debug("Entry"),
-    mcd:delete(?MEMCACHE, Oid),
     riakc_pb_socket:delete(Pid,
                            {list_to_binary(?BUCKET_TYPE),
                             list_to_binary(?BUCKET_NAME)},
@@ -66,7 +62,8 @@ get(Pid, Oid) ->
                                    list_to_binary(?BUCKET_NAME)},
                                    list_to_binary(Oid)) of
                 {ok, Object} ->
-                    Data = riakc_obj:get_value(Object),
+                    Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
+                    lager:debug("Data: ~p", [Data]),
                     {ok, Data};
                 {error, Term} ->
                     {error, Term}
@@ -76,10 +73,12 @@ get(Pid, Oid) ->
 -spec nebula2_riak:get_domain_maps(pid()) -> list().
 get_domain_maps(Pid) ->
     lager:debug("Entry"),
-    case execute_search(Pid, ?DOMAIN_MAPS_QUERY) of
+    Query = "sp:\\" ++ ?SYSTEM_DOMAIN_URI ++ lists:nthtail(1, ?SYSTEM_DOMAIN_URI) ++ "system_configuration/"++ "domain_maps",
+    case execute_search(Pid, Query) of
         {ok, Result} ->
-            Data = jsx:decode(Result, [return_maps]),
-            maps:get(<<"value">>, Data);
+            lager:debug("Result: ~p", [Result]),
+            % Data = jsx:decode(Result, [return_maps]),
+            maps:get(<<"value">>, maps:get(<<"cdmi">>, Result, <<"[]">>), <<"[]">>);
         _ ->
             []
     end.
@@ -109,7 +108,6 @@ do_put(Pid, Oid, Data) ->
                             list_to_binary("application/json")),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
-            mcd:set(?MEMCACHE, Oid, Data, ?MEMCACHE_EXPIRY),
             {ok, Oid};
         {error, Term} ->
             {error, Term}
@@ -122,25 +120,9 @@ search(Path, State) when is_binary(Path)->
     search(Path2, State);
 search(Path, State) ->
     lager:debug("Entry"),
-    lager:debug("State: ~p", [State]),
-    {Pid, EnvMap} = State,
-    Query = create_query(Path, EnvMap),
-    % lager:debug("Query: ~p", [Query]),
-    execute_search(Pid, Query).
-
-%% @doc Search an index for objects, but don't search on domainUri
--spec nebula2_riak:search(string(), cdmi_state(), nodomain) -> {error, 404|500}|{ok, map()}.
-search(Path, State, nodomain) when is_binary(Path)->
-    Path2 = binary_to_list(Path),
-    search(Path2, State, nodomain);
-search(Path, State, nodomain) ->
-    lager:debug("Entry"),
+    % lager:debug("State: ~p", [State]),
     {Pid, _} = State,
-    % lager:debug("Path: ~p", [Path]),
-    Parts = string:tokens(Path, "/"),
-    ParentURI = nebula2_utils:get_parent_uri(Path),
-    ObjectName = nebula2_utils:get_object_name(Parts, Path),
-    Query = "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName,
+    Query = "sp:\\" ++ Path,
     Result =  execute_search(Pid, Query),
     Result.
 
@@ -164,8 +146,6 @@ update(Pid, Oid, Data) ->
                                              list_to_binary(?BUCKET_NAME)},
                                             Oid),
             NewObj = riakc_obj:update_value(Obj, Data),
-            Map = jsx:decode(Data, [return_maps]),
-            mcd:set(?MEMCACHE, Oid, Map, ?MEMCACHE_EXPIRY),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
@@ -173,61 +153,29 @@ update(Pid, Oid, Data) ->
 %% Internal functions
 %% ====================================================================
 
-%% @doc Create a search key.
--spec nebula2_riak:create_query(string(), map()) -> string().
-create_query(Path, EnvMap) ->
-    lager:debug("Entry"),
-    % lager:debug("Path: ~p", [Path]),
-    Parts = string:tokens(Path, "/"),
-    ParentURI = nebula2_utils:get_parent_uri(Path),
-    ObjectName = nebula2_utils:get_object_name(Parts, Path),
-    Method = maps:get(<<"method">>, EnvMap),
-    ObjectType = case Method of
-                     <<"GET">> ->
-                         maps:get(<<"accept">>, EnvMap);
-                     <<"PUT">> ->
-                         maps:get(<<"content-type">>, EnvMap);
-                     <<"DELETE">> ->
-                         undefined;
-                     _ ->
-                         lager:error("create_query: need to implement for method ~p", [Method]),
-                         maps:get(<<"content-type">>, EnvMap)
-                 end,
-    create_query(ObjectName, ObjectType, ParentURI, EnvMap).
-
--spec nebula2_riak:create_query(string(), string(), string(), map()) -> string().
-create_query(ObjectName, _, _, _) when ObjectName == "";
-                                       ObjectName == "/"; 
-                                       ObjectName == <<"">>; 
-                                       ObjectName == <<"/">> ->
-    lager:debug("Entry"),
-    "objectName:\\/";
-create_query(ObjectName, ContentType, ParentURI, _) when ContentType =:= <<?CONTENT_TYPE_CDMI_CAPABILITY>>; 
-                                                         ContentType =:= <<"*/*">> ->
-    lager:debug("Entry"),
-    "parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName;
-create_query(ObjectName, _ContentType, ParentURI, EnvMap) ->
-    lager:debug("Entry"),
-    DomainURI = maps:get(<<"domainURI">>, EnvMap),
-    "domainURI:\\" ++ DomainURI ++ " AND parentURI:\\" ++ ParentURI ++ " AND objectName:\\" ++ ObjectName.
-    
 %% @doc Execute a search.
 -spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
                                   search_predicate()  %% URI.
                                  ) -> {error, 404|500} |{ok, map()}.
 execute_search(Pid, Query) ->
-    lager:debug("Query: ~p", [Query]),
+    lager:debug("Entry"),
     Index = list_to_binary(?CDMI_INDEX),
-    {ok, Results} = riakc_pb_socket:search(Pid, Index, Query),
-    Response = case Results#search_results.num_found of
-                    0 ->
-                        {error, 404}; %% Return 404
-                    1 ->
-                        [{_, Doc}] = Results#search_results.docs,
-                        fetch(Pid, Doc);
-                    _N ->
-                        {error, 500} %% Something's funky - return 500
-    end,
+    Response = case riakc_pb_socket:search(Pid, Index, Query) of
+                   {ok, Results} ->
+                       lager:debug("Results: ~p", [Results]),
+                       case Results#search_results.num_found of
+                           0 ->
+                               {error, 404}; %% Return 404
+                           1 ->
+                               [{_, Doc}] = Results#search_results.docs,
+                               fetch(Pid, Doc);
+                           _N ->
+                               {error, 500} %% Something's funky - return 500
+                       end;
+                   _ ->
+                       {error, 404}
+               end,
+    lager:debug("Response: ~p", [Response]),
     Response.
 
 %% @doc Fetch document.
