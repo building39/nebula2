@@ -59,7 +59,7 @@
 -define(PERMANENT_CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/permanent").
 
 %% System domain URI
--define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain").
+-define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain/").
 
 %% ACE types
 -define(CDMI_ACE_ACCESS_ALLOW, 16#00000000).

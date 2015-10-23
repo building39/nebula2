@@ -13,7 +13,7 @@ ssh root@${RIAK_HOST} "riak-admin bucket-type activate cdmi"
 sleep ${DELAY}
 
 # register the schema with riak
-curl -v -XPUT "http://${RIAK_HOST}:${RIAK_HTTP_PORT}/search/schema/cdmi" -H 'Content-Type:application/xml' --data-binary @../config/cdmi_schema.xml
+curl -v -XPUT "http://${RIAK_HOST}:${RIAK_HTTP_PORT}/search/schema/cdmi" -H 'Content-Type:application/xml' --data-binary @../config/cdmi_schema2.xml
 
 sleep ${DELAY}
 

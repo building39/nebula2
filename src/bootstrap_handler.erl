@@ -29,29 +29,37 @@
         ]).
 
 init(_, _Req, _Opts) ->
+    lager:debug("Entry"),
     % lager:debug("bootstrap initing..."),
     {upgrade, protocol, cowboy_rest}.
 
 %% Bootstrap can only PUT new objects.
 allowed_methods(Req, State) ->
+    lager:debug("Entry"),
     {[<<"PUT">>], Req, State}.
 
 content_types_accepted(Req, State) ->
+    lager:debug("Entry"),
     cdmi_handler:content_types_accepted(Req, State).
 
 content_types_provided(Req, State) ->
+    lager:debug("Entry"),
     cdmi_handler:content_types_provided(Req, State).
 
 from_cdmi_capability(Req, State) ->
+    lager:debug("Entry"),
     from_cdmi_object(Req, State).
 
 from_cdmi_container(Req, State) ->
+    lager:debug("Entry"),
     from_cdmi_object(Req, State).
 
 from_cdmi_domain(Req, State) ->
+    lager:debug("Entry"),
     from_cdmi_object(Req, State).
 
 from_cdmi_object(Req, State) ->
+    lager:debug("Entry"),
     {Pid, _EnvMap} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     % lager:debug("bootstrap: from_cdmi_object: Body: ~p", [Body]),
@@ -62,9 +70,10 @@ from_cdmi_object(Req, State) ->
     ParentID = maps:get(<<"parentID">>, Data2, <<"">>),
     % lager:debug("bootstrap: parentID: ~p", [ParentID]),
     {Path, Req3} = cowboy_req:path(Req2),
-    % lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
+    lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
     ObjectType = maps:get(<<"objectType">>, Data2),
-    {ok, Oid} = nebula2_riak:put(Pid, Oid, Data2),
+    % lager:debug("Data2: ~p", [Data2]),
+    {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
     nebula2_utils:update_parent(ParentID,
                                 binary_to_list(Path),
                                 binary_to_list(ObjectType),
@@ -76,17 +85,20 @@ from_cdmi_object(Req, State) ->
     {true, Req4, State}.
 
 is_conflict(Req, State) ->
+    lager:debug("Entry"),
     cdmi_handler:is_conflict(Req, State).
 
 %% Bootstrap can only PUT new objects.
 known_methods(Req, State) ->
+    lager:debug("Entry"),
     {[<<"PUT">>], Req, State}.
 
 resource_exists(Req, State) ->
+    lager:debug("Entry"),
     % lager:debug("bootstrap: resource_exists:"),
     {Pid, EnvMap} = State,
-    Path = maps:get(<<"path">>, EnvMap),
-    Response = case nebula2_riak:search(Path, State) of
+    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Response = case nebula2_db:search(Path, State) of
                    {error, _Status} ->
                        false;
                    _Other ->
@@ -96,10 +108,12 @@ resource_exists(Req, State) ->
     {Response, Req, {Pid, NewEnvMap}}.
 
 rest_init(Req, State) ->
+    lager:debug("Entry"),
     cdmi_handler:rest_init(Req, State).
 
 %% Call service_available in the cdmi handler
 service_available(Req, State) ->
+    lager:debug("Entry"),
     cdmi_handler:service_available(Req, State).
 
 %% ====================================================================

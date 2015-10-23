@@ -291,7 +291,7 @@ CDMI_CAPABILITIES_CONTAINER = '/cdmi_capabilities/container/'
 CDMI_CAPABILITIES_CONTAINER_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_CONTAINER
 CDMI_CAPABILITIES_DATAOBJECT = '/cdmi_capabilities/dataobject/'
 CDMI_CAPABILITIES_DATAOBJECT_PERMANENT = '%spermanent/' % CDMI_CAPABILITIES_DATAOBJECT
-CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%s/member/' % CDMI_CAPABILITIES_DATAOBJECT
+CDMI_CAPABILITIES_DATAOBJECT_MEMBER = '%smember/' % CDMI_CAPABILITIES_DATAOBJECT
 CDMI_CAPABILITIES_SYSTEM = '/cdmi_capabilities/'
 
 CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
@@ -485,7 +485,7 @@ class Bootstrap(object):
                'parentURI': '/cdmi_domains/',
                'parentID': self.domains_oid}
         headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        headers['Content-Type'] = OBJECT_TYPE_DOMAIN
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain' % (self.host, int(self.port))
         self.system_domain_oid = self._create(headers, url, doc, acls)
         
@@ -531,7 +531,7 @@ class Bootstrap(object):
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/%s' % (self.host, int(self.port), period)
-        self._create(headers, url, doc, acls)
+        self._create(headers, url, doc, acls, wait=0)
         
     def _create_system_administrator_member(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
@@ -555,9 +555,9 @@ class Bootstrap(object):
                'valuerange': '0-%d' % (len(value) - 1),
                'valuetransferencoding': "utf-8" }
         headers = HEADERS.copy()
-        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        headers['Content-Type'] = OBJECT_TYPE_DATAOBJECT
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_members/administrator' % (self.host, int(self.port))
-        self.system_domain_members_oid = self._create(headers, url, doc, acls)
+        self.system_domain_members_oid = self._create(headers, url, doc, acls, wait=0)
 
     def _create_system_configuration(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
@@ -602,7 +602,7 @@ class Bootstrap(object):
         headers = HEADERS.copy()
         headers['Content-Type'] = OBJECT_TYPE_DATAOBJECT
         url = 'http://%s:%d/bootstrap/system_configuration/domain_maps' % (self.host, int(self.port))
-        self.system_envvar_oid = self._create(headers, url, doc, acls)
+        self.system_envvar_oid = self._create(headers, url, doc, acls, wait=0)
            
     def _create_system_capabilities(self):
         acls = None
@@ -703,7 +703,7 @@ class Bootstrap(object):
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/domain/' % (self.host, int(self.port))
         self.domain_caps_oid = self._create(headers, url, doc, acls)
 
-    def _create(self, headers, url, doc, acls):
+    def _create(self, headers, url, doc, acls, wait=1):
 #        import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_4.3.0.201508182223/pysrc')
 #        import pydevd; pydevd.settrace()
         new_headers = headers.copy()
@@ -759,7 +759,7 @@ class Bootstrap(object):
             #print('got object: %s' % body)
             oid = body['objectID']
             self.newobjects += 1
-            time.sleep(1) # give riak time to index
+            time.sleep(wait) # give riak time to index
         elif r.status_code in [409]:
             print("CDMI is already bootstrapped.")
             sys.exit(1)

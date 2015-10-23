@@ -26,7 +26,7 @@
 delete_domain(Req, State) ->
     %% lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = maps:get(<<"path">>, EnvMap),
+    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
     Data = nebula2_db:search(Path, State),
     Oid = maps:get(<<"objectID">>, Data),
     Metadata = maps:get(<<"metadata">>, Data),
@@ -48,7 +48,8 @@ delete_domain(Req, State) ->
 new_domain(Req, State) ->
     %% lager:debug("Entry"),
     {_Pid, EnvMap} = State,
-    DomainName = maps:get(<<"parentURI">>, EnvMap) ++ maps:get(<<"objectName">>, EnvMap),
+    DomainName = binary_to_list(maps:get(<<"parentURI">>, EnvMap)) ++ binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    lager:debug("Domain name: ~p", [DomainName]),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
     {ok, ReqBody, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(ReqBody, [return_maps]) of

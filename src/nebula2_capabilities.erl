@@ -87,7 +87,7 @@ new_capability(Req, State) ->
                      {<<"objectID">>, list_to_binary(Oid)},
                      {<<"objectName">>, list_to_binary(ObjectName)},
                      {<<"parentID">>, list_to_binary(ParentId)},
-                     {<<"parentURI">>, list_to_binary(ParentUri)}
+                     {<<"parentURI">>, ParentUri}
                     ]),
             {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
             ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
