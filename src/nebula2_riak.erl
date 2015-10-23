@@ -63,7 +63,6 @@ get(Pid, Oid) ->
                                    list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
-                    lager:debug("Data: ~p", [Data]),
                     {ok, Data};
                 {error, Term} ->
                     {error, Term}
@@ -160,22 +159,25 @@ update(Pid, Oid, Data) ->
 execute_search(Pid, Query) ->
     lager:debug("Entry"),
     Index = list_to_binary(?CDMI_INDEX),
+    lager:debug("Query: ~p", [Query]),
     Response = case riakc_pb_socket:search(Pid, Index, Query) of
                    {ok, Results} ->
-                       lager:debug("Results: ~p", [Results]),
                        case Results#search_results.num_found of
                            0 ->
+                               lager:debug("Not Found"),
                                {error, 404}; %% Return 404
                            1 ->
                                [{_, Doc}] = Results#search_results.docs,
+                               lager:debug("Doc: ~p", [Doc]),
                                fetch(Pid, Doc);
                            _N ->
+                               lager:debug("Something funky"),
                                {error, 500} %% Something's funky - return 500
                        end;
                    _ ->
+                       lager:debug("WTF?"),
                        {error, 404}
                end,
-    lager:debug("Response: ~p", [Response]),
     Response.
 
 %% @doc Fetch document.

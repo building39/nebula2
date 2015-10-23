@@ -61,14 +61,13 @@ rest_init(Req, _State) ->
     ParentURI  = nebula2_utils:get_parent_uri(Path),
     Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
-
     Map   = maps:new(),
     Map2  = maps:put(<<"method">>, Method, Map),
     Map3  = maps:put(<<"url">>, Url, Map2),
     Map4  = maps:put(<<"hosturl">>, HostUrl, Map3),
     Map5  = maps:put(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
     Map6  = maps:put(<<"domainURI">>, list_to_binary(map_domain_uri(PoolMember, HostUrl_S)), Map5),
-    Map7  = maps:put(<<"parentURI">>, list_to_binary(ParentURI), Map6),
+    Map7  = maps:put(<<"parentURI">>, ParentURI, Map6),
     Map8  = maps:put(<<"objectName">>, list_to_binary(ObjectName), Map7),
     Map9  = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
@@ -433,6 +432,7 @@ previously_existed(Req, State) ->
 resource_exists(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
     ParentURI = binary_to_list(maps:get(<<"parentURI">>, EnvMap)),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,

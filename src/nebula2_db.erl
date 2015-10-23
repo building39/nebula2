@@ -68,7 +68,6 @@ read(Pid, Oid) ->
             case Mod:get(Pid, list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = unmarshall(Object),
-                    lager:debug("Data: ~p", [Data]),
                     set_cache(Data),
                     {ok, Data};
                 {error, Term} ->
@@ -83,10 +82,8 @@ search(Path, State) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:search(Path, State) of
         {ok, Data} ->
-            lager:debug("Data: ~p", [Data]),
             {ok, unmarshall(Data)};
         Response ->
-            lager:debug("Response: ~p", [Response]),
             Response
     end.
 %% @doc Update an object.
@@ -117,25 +114,20 @@ update(Pid, Oid, Data) ->
 -spec marshall(map()) -> map().
 marshall(Data) ->
     lager:debug("Entry"),
-    lager:debug("Data: ~p", [Data]),
     Data2 = maps:new(),
     ObjectId = maps:get(<<"objectID">>, Data),
     Data3 = maps:put(<<"k">>, ObjectId, Data2),
     SearchKey = nebula2_utils:make_search_key(Data),
-    lager:debug("Search Key: ~p:", [SearchKey]),
     Data4 = maps:put(<<"sp">>, SearchKey, Data3),
     % D = maps:put(<<"cdmi">>, jsx:encode(Data), Data4),
     D = maps:put(<<"cdmi">>, Data, Data4),
-    lager:debug("Exit: ~p", [D]),
     D.
 
 -spec unmarshall(map()) -> map().
 unmarshall(Data) ->
     lager:debug("Entry"),
-    lager:debug("Data: ~p", [Data]),
     % D = jsx:decode(maps:get(<<"cdmi">>, Data), [return_maps]),
     D = maps:get(<<"cdmi">>, Data),
-    lager:debug("Exit: ~p", [D]),
     D.
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
@@ -158,7 +150,6 @@ get_cache(_Oid) ->
 -spec set_cache(map()) -> {ok, map()}.
 set_cache(Data) ->
     lager:debug("Entry"),
-    lager:debug("Data: ~p", [Data]),
     SearchKey = nebula2_utils:make_search_key(Data),
     ObjectId = maps:get(<<"objectID">>, Data),
     mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),

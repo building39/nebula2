@@ -21,7 +21,7 @@
 -spec nebula2_containers:new_container(cowboy_req:req(), cdmi_state()) -> {boolean(), Req, cdmi_state()}
         when Req::cowboy_req:req().
 new_container(Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     {ok, ReqBody, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(ReqBody, [return_maps]) of
@@ -41,7 +41,7 @@ new_container(Req, State) ->
 %% @doc Update a CDMI container
 -spec nebula2_containers:update_container(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
 update_container(Req, State, Oid) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = try jsx:decode(Body, [return_maps]) of
