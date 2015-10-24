@@ -230,36 +230,31 @@ make_key() ->
 make_search_key(Data) ->
     lager:debug("Entry"),
     lager:debug("Data: ~p", [Data]),
-%%     case binary_to_list(maps:get(<<"objectName">>, Data)) of
-%%         "/" ->
-%%             <<"/">>;
-%%         _ ->
-            ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
-            ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, <<"">>)),
-            Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
-            DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
-                            false ->
-                                binary_to_list(maps:get(<<"domainURI">>, Data, <<"">>));
-                            true ->
-                                ""
-                        end,
-            lager:debug("Path: ~p", [Path]),
-            lager:debug("ObjectName: ~p", [ObjectName]),
-            lager:debug("DomainUri: ~p", [DomainUri]),
-            lager:debug("ParentUri: ~p", [ParentUri]),
-            Key = DomainUri ++ ParentUri ++ ObjectName,
-            Key2 = case string:left(Key, string:str(Key, "//")) of
-                       [] ->
-                           lager:debug("Normal key: ~p", [Key]),
-                           Key;
-                       Part1 ->
-                           NewKey = Part1 ++ string:substr(Key, string:str(Key, "//") + 2),
-                           lager:debug("Abnormal key: ~p ~p", [Part1, NewKey]),
-                           NewKey
-                   end,
-            lager:debug("Key: ~p", [Key2]),
-            list_to_binary(Key2).
-%%    end.
+    ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
+    ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, <<"">>)),
+    Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
+    DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
+                    false ->
+                        binary_to_list(maps:get(<<"domainURI">>, Data, <<"">>));
+                    true ->
+                        ""
+                end,
+    lager:debug("Path: ~p", [Path]),
+    lager:debug("ObjectName: ~p", [ObjectName]),
+    lager:debug("DomainUri: ~p", [DomainUri]),
+    lager:debug("ParentUri: ~p", [ParentUri]),
+    Key = DomainUri ++ ParentUri ++ ObjectName,
+    Key2 = case string:left(Key, string:str(Key, "//")) of
+               [] ->
+                   lager:debug("Normal key: ~p", [Key]),
+                   Key;
+               Part1 ->
+                   NewKey = Part1 ++ string:substr(Key, string:str(Key, "//") + 2),
+                   lager:debug("Abnormal key: ~p ~p", [Part1, NewKey]),
+                   NewKey
+           end,
+    lager:debug("Key: ~p", [Key2]),
+    list_to_binary(Key2).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
