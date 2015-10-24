@@ -62,9 +62,10 @@ read(Pid, Oid) ->
     lager:debug("Entry"),
     case get_cache(Oid) of
         {ok, Data} ->
-            lager:debug("Cache Hit: Data: ~p", [Data]),
+            lager:debug("Cache Hit: Oid: ~p", [Oid]),
             {ok, Data};
         _ ->
+            lager:debug("Cache Miss: Oid: ~p", [Oid]),
             case Mod:get(Pid, list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = unmarshall(Object),
@@ -82,8 +83,10 @@ search(Path, State) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:search(Path, State) of
         {ok, Data} ->
+            lager:debug("Cache Hit: Path: ~p", [Path]),
             {ok, unmarshall(Data)};
         Response ->
+            lager:debug("Cache Hit: Miss: ~p", [Path]),
             Response
     end.
 %% @doc Update an object.

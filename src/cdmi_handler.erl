@@ -570,8 +570,7 @@ basic(Auth, State) ->
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
     DomainUri = maps:get(<<"domainURI">>, EnvMap),
-    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, DomainUri),
-    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    Domain = nebula2_utils:get_domain_hash(DomainUri),
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     lager:debug("SearchKey: ~p", [SearchKey]),
     Result = case nebula2_db:search(SearchKey, State) of

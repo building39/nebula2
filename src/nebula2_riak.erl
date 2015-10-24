@@ -72,7 +72,8 @@ get(Pid, Oid) ->
 -spec nebula2_riak:get_domain_maps(pid()) -> list().
 get_domain_maps(Pid) ->
     lager:debug("Entry"),
-    Query = "sp:\\" ++ ?SYSTEM_DOMAIN_URI ++ lists:nthtail(1, ?SYSTEM_DOMAIN_URI) ++ "system_configuration/"++ "domain_maps",
+    Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
+    Query = "sp:\\" ++ Domain ++ "/system_configuration/"++ "domain_maps",
     case execute_search(Pid, Query) of
         {ok, Result} ->
             lager:debug("Result: ~p", [Result]),

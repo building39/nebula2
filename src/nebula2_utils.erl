@@ -21,6 +21,7 @@
          delete_child_from_parent/3,
          extract_parentURI/1,
          generate_hash/2,
+         get_domain_hash/1,
          get_object_name/2,
          get_object_oid/1,
          get_object_oid/2,
@@ -243,8 +244,7 @@ make_search_key(Data) ->
     lager:debug("ObjectName: ~p", [ObjectName]),
     lager:debug("DomainUri: ~p", [DomainUri]),
     lager:debug("ParentUri: ~p", [ParentUri]),
-    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, DomainUri),
-    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    Domain = get_domain_hash(DomainUri),
     Key = Domain ++ ParentUri ++ ObjectName,
     lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
@@ -266,8 +266,7 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
     lager:debug("Cap URI: ~p", [CapabilitiesURI]),
     lager:debug("State: ~p",[State]),
-    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, <<"">>),
-    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    Domain = get_domain_hash(<<"">>),
     {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
     Capabilities = maps:get(<<"capabilities">>, C1),
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
@@ -423,6 +422,13 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI
     end.
+
+-spec get_domain_hash(binary() | list()) -> string().
+get_domain_hash(Domain) when is_list(Domain) ->
+    get_domain_hash(list_to_binary(Domain));
+get_domain_hash(Domain) when is_binary(Domain) ->
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, Domain),
+    lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
 handle_delete(Pid, Data, _, []) ->
