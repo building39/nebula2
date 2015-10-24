@@ -21,6 +21,7 @@
          delete_child_from_parent/3,
          extract_parentURI/1,
          generate_hash/2,
+         get_domain_hash/1,
          get_object_name/2,
          get_object_oid/1,
          get_object_oid/2,
@@ -166,10 +167,10 @@ get_object_oid(Path, State) ->
     lager:debug("Entry"),
     RealPath = case beginswith(Path, "/capabilities/") of
                    true ->
-                       Path;
+                       get_domain_hash(<<"">>) ++ Path;
                    false ->
                        {_, EnvMap} = State,
-                       binary_to_list(maps:get(<<"domainURI">>, EnvMap, <<"">>)) ++ lists:nthtail(1, Path)
+                       get_domain_hash(maps:get(<<"domainURI">>, EnvMap, <<"">>)) ++ Path
                end,
     Oid = case nebula2_db:search(RealPath, State) of
             {error,_} -> 
@@ -230,36 +231,23 @@ make_key() ->
 make_search_key(Data) ->
     lager:debug("Entry"),
     lager:debug("Data: ~p", [Data]),
-%%     case binary_to_list(maps:get(<<"objectName">>, Data)) of
-%%         "/" ->
-%%             <<"/">>;
-%%         _ ->
-            ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
-            ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, <<"">>)),
-            Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
-            DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
-                            false ->
-                                binary_to_list(maps:get(<<"domainURI">>, Data, <<"">>));
-                            true ->
-                                ""
-                        end,
-            lager:debug("Path: ~p", [Path]),
-            lager:debug("ObjectName: ~p", [ObjectName]),
-            lager:debug("DomainUri: ~p", [DomainUri]),
-            lager:debug("ParentUri: ~p", [ParentUri]),
-            Key = DomainUri ++ ParentUri ++ ObjectName,
-            Key2 = case string:left(Key, string:str(Key, "//")) of
-                       [] ->
-                           lager:debug("Normal key: ~p", [Key]),
-                           Key;
-                       Part1 ->
-                           NewKey = Part1 ++ string:substr(Key, string:str(Key, "//") + 2),
-                           lager:debug("Abnormal key: ~p ~p", [Part1, NewKey]),
-                           NewKey
-                   end,
-            lager:debug("Key: ~p", [Key2]),
-            list_to_binary(Key2).
-%%    end.
+    ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
+    ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, <<"">>)),
+    Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
+    DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
+                    false ->
+                        maps:get(<<"domainURI">>, Data, <<"">>);
+                    true ->
+                        <<"">>
+                end,
+    lager:debug("Path: ~p", [Path]),
+    lager:debug("ObjectName: ~p", [ObjectName]),
+    lager:debug("DomainUri: ~p", [DomainUri]),
+    lager:debug("ParentUri: ~p", [ParentUri]),
+    Domain = get_domain_hash(DomainUri),
+    Key = Domain ++ ParentUri ++ ObjectName,
+    lager:debug("Key: ~p", [Key]),
+    list_to_binary(Key).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
@@ -278,7 +266,8 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
     lager:debug("Cap URI: ~p", [CapabilitiesURI]),
     lager:debug("State: ~p",[State]),
-    {ok, C1} = nebula2_db:search(CapabilitiesURI, State),
+    Domain = get_domain_hash(<<"">>),
+    {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
     Capabilities = maps:get(<<"capabilities">>, C1),
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
     nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
@@ -433,6 +422,13 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI
     end.
+
+-spec get_domain_hash(binary() | list()) -> string().
+get_domain_hash(Domain) when is_list(Domain) ->
+    get_domain_hash(list_to_binary(Domain));
+get_domain_hash(Domain) when is_binary(Domain) ->
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, Domain),
+    lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
 handle_delete(Pid, Data, _, []) ->
