@@ -167,10 +167,10 @@ get_object_oid(Path, State) ->
     lager:debug("Entry"),
     RealPath = case beginswith(Path, "/capabilities/") of
                    true ->
-                       Path;
+                       get_domain_hash(<<"">>) ++ Path;
                    false ->
                        {_, EnvMap} = State,
-                       binary_to_list(maps:get(<<"domainURI">>, EnvMap, <<"">>)) ++ lists:nthtail(1, Path)
+                       get_domain_hash(maps:get(<<"domainURI">>, EnvMap, <<"">>)) ++ Path
                end,
     Oid = case nebula2_db:search(RealPath, State) of
             {error,_} -> 

@@ -67,12 +67,14 @@ rest_init(Req, _State) ->
     Map4  = maps:put(<<"hosturl">>, HostUrl, Map3),
     Map5  = maps:put(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
     Map6  = maps:put(<<"domainURI">>, list_to_binary(map_domain_uri(PoolMember, HostUrl_S)), Map5),
+    DomainUri = maps:get(<<"domainURI">>, Map6),
     Map7  = maps:put(<<"parentURI">>, ParentURI, Map6),
     Map8  = maps:put(<<"objectName">>, list_to_binary(ObjectName), Map7),
     Map9  = maps:put(<<"content-type">>, ContentType, Map8),
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
     Map11 = maps:put(<<"qs">>, Qs, Map10),
-    SysCap = case nebula2_db:search("/cdmi_capabilities/", {PoolMember, Map11}) of 
+    NoDomain = nebula2_utils:get_domain_hash(<<"">>),
+    SysCap = case nebula2_db:search(NoDomain ++ "/cdmi_capabilities/", {PoolMember, Map11}) of 
                 {ok, SystemCapabilities} ->
                     Cap = maps:get(<<"capabilities">>, SystemCapabilities, maps:new()),
                     Cap;
@@ -82,7 +84,8 @@ rest_init(Req, _State) ->
 
     Map12 = maps:put(<<"system_capabilities">>, SysCap, Map11),
 
-    Parent = nebula2_db:search(ParentURI, {PoolMember, Map12}),
+    DomainHash = nebula2_utils:get_domain_hash(DomainUri),
+    Parent = nebula2_db:search(DomainHash ++ ParentURI, {PoolMember, Map12}),
     Map13 = maps:put(<<"is_envmap">>, true, Map12),
 
     FinalMap = case Parent of
@@ -93,7 +96,7 @@ rest_init(Req, _State) ->
                         if 
                             KeyExists == true ->
                                 ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
-                                ParentCapabilities    = nebula2_db:search(ParentCapabilitiesURI,
+                                ParentCapabilities    = nebula2_db:search(NoDomain ++ ParentCapabilitiesURI,
                                                                           {PoolMember, Map14}),
                                 case ParentCapabilities of
                                     {ok, CapData} ->
