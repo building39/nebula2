@@ -569,8 +569,11 @@ basic(Auth, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
-    DomainUri = binary_to_list(maps:get(<<"domainURI">>, EnvMap)),
-    SearchKey = DomainUri ++ lists:nthtail(1, DomainUri) ++ "cdmi_domain_members/" ++ UserId,
+    DomainUri = maps:get(<<"domainURI">>, EnvMap),
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, DomainUri),
+    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
+    lager:debug("SearchKey: ~p", [SearchKey]),
     Result = case nebula2_db:search(SearchKey, State) of
                  {ok, Json} ->
                      {true, Json};

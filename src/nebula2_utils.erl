@@ -235,26 +235,19 @@ make_search_key(Data) ->
     Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
     DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
                     false ->
-                        binary_to_list(maps:get(<<"domainURI">>, Data, <<"">>));
+                        maps:get(<<"domainURI">>, Data, <<"">>);
                     true ->
-                        ""
+                        <<"">>
                 end,
     lager:debug("Path: ~p", [Path]),
     lager:debug("ObjectName: ~p", [ObjectName]),
     lager:debug("DomainUri: ~p", [DomainUri]),
     lager:debug("ParentUri: ~p", [ParentUri]),
-    Key = DomainUri ++ ParentUri ++ ObjectName,
-    Key2 = case string:left(Key, string:str(Key, "//")) of
-               [] ->
-                   lager:debug("Normal key: ~p", [Key]),
-                   Key;
-               Part1 ->
-                   NewKey = Part1 ++ string:substr(Key, string:str(Key, "//") + 2),
-                   lager:debug("Abnormal key: ~p ~p", [Part1, NewKey]),
-                   NewKey
-           end,
-    lager:debug("Key: ~p", [Key2]),
-    list_to_binary(Key2).
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, DomainUri),
+    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    Key = Domain ++ ParentUri ++ ObjectName,
+    lager:debug("Key: ~p", [Key]),
+    list_to_binary(Key).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
@@ -273,7 +266,9 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
     lager:debug("Cap URI: ~p", [CapabilitiesURI]),
     lager:debug("State: ~p",[State]),
-    {ok, C1} = nebula2_db:search(CapabilitiesURI, State),
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, <<"">>),
+    Domain = lists:flatten(io_lib:format("~40.16.0b", [Mac])),
+    {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
     Capabilities = maps:get(<<"capabilities">>, C1),
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
     nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
