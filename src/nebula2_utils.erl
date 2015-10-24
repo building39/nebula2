@@ -18,9 +18,11 @@
          create_object/4,
          create_object/5,
          delete/1,
+         delete_cache/1,
          delete_child_from_parent/3,
          extract_parentURI/1,
          generate_hash/2,
+         get_cache/1,
          get_domain_hash/1,
          get_object_name/2,
          get_object_oid/1,
@@ -30,6 +32,7 @@
          handle_content_type/1,
          make_key/0,
          make_search_key/1,
+         set_cache/1,
          update_data_system_metadata/3,
          update_data_system_metadata/4,
          update_parent/4
@@ -66,14 +69,20 @@ create_object(Req, State, ObjectType, Body) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
-    case nebula2_utils:get_object_oid(nebula2_utils:get_parent_uri(Path), State) of
-        {ok, ParentId} ->
-            {ok, Parent} = nebula2_db:read(Pid, ParentId),
-            DomainName = maps:get(<<"domainURI">>, Parent, ""),
-            create_object(Req, State, ObjectType, DomainName, Parent, Body);
-        {notfound, _} ->
-            pooler:return_member(riak_pool, Pid),
-            false
+    case get_cache(Path) of
+        {ok, Data} ->
+            Data;
+        _ ->
+            case nebula2_utils:get_object_oid(nebula2_utils:get_parent_uri(Path), State) of
+                {ok, ParentId} ->
+                    {ok, Parent} = nebula2_db:read(Pid, ParentId),
+                    DomainName = maps:get(<<"domainURI">>, Parent, ""),
+                    create_object(Req, State, ObjectType, DomainName, Parent, Body),
+                    set_cache(Path);
+                {notfound, _} ->
+                    pooler:return_member(riak_pool, Pid),
+                    false
+            end
     end.
 
 -spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map(), binary() | string()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
@@ -99,6 +108,19 @@ delete(State) ->
     {Pid, _} = State,
     Children = maps:get(<<"children">>, Data, []),
     handle_delete(Pid, Data, State, Children).
+
+-spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
+delete_cache(Oid) ->
+    lager:debug("Entry"),
+    lager:debug("Oid: ~p", [Oid]),
+    case mcd:get(?MEMCACHE, Oid) of
+        {ok, Data} ->
+            SearchKey = newbula2_utils:make_search_key(Data),
+            mcd:delete(?MEMCACHE, SearchKey),
+            mcd:delete(?MEMCACHE, Oid);
+        _ ->
+            {error, notfound}
+    end.
 
 %% @doc Delete a child from its parent
 -spec delete_child_from_parent(pid(), object_oid(), string()) -> ok | {error, term()}.
@@ -228,9 +250,15 @@ make_key() ->
     Uid ++ ?OID_SUFFIX ++ Crc.
 
 -spec make_search_key(map()) -> list().
-make_search_key(Data) ->
+make_search_key(Object) ->
     lager:debug("Entry"),
-    lager:debug("Data: ~p", [Data]),
+    lager:debug("Data: ~p", [Object]),
+    Data = case maps:is_key(<<"cdmi">>, Object) of
+               true ->
+                   maps:get(<<"cdmi">>, Object);
+               false ->
+                   Object
+           end,
     ObjectName = binary_to_list(maps:get(<<"objectName">>, Data)),
     ParentUri = binary_to_list(maps:get(<<"parentURI">>, Data, <<"">>)),
     Path = binary_to_list(maps:get(<<"path">>, Data, <<"">>)),
@@ -248,6 +276,20 @@ make_search_key(Data) ->
     Key = Domain ++ ParentUri ++ ObjectName,
     lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
+
+-spec set_cache(map()) -> {ok, map()}.
+set_cache(Object) ->
+    lager:debug("Entry"),
+    SearchKey = nebula2_utils:make_search_key(Object),
+    Data = case maps:is_key(<<"cdmi">>, Object) of
+               true ->
+                   maps:get(<<"cdmi">>, Object);
+               false ->
+                   Object
+           end,
+    ObjectId = maps:get(<<"objectID">>, Data),
+    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
@@ -422,6 +464,10 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI
     end.
+
+-spec get_cache(object_oid()) -> {ok | error, deleted | notfound}.
+get_cache(_Oid) ->
+    {error, notfound}.
 
 -spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->

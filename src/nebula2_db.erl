@@ -31,8 +31,9 @@ available(Pid) ->
 create(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
-    set_cache(Data),
-    Mod:put(Pid, Oid, marshall(Data)).
+    Response = Mod:put(Pid, Oid, marshall(Data)),
+    nebula2_utils:set_cache(Data),
+    Response.
     
 %% @doc Delete an object
 -spec delete(pid(), object_oid()) -> ok | {error, term()}.
@@ -42,15 +43,26 @@ delete(Pid, Oid) when is_binary(Oid) ->
 delete(Pid, Oid) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
-    delete_cache(Oid),
+    nebula2_utils:delete_cache(Oid),
     Mod:delete(Pid, Oid).
 
 %% @doc Get the domain maps.
 -spec nebula2_db:get_domain_maps(pid()) -> list().
 get_domain_maps(Pid) ->
     lager:debug("Entry"),
+    Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
+    Path = Domain ++ "/system_configuration/"++ "domain_maps",
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    Mod:get_domain_maps(Pid).
+    case nebula2_utils:get_cache(Path) of
+        {ok, Data} ->
+            lager:debug("Cache Hit: Path: ~p", [Path]),
+            maps:get(<<"value">>, maps:get(<<"cdmi">>, Data, <<"[]">>), <<"[]">>);
+        _ ->
+            lager:debug("Cache Hit: Miss: ~p", [Path]),
+            {ok, DomainMaps} = Mod:get_domain_maps(Pid, Path),
+            nebula2_utils:set_cache(DomainMaps),
+            maps:get(<<"value">>, maps:get(<<"cdmi">>, DomainMaps, <<"[]">>), <<"[]">>)
+    end.
 
 %% @doc Read an object
 -spec read(pid(), object_oid()) -> {ok, map()}|{error, term()}.
@@ -60,7 +72,7 @@ read(Pid, Oid) when is_binary(Oid) ->
 read(Pid, Oid) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
-    case get_cache(Oid) of
+    case nebula2_utils:get_cache(Oid) of
         {ok, Data} ->
             lager:debug("Cache Hit: Oid: ~p", [Oid]),
             {ok, Data};
@@ -69,7 +81,7 @@ read(Pid, Oid) ->
             case Mod:get(Pid, list_to_binary(Oid)) of
                 {ok, Object} ->
                     Data = unmarshall(Object),
-                    set_cache(Data),
+                    nebula2_utils:set_cache(Data),
                     {ok, Data};
                 {error, Term} ->
                     {error, Term}
@@ -81,14 +93,21 @@ read(Pid, Oid) ->
 search(Path, State) ->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    case Mod:search(Path, State) of
+    case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
-            lager:debug("Cache Hit: Path: ~p", [Path]),
-            {ok, unmarshall(Data)};
-        Response ->
+            lager:debug("Cache Hit: Key: ~p", [Path]),
+            Data;
+        _ ->
             lager:debug("Cache Hit: Miss: ~p", [Path]),
-            Response
+            case Mod:search(Path, State) of
+                {ok, Data} ->
+                    nebula2_utils:set_cache(Data),
+                    {ok, unmarshall(Data)};
+                Response ->
+                    Response
+            end
     end.
+
 %% @doc Update an object.
 -spec update(pid(),
              object_oid(),      %% Oid
@@ -102,7 +121,7 @@ update(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:update(Pid, Oid, jsx:encode(marshall(Data))) of
         {ok, _} ->
-            set_cache(Data),
+            nebula2_utils:set_cache(Data),
             ok;
         Failure ->
             Failure
@@ -132,28 +151,3 @@ unmarshall(Data) ->
     % D = jsx:decode(maps:get(<<"cdmi">>, Data), [return_maps]),
     D = maps:get(<<"cdmi">>, Data),
     D.
-
--spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
-delete_cache(Oid) ->
-    lager:debug("Entry"),
-    lager:debug("Oid: ~p", [Oid]),
-    case mcd:get(?MEMCACHE, Oid) of
-        {ok, Data} ->
-            SearchKey = newbula2_utils:make_search_key(Data),
-            mcd:delete(?MEMCACHE, SearchKey),
-            mcd:delete(?MEMCACHE, Oid);
-        _ ->
-            {error, notfound}
-    end.
-
--spec get_cache(object_oid()) -> {ok | error, deleted | notfound}.
-get_cache(_Oid) ->
-    {error, notfound}.
-
--spec set_cache(map()) -> {ok, map()}.
-set_cache(Data) ->
-    lager:debug("Entry"),
-    SearchKey = nebula2_utils:make_search_key(Data),
-    ObjectId = maps:get(<<"objectID">>, Data),
-    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
-    mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).

@@ -22,7 +22,7 @@
 %% ====================================================================
 -export([delete/2,
          get/2,
-         get_domain_maps/1,
+         get_domain_maps/2,
          put/3,
          available/1,
          search/2,
@@ -69,19 +69,10 @@ get(Pid, Oid) ->
     end.
 
 %% @doc Get the domain maps.
--spec nebula2_riak:get_domain_maps(pid()) -> list().
-get_domain_maps(Pid) ->
+-spec nebula2_riak:get_domain_maps(pid(), object_path()) -> binary().
+get_domain_maps(Pid, Path) ->
     lager:debug("Entry"),
-    Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
-    Query = "sp:\\" ++ Domain ++ "/system_configuration/"++ "domain_maps",
-    case execute_search(Pid, Query) of
-        {ok, Result} ->
-            lager:debug("Result: ~p", [Result]),
-            % Data = jsx:decode(Result, [return_maps]),
-            maps:get(<<"value">>, maps:get(<<"cdmi">>, Result, <<"[]">>), <<"[]">>);
-        _ ->
-            []
-    end.
+    execute_search(Pid, "sp:\\" ++ Path).
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),

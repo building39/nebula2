@@ -74,7 +74,8 @@ rest_init(Req, _State) ->
     Map10 = maps:put(<<"accept">>, AcceptType, Map9),
     Map11 = maps:put(<<"qs">>, Qs, Map10),
     NoDomain = nebula2_utils:get_domain_hash(<<"">>),
-    SysCap = case nebula2_db:search(NoDomain ++ "/cdmi_capabilities/", {PoolMember, Map11}) of 
+    SysCapKey = NoDomain ++ "/cdmi_capabilities/",
+    SysCap = case nebula2_db:search(SysCapKey, {PoolMember, Map11}) of 
                 {ok, SystemCapabilities} ->
                     Cap = maps:get(<<"capabilities">>, SystemCapabilities, maps:new()),
                     Cap;
@@ -89,13 +90,13 @@ rest_init(Req, _State) ->
     Map13 = maps:put(<<"is_envmap">>, true, Map12),
 
     FinalMap = case Parent of
-                    {ok, Data} ->
-                        ParentID  = maps:get(<<"objectID">>, Data),
+                    {ok, FData} ->
+                        ParentID  = maps:get(<<"objectID">>, FData),
                         Map14     = maps:put(<<"parentID">>, ParentID, Map13),
-                        KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
+                        KeyExists = maps:is_key(<<"capabilitiesURI">>, FData),
                         if 
                             KeyExists == true ->
-                                ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
+                                ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, FData)),
                                 ParentCapabilities    = nebula2_db:search(NoDomain ++ ParentCapabilitiesURI,
                                                                           {PoolMember, Map14}),
                                 case ParentCapabilities of
@@ -450,6 +451,7 @@ resource_exists_handler("/cdmi_objectid/", Req, State) ->
         {error, _Status} ->
             {false, Req, State};
         {ok, Data} ->
+            nebula2_utils:set_cache(Data),
             {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}}
     end;
 resource_exists_handler(_, Req, State) ->
@@ -513,6 +515,7 @@ to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     case nebula2_db:read(Pid, Oid) of
         {ok, Map} ->
             Data = list_to_binary(jsx:encode(Map)),
+            nebula2_utils:set_cache(Data),
             {Data, Req, State};
         {error, Status} -> 
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
@@ -520,9 +523,11 @@ to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
 to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
         {ok, Map} ->
             Data = jsx:encode(Map),
+            nebula2_utils:set_cache(Data),
             {Data, Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
@@ -530,9 +535,11 @@ to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
 to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
         {ok, Map} ->
             Data = jsx:encode(Map),
+            nebula2_utils:set_cache(Data),
             {Data, Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}, Req]), State}
@@ -540,7 +547,8 @@ to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
 to_cdmi_object_handler(Req, State, _, _) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
         {ok, Map} ->
             {_, EnvMap} = State,
             Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
@@ -549,6 +557,7 @@ to_cdmi_object_handler(Req, State, _, _) ->
                      <<"cdmi_acount">>],
             Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
             Data = jsx:encode(Map3),
+            nebula2_utils:set_cache(Data),
             {Data, Req, State};
         {error, Status} ->
             lager:debug("Status: ~p", [Status]),
@@ -577,10 +586,10 @@ basic(Auth, State) ->
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     lager:debug("SearchKey: ~p", [SearchKey]),
     Result = case nebula2_db:search(SearchKey, State) of
-                 {ok, Json} ->
-                     {true, Json};
-                 {error, _Status} ->
-                     false
+                {ok, Json} ->
+                    {true, Json};
+                {error, _Status} ->
+                    false
              end,
     case Result of
         false ->

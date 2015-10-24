@@ -15,6 +15,7 @@
 -type headers()          :: list().
 -type method()           :: string().
 -type object_name()      :: nonempty_string().
+-type object_path()      :: nonempty_string().
 -type object_oid()       :: nonempty_string().
 -type object_type()      :: content_type().
 -type object_uri()       :: path()|nil().
