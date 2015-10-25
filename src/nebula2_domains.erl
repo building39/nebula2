@@ -46,19 +46,20 @@ delete_domain(Req, State) ->
 %% @doc Create a new CDMI domain
 -spec nebula2_domains:new_domain(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_domain(Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {_Pid, EnvMap} = State,
     DomainName = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)) ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     lager:debug("Domain name: ~p", [DomainName]),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
-    {ok, B, Req2} = cowboy_req:body(Req),
-    ReqBody = nebula2_db:marshall(B),
-    Body2 = try jsx:decode(ReqBody, [return_maps]) of
-                NewBody -> NewBody
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Body2 = try jsx:decode(Body, [return_maps]) of
+                NewBody ->
+                    nebula2_db:marshall(NewBody)
             catch
                 error:badarg ->
                     throw(badjson)
             end,
+    lager:debug("Body2: ~p", [Body2]),
     Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
                    {true, Req3, Data} ->
                        Data2 = nebula2_db:unmarshall(Data),

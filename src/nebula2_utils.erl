@@ -53,18 +53,18 @@ beginswith(Str, Substr) ->
 %% Check base64 encoding
 -spec nebula2_utils:check_base64(binary() | list()) -> boolean().
 check_base64(Data) ->
-	case maps:is_key(<<"valuetransferencoding">>, Data) of
-		false ->
-			true;
-		true ->
-			try base64:decode(binary_to_list(nebula2_utils:get_value(<<"value">>, Data))) of
-				_ -> 
-					true
-			catch
-				_:_ ->
-					false
-			  end
-	end.
+    case maps:is_key(<<"valuetransferencoding">>, Data) of
+        false ->
+            true;
+        true ->
+            try base64:decode(binary_to_list(nebula2_utils:get_value(<<"value">>, Data))) of
+                _ -> 
+                    true
+            catch
+                _:_ ->
+                    false
+            end
+    end.
 
 %% @doc Create a CDMI object
 -spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
@@ -88,15 +88,23 @@ create_object(Req, State, ObjectType, Body) ->
     end.
 
 -spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map(), binary() | string()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, Body, DomainName) ->
+create_object(Req, State, ObjectType, DomainName, Body) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case nebula2_utils:get_object_oid(nebula2_utils:get_parent_uri(Path), State) of
         {ok, ParentId} ->
+            lager:debug("Got parentID: ~p", [ParentId]),
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
+            lager:debug("Req: ~p", [Req]),
+            lager:debug("State: ~p", [State]),
+            lager:debug("ObjectType: ~p", [ObjectType]),
+            lager:debug("DomainName: ~p", [DomainName]),
+            lager:debug("Parent: ~p", [Parent]),
+            lager:debug("Body: ~p", [Body]),
             create_object(Req, State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
+            lager:debug("Parent not found: ~p", Path),
             pooler:return_member(riak_pool, Pid),
             false
     end.
@@ -277,7 +285,12 @@ make_search_key(Data) ->
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, Data, <<"">>)),
     DomainUri = case beginswith(Path, "/cdmi_capabilities/") of
                     false ->
-                        nebula2_utils:get_value(<<"domainURI">>, Data, <<"">>);
+                        case beginswith(Path, "/cdmi_domains/") of
+                            false ->
+                                nebula2_utils:get_value(<<"domainURI">>, Data, <<"">>);
+                            true ->
+                                list_to_binary(Path)    %% a domain always belongs to itself.
+                        end;
                     true ->
                         <<"">>
                 end,
