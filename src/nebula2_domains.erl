@@ -61,7 +61,8 @@ new_domain(Req, State) ->
             end,
     Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
                    {true, Req3, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req3), State};
+                       Data2 = nebula2_db:unmarshall(Data),
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State};
                    false ->
                        {false, Req2, State}
                end,

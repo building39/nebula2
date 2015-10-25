@@ -32,7 +32,8 @@ new_dataobject(Req, State, Body) ->
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     Response = case nebula2_utils:create_object(Req, State, ObjectType, Body) of
                    {true, Req2, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
+                       Data2 = nebula2_db:unmarshall(Data),
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State};
                    false ->
                        {false, Req, State}
                end,
