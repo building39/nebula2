@@ -23,16 +23,19 @@
 new_container(Req, State) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
-    {ok, ReqBody, Req2} = cowboy_req:body(Req),
-    Body2 = try jsx:decode(ReqBody, [return_maps]) of
-                NewBody -> NewBody
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Body2 = try jsx:decode(Body, [return_maps]) of
+                NewBody ->
+                    nebula2_db:marshall(NewBody)
             catch
                 error:badarg ->
                     throw(badjson)
             end,
+    lager:debug("Body2: ~p", [Body2]),
     Response = case nebula2_utils:create_object(Req2, State, ObjectType, Body2) of
                    {true, Req3, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req3), State};
+                       Data2 = nebula2_db:unmarshall(Data),
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State};
                    false ->
                        {false, Req2, State}
                end,
@@ -43,7 +46,8 @@ new_container(Req, State) ->
 update_container(Req, State, Oid) ->
     lager:debug("Entry"),
     {Pid, _} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
+    {ok, B, Req2} = cowboy_req:body(Req),
+    Body = nebula2_db:marshall(B),
     NewData = try jsx:decode(Body, [return_maps]) of
                   NewBody -> NewBody
               catch
@@ -51,11 +55,11 @@ update_container(Req, State, Oid) ->
                       throw(badjson)
               end,
     {ok, OldData} = nebula2_db:read(Pid, Oid),
-    OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
-    NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
+    OldMetaData = nebula2_utils:get_value(<<"metadata">>, OldData, maps:new()),
+    NewMetaData = nebula2_utils:get_value(<<"metadata">>, NewData, maps:new()),
     MetaData = maps:merge(OldMetaData, NewMetaData),
     Data = maps:merge(OldData, NewData),
-    Data2 = maps:put(<<"metadata">>, MetaData, Data),
+    Data2 = nebula2_utils:put_value(<<"metadata">>, MetaData, Data),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_mtime">>,
              <<"cdmi_acount">>,

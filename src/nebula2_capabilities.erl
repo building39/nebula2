@@ -67,7 +67,8 @@ new_capability(Req, State) ->
                     U  -> 
                         "/" ++ build_path(U)
                  end,
-    {ok, Body, Req2} = cowboy_req:body(Req),
+    {ok, B, Req2} = cowboy_req:body(Req),
+    Body = nebula2_db:marshall(B),
     Body2 = try jsx:decode(Body, [return_maps]) of
                 NewBody -> NewBody
             catch
@@ -76,17 +77,17 @@ new_capability(Req, State) ->
             end,
     Data = jsx:decode(Body2, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
-    case maps:get(<<"parentURI">>, EnvMap, undefined) of
+    case nebula2_utils:get_value(<<"parentURI">>, EnvMap, undefined) of
         undefined ->
             pooler:return_member(riak_pool, Pid),
             {false, Req2, State};
         ParentUri ->
             ParentId = nebula2_utils:get_object_oid(State),
             Data2 = maps:from_list([{<<"capabilities">>, Data},
-                     {<<"objectType">>, list_to_binary(ObjectType)},
-                     {<<"objectID">>, list_to_binary(Oid)},
-                     {<<"objectName">>, list_to_binary(ObjectName)},
-                     {<<"parentID">>, list_to_binary(ParentId)},
+                     {<<"objectType">>, ObjectType},
+                     {<<"objectID">>, Oid},
+                     {<<"objectName">>, ObjectName},
+                     {<<"parentID">>, ParentId},
                      {<<"parentURI">>, ParentUri}
                     ]),
             {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
@@ -103,26 +104,27 @@ update_capability(Req, State, Oid) ->
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = try jsx:decode(Body, [return_maps]) of
-                  NewBody -> NewBody
+                  NewBody ->
+                      nebula2_db:marshall(NewBody)
               catch
                   error:badarg ->
                       throw(badjson)
               end,
-    NewCapabilities = maps:get(<<"capabilities">>, NewData),
+    NewCapabilities = nebula2_utils:get_value(<<"capabilities">>, NewData),
     %% lager:debug("NewData: ~p", [NewData]),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
-    OldCapabilities = maps:get(<<"capabilities">>, OldData),
-    OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
-    NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
+    OldCapabilities = nebula2_utils:get_value(<<"capabilities">>, OldData),
+    OldMetaData = nebula2_utils:get_value(<<"metadata">>, OldData, maps:new()),
+    NewMetaData = nebula2_utils:get_value(<<"metadata">>, NewData, maps:new()),
     MetaData = maps:merge(OldMetaData, NewMetaData),
     Capabilities = maps:merge(OldCapabilities, NewCapabilities),
-    Data2 = maps:put(<<"capabilities">>, Capabilities, OldData),
-    Data3 = maps:put(<<"metadata">>, MetaData, Data2),
+    Data2 = nebula2_utils:put_value(<<"capabilities">>, Capabilities, OldData),
+    Data3 = nebula2_utils:put_value(<<"metadata">>, MetaData, Data2),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_mtime">>,
              <<"cdmi_acount">>,
              <<"cdmi_mcount">>],
-    CList2 = maps:to_list(maps:with(CList, maps:get(<<"capabilities">>, OldData))),
+    CList2 = maps:to_list(maps:with(CList, nebula2_utils:get_value(<<"capabilities">>, OldData))),
     Data4 = nebula2_capabilities:apply_metadata_capabilities(CList2, Data3),
     Response = case nebula2_db:update(Pid, Oid, Data4) of
                    ok ->
@@ -160,14 +162,14 @@ cdmi_acount(Doit, Data) ->
     %% lager:debug("Entry"),
     case Doit of
         true ->
-            MD = maps:get(<<"metadata">>, Data),
-            ACount = maps:get(<<"cdmi_acount">>, MD, 0) + 1,
-            MD2 = maps:put(<<"cdmi_acount">>, ACount, MD),
-            maps:put(<<"metadata">>, MD2, Data);
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
+            ACount = nebula2_utils:get_value(<<"cdmi_acount">>, MD, 0) + 1,
+            MD2 = nebula2_utils:put_value(<<"cdmi_acount">>, ACount, MD),
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data);
         false ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             MD2 = maps:remove(<<"cdmi_acount">>, MD),
-            maps:put(<<"metadata">>, MD2, Data)
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_atime
@@ -177,14 +179,14 @@ cdmi_atime(Doit, Data) ->
     %% lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
-            MD2 = maps:put(<<"cdmi_atime">>, Tstamp, MD),
-            maps:put(<<"metadata">>, MD2, Data);
+            MD2 = nebula2_utils:put_value(<<"cdmi_atime">>, Tstamp, MD),
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data);
         false ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             MD2 = maps:remove(<<"cdmi_atime">>, MD),
-            maps:put(<<"metadata">>, MD2, Data)
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_assignedsize
@@ -205,14 +207,14 @@ cdmi_ctime(Doit, Data) ->
     %% lager:debug("Entry"),
     case Doit of
         true ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
-            MD2 = maps:put(<<"cdmi_ctime">>, Tstamp, MD),
-            maps:put(<<"metadata">>, MD2, Data);
+            MD2 = nebula2_utils:put_value(<<"cdmi_ctime">>, Tstamp, MD),
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data);
         false ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             MD2 = maps:remove(<<"cdmi_ctime">>, MD),
-            maps:put(<<"metadata">>, MD2, Data)
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_data_autodelete
@@ -336,14 +338,14 @@ cdmi_mcount(Doit, Data) ->
     %% lager:debug("Entry"),
     case Doit of
         true ->
-            MD = maps:get(<<"metadata">>, Data),
-            ACount = maps:get(<<"cdmi_mcount">>, MD, 0) + 1,
-            MD2 = maps:put(<<"cdmi_mcount">>, ACount, MD),
-            maps:put(<<"metadata">>, MD2, Data);
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
+            ACount = nebula2_utils:get_value(<<"cdmi_mcount">>, MD, 0) + 1,
+            MD2 = nebula2_utils:put_value(<<"cdmi_mcount">>, ACount, MD),
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data);
         false ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             MD2 = maps:remove(<<"cdmi_mcount">>, MD),
-            maps:put(<<"metadata">>, MD2, Data)
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_mtime
@@ -352,15 +354,15 @@ cdmi_mtime(Doit, Data) ->
     %% lager:debug("Entry"),
     case Doit of
         true ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             Tstamp = list_to_binary(nebula2_utils:get_time()),
-            MD2 = maps:put(<<"cdmi_mtime">>, Tstamp, MD),
-            Map2 = maps:put(<<"metadata">>, MD2, Data),
+            MD2 = nebula2_utils:put_value(<<"cdmi_mtime">>, Tstamp, MD),
+            Map2 = nebula2_utils:put_value(<<"metadata">>, MD2, Data),
             Map2;
         false ->
-            MD = maps:get(<<"metadata">>, Data),
+            MD = nebula2_utils:get_value(<<"metadata">>, Data),
             MD2 = maps:remove(<<"cdmi_mtime">>, MD),
-            maps:put(<<"metadata">>, MD2, Data)
+            nebula2_utils:put_value(<<"metadata">>, MD2, Data)
     end.
 
 %% @doc Apply cdmi_RPO
@@ -398,24 +400,24 @@ cdmi_sanitization_method(_Methods, Data) ->
 -spec cdmi_size(string(), map()) -> map().
 cdmi_size(Doit, Data) ->
     %% lager:debug("Entry"),
-    case binary_to_list(maps:get(<<"objectType">>, Data)) of
+    case binary_to_list(nebula2_utils:get_value(<<"objectType">>, Data)) of
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
-                    %% V = maps:get(<<"value">>, Data),
-                    %% Encoding = maps:get(<<"valuetransferencoding">>, Data),
+                    %% V = nebula2_utils:get_value(<<"value">>, Data),
+                    %% Encoding = nebula2_utils:get_value(<<"valuetransferencoding">>, Data),
                     %% lager:debug("Value: ~p", [V]),
                     %% lager:debug("Encoding: ~p", [Encoding]),
-                    Value = binary_to_list(maps:get(<<"value">>, Data)),
+                    Value = binary_to_list(nebula2_utils:get_value(<<"value">>, Data)),
                     Size = string:len(Value),
-                    MD = maps:get(<<"metadata">>, Data),
-                    MD2 = maps:put(<<"cdmi_size">>, Size, MD),
-                    maps:put(<<"metadata">>, MD2, Data);
+                    MD = nebula2_utils:get_value(<<"metadata">>, Data),
+                    MD2 = nebula2_utils:put_value(<<"cdmi_size">>, Size, MD),
+                    nebula2_utils:put_value(<<"metadata">>, MD2, Data);
                 false ->
                     %% lager:debug("false"),
-                    MD = maps:get(<<"metadata">>, Data),
+                    MD = nebula2_utils:get_value(<<"metadata">>, Data),
                     MD2 = maps:remove(<<"cdmi_size">>, MD),
-                    maps:put(<<"metadata">>, MD2, Data)
+                    nebula2_utils:put_value(<<"metadata">>, MD2, Data)
             end;
         _ ->
             Data

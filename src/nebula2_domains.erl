@@ -26,14 +26,14 @@
 delete_domain(Req, State) ->
     %% lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     Data = nebula2_db:search(Path, State),
-    Oid = maps:get(<<"objectID">>, Data),
-    Metadata = maps:get(<<"metadata">>, Data),
-    ReassignTo = maps:get(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
-    case maps:get(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
+    Oid = nebula2_utils:get_value(<<"objectID">>, Data),
+    Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
+    ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
+    case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
         nil ->
-            case maps:get(<<"children">>, Data, []) of
+            case nebula2_utils:get_value(<<"children">>, Data, []) of
                 [] ->
                     handle_delete(nebula2_db:delete(Pid, Oid), Req, State);
                 _ ->
@@ -48,10 +48,11 @@ delete_domain(Req, State) ->
 new_domain(Req, State) ->
     %% lager:debug("Entry"),
     {_Pid, EnvMap} = State,
-    DomainName = binary_to_list(maps:get(<<"parentURI">>, EnvMap)) ++ binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    DomainName = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)) ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     lager:debug("Domain name: ~p", [DomainName]),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
-    {ok, ReqBody, Req2} = cowboy_req:body(Req),
+    {ok, B, Req2} = cowboy_req:body(Req),
+    ReqBody = nebula2_db:marshall(B),
     Body2 = try jsx:decode(ReqBody, [return_maps]) of
                 NewBody -> NewBody
             catch

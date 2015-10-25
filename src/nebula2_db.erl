@@ -13,8 +13,10 @@
          create/3,
          delete/2,
          get_domain_maps/1,
+         marshall/1,
          read/2,
          search/2,
+         unmarshall/1,
          update/3]).
 
 %% @doc Check for the availability of the metadata backend.
@@ -31,7 +33,7 @@ available(Pid) ->
 create(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
-    Response = Mod:put(Pid, Oid, marshall(Data)),
+    Response = Mod:put(Pid, Oid, Data),
     nebula2_utils:set_cache(Data),
     Response.
     
@@ -56,13 +58,27 @@ get_domain_maps(Pid) ->
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
             lager:debug("Cache Hit: Path: ~p", [Path]),
-            maps:get(<<"value">>, maps:get(<<"cdmi">>, Data, <<"[]">>), <<"[]">>);
+            nebula2_utils:get_value(<<"value">>, Data, <<"[]">>);
         _ ->
             lager:debug("Cache Hit: Miss: ~p", [Path]),
-            {ok, DomainMaps} = Mod:get_domain_maps(Pid, Path),
-            nebula2_utils:set_cache(DomainMaps),
-            maps:get(<<"value">>, maps:get(<<"cdmi">>, DomainMaps, <<"[]">>), <<"[]">>)
+            case Mod:get_domain_maps(Pid, Path) of
+                {ok, DomainMaps} ->
+                    nebula2_utils:set_cache(DomainMaps),
+                    nebula2_utils:get_value(<<"value">>, DomainMaps, <<"[]">>);
+                _ ->
+                    <<"[]">>
+            end
     end.
+
+-spec marshall(map()) -> map().
+marshall(Data) ->
+    lager:debug("Entry"),
+    Data2 = maps:new(),
+    ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
+    Data3 = nebula2_utils:put_value(<<"k">>, ObjectId, Data2),
+    SearchKey = nebula2_utils:make_search_key(Data),
+    Data4 = nebula2_utils:put_value(<<"sp">>, SearchKey, Data3),
+    maps:put(<<"cdmi">>, Data, Data4).
 
 %% @doc Read an object
 -spec read(pid(), object_oid()) -> {ok, map()}|{error, term()}.
@@ -79,8 +95,7 @@ read(Pid, Oid) ->
         _ ->
             lager:debug("Cache Miss: Oid: ~p", [Oid]),
             case Mod:get(Pid, list_to_binary(Oid)) of
-                {ok, Object} ->
-                    Data = unmarshall(Object),
+                {ok, Data} ->
                     nebula2_utils:set_cache(Data),
                     {ok, Data};
                 {error, Term} ->
@@ -102,11 +117,17 @@ search(Path, State) ->
             case Mod:search(Path, State) of
                 {ok, Data} ->
                     nebula2_utils:set_cache(Data),
-                    {ok, unmarshall(Data)};
+                    {ok, Data};
                 Response ->
                     Response
             end
     end.
+
+
+-spec unmarshall(map()) -> map().
+unmarshall(Data) ->
+    lager:debug("Entry"),
+    maps:get(<<"cdmi">>, Data).
 
 %% @doc Update an object.
 -spec update(pid(),
@@ -119,7 +140,7 @@ update(Pid, Oid, Data) when is_binary(Oid) ->
 update(Pid, Oid, Data) ->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
-    case Mod:update(Pid, Oid, jsx:encode(marshall(Data))) of
+    case Mod:update(Pid, Oid, jsx:encode(Data)) of
         {ok, _} ->
             nebula2_utils:set_cache(Data),
             ok;
@@ -130,24 +151,3 @@ update(Pid, Oid, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-
-         
--spec marshall(map()) -> map().
-marshall(Data) ->
-    lager:debug("Entry"),
-    Data2 = maps:new(),
-    ObjectId = maps:get(<<"objectID">>, Data),
-    Data3 = maps:put(<<"k">>, ObjectId, Data2),
-    SearchKey = nebula2_utils:make_search_key(Data),
-    Data4 = maps:put(<<"sp">>, SearchKey, Data3),
-    % D = maps:put(<<"cdmi">>, jsx:encode(Data), Data4),
-    D = maps:put(<<"cdmi">>, Data, Data4),
-    D.
-
--spec unmarshall(map()) -> map().
-unmarshall(Data) ->
-    lager:debug("Entry"),
-    % D = jsx:decode(maps:get(<<"cdmi">>, Data), [return_maps]),
-    D = maps:get(<<"cdmi">>, Data),
-    D.

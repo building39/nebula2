@@ -61,17 +61,18 @@ from_cdmi_domain(Req, State) ->
 from_cdmi_object(Req, State) ->
     lager:debug("Entry"),
     {Pid, _EnvMap} = State,
-    {ok, Body, Req2} = cowboy_req:body(Req),
+    {ok, B, Req2} = cowboy_req:body(Req),
     % lager:debug("bootstrap: from_cdmi_object: Body: ~p", [Body]),
-    Data = jsx:decode(Body, [return_maps]),
+    Body = jsx:decode(B, [return_maps]),
+    Data = nebula2_db:marshall(Body),
     Oid = nebula2_utils:make_key(),
     % lager:debug("bootstrap: from_cdmi_object: Oid: ~p", [Oid]),
-    Data2 = maps:put(<<"objectID">>, list_to_binary(Oid), Data),
-    ParentID = maps:get(<<"parentID">>, Data2, <<"">>),
+    Data2 = nebula2_utils:put_value(<<"objectID">>, Oid, Data),
+    ParentID = nebula2_utils:get_value(<<"parentID">>, Data2),
     % lager:debug("bootstrap: parentID: ~p", [ParentID]),
     {Path, Req3} = cowboy_req:path(Req2),
     lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
-    ObjectType = maps:get(<<"objectType">>, Data2),
+    ObjectType = nebula2_utils:get_value(<<"objectType">>, Data2),
     % lager:debug("Data2: ~p", [Data2]),
     {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
     nebula2_utils:update_parent(ParentID,
@@ -79,9 +80,8 @@ from_cdmi_object(Req, State) ->
                                 binary_to_list(ObjectType),
                                 Pid),
     pooler:return_member(riak_pool, Pid),
-    L = maps:to_list(Data2),
-    B = jsx:encode(L),
-    Req4 = cowboy_req:set_resp_body(B, Req3),
+    ResponseBody = nebula2_db:unmarshall(Data2),
+    Req4 = cowboy_req:set_resp_body(jsx:encode(maps:to_list(ResponseBody)), Req3),
     {true, Req4, State}.
 
 is_conflict(Req, State) ->
@@ -97,14 +97,14 @@ resource_exists(Req, State) ->
     lager:debug("Entry"),
     % lager:debug("bootstrap: resource_exists:"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     Response = case nebula2_db:search(Path, State) of
                    {error, _Status} ->
                        false;
                    _Other ->
                        true
                end,
-    NewEnvMap = maps:put(<<"exists">>, Response, EnvMap),
+    NewEnvMap = nebula2_utils:put_value(<<"exists">>, Response, EnvMap),
     {Response, Req, {Pid, NewEnvMap}}.
 
 rest_init(Req, State) ->
