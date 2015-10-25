@@ -73,6 +73,7 @@ class CheckNebula(object):
                     self.capabilities_used += 1
                 else:
                     self.capabilities_missing += 1
+                    print("Capability %s missing" % capUri)
             parentUri = body.get('parentURI', None)
             if parentUri:
                 (status3, body3) = self.get(parentUri)
@@ -80,6 +81,7 @@ class CheckNebula(object):
                     self.parents_found += 1
                 else:
                     self.parents_missing += 1
+                    print("Object %s is missing parent %s", (body.get('objectName'), parentUri))
             domainUri = body.get('domainURI', None)
             if domainUri:
                 (status4, body4) = self.get(domainUri)
@@ -106,12 +108,14 @@ class CheckNebula(object):
                     self.child_count_mismatch += 1
             for child in children:
                 nextobject = '%s%s' % (object, child)
+                print("...next object: %s" % nextobject)
                 (status5, body) = self.get(nextobject)
                 if status5 in [200, 201, 204]:
                     self.children_found += 1
                     self.check(object=nextobject)
                 else:
                     self.children_missing += 1
+                    print('...missing child %s' % (child))
         else:
            print("listnebula received status code %d - exiting..." % status)
            print("Found %d objects" % self.objects_found)

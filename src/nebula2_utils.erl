@@ -289,7 +289,12 @@ make_search_key(Data) ->
                             false ->
                                 nebula2_utils:get_value(<<"domainURI">>, Data, <<"">>);
                             true ->
-                                list_to_binary(Path)    %% a domain always belongs to itself.
+                                case Path == "/cdmi_domains/" of
+                                    true ->     %% always belongs to /cdmi/system_domain
+                                        <<"/cdmi_domains/system_domain/">>; 
+                                    false ->    %% a domain always belongs to itself.
+                                        list_to_binary(Path)
+                                end
                         end;
                     true ->
                         <<"">>
@@ -299,6 +304,7 @@ make_search_key(Data) ->
     lager:debug("DomainUri: ~p", [DomainUri]),
     lager:debug("ParentUri: ~p", [ParentUri]),
     Domain = get_domain_hash(DomainUri),
+    lager:debug("Hashed domain: ~p", [Domain]),
     Key = Domain ++ ParentUri ++ ObjectName,
     lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
@@ -319,6 +325,7 @@ put_value(Key, Value, Map) ->
 set_cache(Data) ->
     lager:debug("Entry"),
     SearchKey = nebula2_utils:make_search_key(Data),
+    lager:debug("SearchKey: ~p", [SearchKey]),
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
     mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
     mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
@@ -514,9 +521,11 @@ get_capability_uri(ObjectType) ->
             ?DOMAIN_CAPABILITY_URI
     end.
 
--spec get_cache(object_oid()) -> {ok | error, deleted | notfound}.
-get_cache(_Oid) ->
-    {error, notfound}.
+-spec get_cache(binary() | list) -> {ok, map()} | {error, deleted | notfound}.
+get_cache(Key) when is_list(Key) ->
+    get_cache(list_to_binary(Key));
+get_cache(Key) when is_binary(Key) ->
+    mcd:get(?MEMCACHE, Key).
 
 -spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->

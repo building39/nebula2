@@ -57,10 +57,10 @@ get_domain_maps(Pid) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
-            lager:debug("Cache Hit: Path: ~p", [Path]),
+            lager:debug("1 Cache Hit: Path: ~p", [Path]),
             nebula2_utils:get_value(<<"value">>, Data, <<"[]">>);
         _ ->
-            lager:debug("Cache Hit: Miss: ~p", [Path]),
+            lager:debug("1 Cache Miss: ~p", [Path]),
             case Mod:get_domain_maps(Pid, Path) of
                 {ok, DomainMaps} ->
                     nebula2_utils:set_cache(DomainMaps),
@@ -110,10 +110,11 @@ search(Path, State) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
-            lager:debug("Cache Hit: Key: ~p", [Path]),
-            Data;
+            lager:debug("2 Cache Hit: Key: ~p", [Path]),
+            {ok, Data};
         _ ->
-            lager:debug("Cache Hit: Miss: ~p", [Path]),
+            lager:debug("2 Cache Miss: ~p", [Path]),
+            %% die("bail"),
             case Mod:search(Path, State) of
                 {ok, Data} ->
                     nebula2_utils:set_cache(Data),
@@ -151,3 +152,5 @@ update(Pid, Oid, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+%%die(Dagger) when is_binary(Dagger) ->
+%%    ok.

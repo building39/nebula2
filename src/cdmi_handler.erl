@@ -58,6 +58,8 @@ rest_init(Req, _State) ->
     P          = string:tokens(binary_to_list(ReqPath), "/"),
     Path       = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
     Path2      = lists:nth(1, string:tokens(Path, "?")),
+    lager:debug("Path: ~p", [Path]),
+    lager:debug("Path2: ~p", [Path2]),
     ParentURI  = nebula2_utils:get_parent_uri(Path),
     Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
@@ -75,6 +77,7 @@ rest_init(Req, _State) ->
     Map11 = nebula2_utils:put_value(<<"qs">>, Qs, Map10),
     NoDomain = nebula2_utils:get_domain_hash(<<"">>),
     SysCapKey = NoDomain ++ "/cdmi_capabilities/",
+    lager:debug("Getting Capabilities"),
     SysCap = case nebula2_db:search(SysCapKey, {PoolMember, Map11}) of 
                 {ok, SystemCapabilities} ->
                     Cap = nebula2_utils:get_value(<<"capabilities">>, SystemCapabilities, maps:new()),
@@ -82,11 +85,17 @@ rest_init(Req, _State) ->
                 _ ->
                     maps:new()
             end,
-
+    lager:debug("Got Capabilities"),
     Map12 = nebula2_utils:put_value(<<"system_capabilities">>, SysCap, Map11),
 
     DomainHash = nebula2_utils:get_domain_hash(DomainUri),
-    Parent = nebula2_db:search(DomainHash ++ ParentURI, {PoolMember, Map12}),
+    lager:debug("Domain Hash: ~p", [DomainHash]),
+    Parent = case ParentURI of
+                 <<>> ->
+                     {error, notfound};
+                 U ->
+                    nebula2_db:search(DomainHash ++ binary_to_list(U), {PoolMember, Map12})
+             end,
     Map13 = nebula2_utils:put_value(<<"is_envmap">>, true, Map12),
 
     FinalMap = case Parent of
@@ -424,30 +433,42 @@ multiple_choices(Req, State) ->
 previously_existed(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)) ++ "/",
-    ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) ++ "/",
-    EnvMap2 = maps:update(<<"objectName">>, list_to_binary(ObjectName), EnvMap),
-    EnvMap3 = maps:update(<<"path">>, list_to_binary(Path), EnvMap2),
-    State2 = {Pid, EnvMap3},
-    {Response, Req3, State3} = resource_exists(Req, State2),
-    {Pid, EnvMap4} = State3,
-    EnvMap5 = case Response of 
-                true ->
-                    nebula2_utils:put_value(<<"moved_permanently">>, {true, Path}, EnvMap4);
-                false ->
-                    nebula2_utils:put_value(<<"moved_permanently">>, false, EnvMap4)
-              end,
-    {Response, Req3, {Pid, EnvMap5}}.
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    case [lists:last(binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)))] of
+        "/" ->
+            lager:debug("Exit1: EnvMap: ~p", [EnvMap]),
+            {false, Req, State};
+        Other ->
+            lager:debug("Other: ~p", [Other]),
+            Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)) ++ "/",
+            ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) ++ "/",
+            EnvMap2 = maps:update(<<"objectName">>, list_to_binary(ObjectName), EnvMap),
+            EnvMap3 = maps:update(<<"path">>, list_to_binary(Path), EnvMap2),
+            State2 = {Pid, EnvMap3},
+            {Response, Req3, State3} = resource_exists(Req, State2),
+            {Pid, EnvMap4} = State3,
+            EnvMap5 = case Response of 
+                        true ->
+                            nebula2_utils:put_value(<<"moved_permanently">>, {true, Path}, EnvMap4);
+                        false ->
+                            nebula2_utils:put_value(<<"moved_permanently">>, false, EnvMap4)
+                      end,
+            lager:debug("Exit2: EnvMap: ~p", [EnvMap5]),
+            {Response, Req3, {Pid, EnvMap5}}
+    end.
 
 %% Does the resource exist?
 resource_exists(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("EnvMap: ~p", [EnvMap]),
     ParentURI = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)),
+    lager:debug("EnvMap: ~p", [EnvMap]),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,
+    lager:debug("NewEnvMap: ~p", [NewEnvMap]),
     NewEnvMap2 = nebula2_utils:put_value(<<"exists">>, Response, NewEnvMap),
+    lager:debug("NewEnvMap2: ~p", [NewEnvMap2]),
+    lager:debug("Exit: Response: ~p", [Response]),
     {Response, NewReq, {Pid, NewEnvMap2}}.
 
 resource_exists_handler("/cdmi_objectid/", Req, State) ->
@@ -469,6 +490,8 @@ resource_exists_handler(_, Req, State) ->
         "/" ->
             {true, Req, State};
         _ ->
+            Sk = nebula2_utils:make_search_key(EnvMap),
+            lager:debug("SearchKey: ~p", [Sk]),
             case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
                 {ok, Data} ->
                     {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
