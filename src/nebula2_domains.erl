@@ -40,7 +40,9 @@ delete_domain(Req, State) ->
     lager:debug("ReassignTo: ~p", [ReassignTo]),
     case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
         nil ->
-            case nebula2_utils:get_value(<<"children">>, Data, []) of
+            Children =  nebula2_utils:get_value(<<"children">>, Data, []),
+            %% TODO: check for existence of child domains and domain members before deleting.
+            case Children of
                 [] ->
                     ok = nebula2_utils:delete_child_from_parent(Pid,
                                                                 nebula2_utils:get_value(<<"parentID">>, Data),
@@ -109,61 +111,59 @@ handle_delete({error, _Error}, Req, State) ->
 -spec new_member_and_summary_containers(cdmi_state(), string()) -> boolean().
 new_member_and_summary_containers(State, SearchKey) ->
     lager:debug("Entry"),
-    case new_member_container(State, SearchKey) of
+    lager:debug("Search Key: ~p", [SearchKey]),
+    {ok, Parent} = nebula2_db:search(SearchKey, State),
+    Containers = [<<"cdmi_domain_members/">>, <<"cdmi_domain_summary/">>],
+    case new_containers(State, SearchKey, Parent, Containers, {}) of
         true ->
             new_summary_containers(State, SearchKey);
-        Other ->
-            Other
+        false ->
+            false
     end.
 
--spec new_member_container(cdmi_state(), binary()) -> boolean().
-new_member_container(State, SearchKey) ->
+-spec new_containers(cdmi_state(), binary(), map(), list(), boolean()) -> boolean().
+new_containers(_State, _SearchKey, _Parent, [], Response) ->
+    Response;
+new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
     lager:debug("Entry"),
-    {ok, Parent} = nebula2_db:search(SearchKey, State),
-    lager:debug("Parent: ~p", [Parent]),
-    Oid = nebula2_utils:make_key(),
-    ObjectName = <<"cdmi_domain_members">>,
     PUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Parent)),
     ParentUri = PUri ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, Parent)),
+    Oid = nebula2_utils:make_key(),
     ParentId  = nebula2_utils:get_value(<<"objectID">>, Parent),
-    Map = maps:from_list([
+    Data = maps:from_list([
                           {<<"objectName">>, ObjectName},
                           {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
                           {<<"objectID">>, Oid},
                           {<<"parentID">>, ParentId},
                           {<<"parentURI">>, list_to_binary(ParentUri)},
-                          {<<"capabilitiesURI">>, <<"/cdmi_capabilities/container/">>},
+                          {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
                           {<<"domainURI">>, nebula2_utils:get_value(<<"domainURI">>, Parent)},
                           {<<"completionStatus">>, <<"Complete">>},
                           {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
                          ]),
     lager:debug("Marshalling..."),
-    Data = nebula2_db:marshall(Map),
-    lager:debug("Marshalling done."),
+    Data2 = nebula2_db:marshall(Data),
+    lager:debug("marshalling done."),
     {Pid, _} = State,
-    case nebula2_db:create(Pid, Oid, Data) of
+    case nebula2_db:create(Pid, nebula2_utils:get_value(<<"objectID">>, Data2), Data2) of
         {ok, _} ->
-            ok = nebula2_utils:update_parent(binary_to_list(ParentId),
+            lager:debug("new container created"),
+            lager:debug("Updating parent: ~p", [ParentUri]),
+            ok = nebula2_utils:update_parent(nebula2_utils:get_value(<<"objectID">>, Parent),
                                              ParentUri ++ binary_to_list(ObjectName),
                                              ?CONTENT_TYPE_CDMI_CONTAINER,
                                              Pid),
-            true;
-        _ ->
-            false
+            new_containers(State, SearchKey, Parent, T, true);
+        _Other ->
+            lager:debug("new container create failed: ~p", [_Other]),
+            new_containers(State, SearchKey, Parent, [], false)
     end.
 
--spec new_summary_containers(cdmi_state(), map()) -> boolean().
-new_summary_containers(State, Parent) ->
+-spec new_summary_containers(cdmi_state(), binary()) -> boolean().
+new_summary_containers(State, _SearchKey) ->
     lager:debug("Entry"),
-    Parent,
     Summaries = ["daily", "weekly", "monthly", "yearly"],
-    new_summary_container(State, Summaries),
-    true.
-
--spec new_summary_container(cdmi_state(), list()) -> boolean().
-new_summary_container(State, Summaries) ->
-    lager:debug("Entry"),
-    _Response = new_summary_container(State, Summaries, {}),
+    new_summary_container(State, [], Summaries),
     true.
 
 new_summary_container(_State, [], Response) ->

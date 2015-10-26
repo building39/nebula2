@@ -278,7 +278,7 @@ make_key() ->
 -spec make_search_key(map()) -> list().
 make_search_key(Data) ->
     lager:debug("Entry"),
-    lager:debug("Data: ~p", [Data]),
+%    lager:debug("Data: ~p", [Data]),
     ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)),
     ParentUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Data, <<"">>)),
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, Data, <<"">>)),
@@ -299,14 +299,14 @@ make_search_key(Data) ->
                         lager:debug("Making key for capabilities"),
                         <<"">>
                 end,
-    lager:debug("Path: ~p", [Path]),
-    lager:debug("ObjectName: ~p", [ObjectName]),
-    lager:debug("DomainUri: ~p", [DomainUri]),
-    lager:debug("ParentUri: ~p", [ParentUri]),
+%%     lager:debug("Path: ~p", [Path]),
+%%     lager:debug("ObjectName: ~p", [ObjectName]),
+%%     lager:debug("DomainUri: ~p", [DomainUri]),
+%%     lager:debug("ParentUri: ~p", [ParentUri]),
     Domain = get_domain_hash(DomainUri),
-    lager:debug("Hashed domain: ~p", [Domain]),
+%%    lager:debug("Hashed domain: ~p", [Domain]),
     Key = Domain ++ ParentUri ++ ObjectName,
-    lager:debug("Key: ~p", [Key]),
+%%   lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
 
 %% @doc Put a value to the data map.
