@@ -50,14 +50,14 @@
 %% @doc Get a CDMI capability
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
 get_capability(Pid, Oid) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
 %% @doc Create a new CDMI capability
 -spec nebula2_capabilities:new_capability(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_capability(Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     Oid = nebula2_utils:make_key(),
     {Pid, EnvMap} = State,
     {Path, _} = cowboy_req:path_info(Req),
@@ -100,7 +100,7 @@ new_capability(Req, State) ->
 %% @doc Update a CDMI capability
 -spec nebula2_capabilities:update_capability(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
 update_capability(Req, State, Oid) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = try jsx:decode(Body, [return_maps]) of
@@ -111,7 +111,6 @@ update_capability(Req, State, Oid) ->
                       throw(badjson)
               end,
     NewCapabilities = nebula2_utils:get_value(<<"capabilities">>, NewData),
-    %% lager:debug("NewData: ~p", [NewData]),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
     OldCapabilities = nebula2_utils:get_value(<<"capabilities">>, OldData),
     OldMetaData = nebula2_utils:get_value(<<"metadata">>, OldData, maps:new()),
@@ -132,7 +131,6 @@ update_capability(Req, State, Oid) ->
                    _  ->
                        {false, Req, State}
                end,
-    %% lager:debug("Data4: ~p", [Data4]),
     Response.
 
 %% @doc Apply CDMI capabilities
@@ -159,7 +157,6 @@ apply_metadata_capabilities([H|T], Data) ->
 %% @doc Apply cdmi_acount
 -spec cdmi_acount(string(), map()) -> map().
 cdmi_acount(Doit, Data) ->
-    %% lager:debug("Entry"),
     case Doit of
         true ->
             MD = nebula2_utils:get_value(<<"metadata">>, Data),
@@ -175,8 +172,6 @@ cdmi_acount(Doit, Data) ->
 %% @doc Apply cdmi_atime
 -spec cdmi_atime(string(), map()) -> map().
 cdmi_atime(Doit, Data) ->
-    %% lager:debug("Entry"),
-    %% lager:debug("Doit: ~p", [Doit]),
     case Doit of
         true ->
             MD = nebula2_utils:get_value(<<"metadata">>, Data),
@@ -404,17 +399,12 @@ cdmi_size(Doit, Data) ->
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
-                    %% V = nebula2_utils:get_value(<<"value">>, Data),
-                    %% Encoding = nebula2_utils:get_value(<<"valuetransferencoding">>, Data),
-                    %% lager:debug("Value: ~p", [V]),
-                    %% lager:debug("Encoding: ~p", [Encoding]),
                     Value = binary_to_list(nebula2_utils:get_value(<<"value">>, Data)),
                     Size = string:len(Value),
                     MD = nebula2_utils:get_value(<<"metadata">>, Data),
                     MD2 = nebula2_utils:put_value(<<"cdmi_size">>, Size, MD),
                     nebula2_utils:put_value(<<"metadata">>, MD2, Data);
                 false ->
-                    %% lager:debug("false"),
                     MD = nebula2_utils:get_value(<<"metadata">>, Data),
                     MD2 = maps:remove(<<"cdmi_size">>, MD),
                     nebula2_utils:put_value(<<"metadata">>, MD2, Data)
@@ -446,7 +436,6 @@ cdmi_value_hash(_ValueHash, Data) ->
 %% Internal functions
 %% ====================================================================
 build_path(L) ->
-    %% lager:debug("Entry"),
     build_path(L, []).
 build_path([], Acc) ->
     Acc;

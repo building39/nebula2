@@ -31,7 +31,6 @@ new_container(Req, State) ->
                 error:badarg ->
                     throw(badjson)
             end,
-    lager:debug("Body2: ~p", [Body2]),
     Response = case nebula2_utils:create_object(Req2, State, ObjectType, Body2) of
                    {true, Req3, Data} ->
                        Data2 = nebula2_db:unmarshall(Data),

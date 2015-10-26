@@ -143,11 +143,9 @@ update(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:update(Pid, Oid, jsx:encode(Data)) of
         ok ->
-            lager:debug("resetting cache"),
             nebula2_utils:set_cache(Data),
             ok;
         Failure ->
-            lager:debug("update failed: ~p", [Failure]),
             Failure
     end.
     

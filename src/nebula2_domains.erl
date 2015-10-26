@@ -24,9 +24,10 @@
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
 -spec nebula2_domains:delete_domain(cowboy_req:req(), cdmi_state()) -> ok | {error, term()}.
 delete_domain(Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+    lager:debug("Path: ~p", [Path]),
     Data = nebula2_db:search(Path, State),
     Oid = nebula2_utils:get_value(<<"objectID">>, Data),
     Metadata = nebula2_utils:get_value(<<"metadata">>, Data),

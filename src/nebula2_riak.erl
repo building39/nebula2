@@ -42,7 +42,6 @@ available(Pid) ->
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_binary(Oid) ->
-    lager:debug("Entry"),
     delete(Pid, binary_to_list(Oid));
 delete(Pid, Oid) ->
     lager:debug("Entry"),
@@ -54,7 +53,6 @@ delete(Pid, Oid) ->
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec nebula2_riak:get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
 get(Pid, Oid) when is_binary(Oid) ->
-    lager:debug("Entry"),
     get(Pid, binary_to_list(Oid));
 get(Pid, Oid) ->
     lager:debug("Entry"),
@@ -106,7 +104,6 @@ search(Path, State) when is_binary(Path)->
     search(Path2, State);
 search(Path, State) ->
     lager:debug("Entry"),
-    % lager:debug("State: ~p", [State]),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
     Result =  execute_search(Pid, Query),
@@ -118,10 +115,8 @@ search(Path, State) ->
                           map()              %% Data to store
                          ) -> ok | {error, term()}.
 update(Pid, Oid, Data) when is_binary(Oid) ->
-    lager:debug("Entry"),
     update(Pid, binary_to_list(Oid), Data);
 update(Pid, Oid, Data) ->
-    % lager:debug("nebula2_riak:update Updating object ~p", [Oid]),
     lager:debug("Entry"),
     case get(Pid, Oid) of
         {error, E} ->
