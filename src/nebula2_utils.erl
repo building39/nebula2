@@ -358,6 +358,7 @@ update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     ok;
 update_parent(ParentId, Path, ObjectType, Pid) ->
     lager:debug("Entry"),
+    lager:debug("Path: ~p", [Path]),
     N = case length(string:tokens(Path, "/")) of
             0 ->
                 "";

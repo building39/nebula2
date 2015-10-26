@@ -74,9 +74,9 @@ get_domain_maps(Pid, Path) ->
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
 -spec nebula2_riak:put(pid(),
-                      object_oid(),   %% Oid
-                      map()           %% Data to store
-                     ) -> {'error', _} | {'ok', _}.
+                       object_oid(),   %% Oid
+                       map()           %% Data to store
+                      ) -> {'error', _} | {'ok', _}.
 put(Pid, Oid, Data) ->
     lager:debug("Entry"),
     do_put(Pid, Oid, Data).

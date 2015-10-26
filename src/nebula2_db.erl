@@ -28,9 +28,9 @@ available(Pid) ->
     
 %% @doc Create an object.
 -spec create(pid(),
-                      object_oid(),   %% Oid
-                      map()           %% Data to store
-                     ) -> {'error', _} | {'ok', _}.
+             object_oid(),   %% Oid
+             map()           %% Data to store
+            ) -> {'error', _} | {'ok', _}.
 create(Pid, Oid, Data) ->
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     lager:debug("Entry"),
@@ -80,11 +80,11 @@ marshall(Data) ->
 -spec marshall(map(), binary()) -> map().
 marshall(Data, SearchKey) ->
     lager:debug("Entry"),
+    lager:debug("SearchKey: ~p", [SearchKey]),
+    lager:debug("Data: ~p", [Data]),
     Data2 = maps:new(),
-    ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
-    Data3 = nebula2_utils:put_value(<<"k">>, ObjectId, Data2),
-    Data4 = nebula2_utils:put_value(<<"sp">>, SearchKey, Data3),
-    maps:put(<<"cdmi">>, Data, Data4).
+    Data3 = nebula2_utils:put_value(<<"sp">>, SearchKey, Data2),
+    maps:put(<<"cdmi">>, Data, Data3).
 
 %% @doc Read an object
 -spec read(pid(), object_oid()) -> {ok, map()}|{error, term()}.

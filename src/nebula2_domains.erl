@@ -78,8 +78,7 @@ new_domain(Req, State) ->
     lager:debug("Body2: ~p", [Body2]),
     case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
         {true, Data} ->
-            {Success, Req2, State2} = new_member_and_summary_containers(Req, State, Body2),
-            case Success of
+            case new_member_and_summary_containers(State, SearchKey) of
                 true ->
                     Data2 = nebula2_db:unmarshall(Data),
                     {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
@@ -107,48 +106,72 @@ handle_delete({error, _Error}, Req, State) ->
     lager:debug("Entry"),
     {false, Req, State}.
 
--spec new_member_and_summary_containers(cowboy_req:req(), cdmi_state(), map()) ->
-          {boolean(), cowboy_req:req(), cdmi_state()}.
-new_member_and_summary_containers(Req, State, Body) ->
+-spec new_member_and_summary_containers(cdmi_state(), string()) -> boolean().
+new_member_and_summary_containers(State, SearchKey) ->
     lager:debug("Entry"),
-    Body,
-    {MemberCreated, Req2, State2} = new_member_container(Req, State),
-    case MemberCreated of
+    case new_member_container(State, SearchKey) of
         true ->
-            new_summary_containers(Req2, State2);
-        false ->
-            {false, Req2, State2}
+            new_summary_containers(State, SearchKey);
+        Other ->
+            Other
     end.
 
--spec new_member_container(cowboy_req:req(), cdmi_state()) ->
-          {boolean(), cowboy_req:req(), cdmi_state()}.
-new_member_container(Req, State) ->
+-spec new_member_container(cdmi_state(), binary()) -> boolean().
+new_member_container(State, SearchKey) ->
     lager:debug("Entry"),
-    _Map  = maps:new(),
-    _Map2 = maps:put(<<"objectName">>, ""),
-    {true, Req, State}.
+    {ok, Parent} = nebula2_db:search(SearchKey, State),
+    lager:debug("Parent: ~p", [Parent]),
+    Oid = nebula2_utils:make_key(),
+    ObjectName = <<"cdmi_domain_members">>,
+    PUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Parent)),
+    ParentUri = PUri ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, Parent)),
+    ParentId  = nebula2_utils:get_value(<<"objectID">>, Parent),
+    Map = maps:from_list([
+                          {<<"objectName">>, ObjectName},
+                          {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                          {<<"objectID">>, Oid},
+                          {<<"parentID">>, ParentId},
+                          {<<"parentURI">>, list_to_binary(ParentUri)},
+                          {<<"capabilitiesURI">>, <<"/cdmi_capabilities/container/">>},
+                          {<<"domainURI">>, nebula2_utils:get_value(<<"domainURI">>, Parent)},
+                          {<<"completionStatus">>, <<"Complete">>},
+                          {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
+                         ]),
+    lager:debug("Marshalling..."),
+    Data = nebula2_db:marshall(Map),
+    lager:debug("Marshalling done."),
+    {Pid, _} = State,
+    case nebula2_db:create(Pid, Oid, Data) of
+        {ok, _} ->
+            ok = nebula2_utils:update_parent(binary_to_list(ParentId),
+                                             ParentUri ++ binary_to_list(ObjectName),
+                                             ?CONTENT_TYPE_CDMI_CONTAINER,
+                                             Pid),
+            true;
+        _ ->
+            false
+    end.
 
--spec new_summary_containers(cowboy_req:req(), cdmi_state()) ->
-          {boolean(), cowboy_req:req(), cdmi_state()}.
-new_summary_containers(Req, State) ->
+-spec new_summary_containers(cdmi_state(), map()) -> boolean().
+new_summary_containers(State, Parent) ->
     lager:debug("Entry"),
+    Parent,
     Summaries = ["daily", "weekly", "monthly", "yearly"],
-    new_summary_container(Req, State, Summaries),
-    {true, Req, State}.
+    new_summary_container(State, Summaries),
+    true.
 
--spec new_summary_container(cowboy_req:req(), cdmi_state(), list()) ->
-          {boolean(), cowboy_req:req(), cdmi_state()}.
-new_summary_container(Req, State, Summaries) ->
+-spec new_summary_container(cdmi_state(), list()) -> boolean().
+new_summary_container(State, Summaries) ->
     lager:debug("Entry"),
-    _Response = new_summary_container(Req, State, Summaries, {}),
-    {true, Req, State}.
+    _Response = new_summary_container(State, Summaries, {}),
+    true.
 
-new_summary_container(_Req, _State, [], Response) ->
+new_summary_container(_State, [], Response) ->
     lager:debug("Entry"),
     Response;
-new_summary_container(Req, State, [H|T], Response) ->
+new_summary_container(State, [H|T], Response) ->
     H,
-    new_summary_container(Req, State, T, Response).
+    new_summary_container(State, T, Response).
 
 %% ====================================================================
 %% eunit tests
