@@ -155,23 +155,30 @@ delete_resource(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
-    case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
-        true ->
-            case nebula2_domains:delete_domain(Req, State)of
-                ok ->
-                    lager:debug("deleted domain"),
-                    {true, Req, State};
-                _O ->
-                    lager:debug("domain delete failed: ~p", [_O]),
-                    bail(403, <<"Cannot delete this domain\n">>, Req, State)
-                end;
-        false ->
-            case nebula2_utils:delete(State) of
-                ok ->
-                    {true, Req, State};
-                _ ->
-                    bail(409, <<"Delete failed\n">>, Req, State)
-            end
+    try
+        case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
+            true ->
+                case nebula2_domains:delete_domain(Req, State)of
+                    ok ->
+                        lager:debug("deleted domain"),
+                        {true, Req, State};
+                    _O ->
+                        lager:debug("domain delete failed: ~p", [_O]),
+                        bail(403, <<"Cannot delete this domain\n">>, Req, State)
+                    end;
+            false ->
+                case nebula2_utils:delete(State) of
+                    ok ->
+                        {true, Req, State};
+                    _ ->
+                        bail(400, <<"Delete failed\n">>, Req, State)
+                end
+        end
+    catch
+        throw:badjson ->
+            bail(400, <<"bad json\n">>, Req, State);
+        throw:forbidden ->
+            bail(403, <<"Cannot delete this domain\n">>, Req, State)
     end.
 
 expires(Req, State) ->

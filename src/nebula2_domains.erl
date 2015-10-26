@@ -55,7 +55,7 @@ delete_domain(Req, State) ->
             end;
         true ->
             lager:error("Cannot delete system domain!"),
-            {error, 400}
+            throw(forbidden)
     end.
 
 %% @doc Create a new CDMI domain
