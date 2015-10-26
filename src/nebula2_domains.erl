@@ -76,21 +76,19 @@ new_domain(Req, State) ->
                     throw(badjson)
             end,
     lager:debug("Body2: ~p", [Body2]),
-    Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
-                   {true, Req3, Data} ->
-                       Data2 = nebula2_db:unmarshall(Data),
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State2};
-                   false ->
-                       {false, Req2, State2}
-               end,
-    {Success, Req4, State4} = Response,
-    Resp2 = case Success of
+    case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
+        {true, Data} ->
+            {Success, Req2, State2} = new_member_and_summary_containers(Req, State, Body2),
+            case Success of
                 true ->
-                    new_member_and_summary_containers(Req4, State4);
+                    Data2 = nebula2_db:unmarshall(Data),
+                    {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
                 false ->
-                    Response
-            end,
-    Resp2.
+                    {false, Req2, State2}
+            end;
+        false ->
+            {false, Req2, State2}
+    end.
 
 %% @doc Update a CDMI domain
 -spec nebula2_domains:update_domain(pid(), object_oid(), map()) -> {ok, json_value()}.
@@ -109,11 +107,48 @@ handle_delete({error, _Error}, Req, State) ->
     lager:debug("Entry"),
     {false, Req, State}.
 
--spec new_member_and_summary_containers(cowboy_req:req(), cdmi_state()) ->
+-spec new_member_and_summary_containers(cowboy_req:req(), cdmi_state(), map()) ->
           {boolean(), cowboy_req:req(), cdmi_state()}.
-new_member_and_summary_containers(Req, State) ->
+new_member_and_summary_containers(Req, State, Body) ->
     lager:debug("Entry"),
+    Body,
+    {MemberCreated, Req2, State2} = new_member_container(Req, State),
+    case MemberCreated of
+        true ->
+            new_summary_containers(Req2, State2);
+        false ->
+            {false, Req2, State2}
+    end.
+
+-spec new_member_container(cowboy_req:req(), cdmi_state()) ->
+          {boolean(), cowboy_req:req(), cdmi_state()}.
+new_member_container(Req, State) ->
+    lager:debug("Entry"),
+    _Map  = maps:new(),
+    _Map2 = maps:put(<<"objectName">>, ""),
     {true, Req, State}.
+
+-spec new_summary_containers(cowboy_req:req(), cdmi_state()) ->
+          {boolean(), cowboy_req:req(), cdmi_state()}.
+new_summary_containers(Req, State) ->
+    lager:debug("Entry"),
+    Summaries = ["daily", "weekly", "monthly", "yearly"],
+    new_summary_container(Req, State, Summaries),
+    {true, Req, State}.
+
+-spec new_summary_container(cowboy_req:req(), cdmi_state(), list()) ->
+          {boolean(), cowboy_req:req(), cdmi_state()}.
+new_summary_container(Req, State, Summaries) ->
+    lager:debug("Entry"),
+    _Response = new_summary_container(Req, State, Summaries, {}),
+    {true, Req, State}.
+
+new_summary_container(_Req, _State, [], Response) ->
+    lager:debug("Entry"),
+    Response;
+new_summary_container(Req, State, [H|T], Response) ->
+    H,
+    new_summary_container(Req, State, T, Response).
 
 %% ====================================================================
 %% eunit tests

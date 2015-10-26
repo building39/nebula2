@@ -31,10 +31,10 @@ new_container(Req, State) ->
                 error:badarg ->
                     throw(badjson)
             end,
-    Response = case nebula2_utils:create_object(Req2, State, ObjectType, Body2) of
-                   {true, Req3, Data} ->
+    Response = case nebula2_utils:create_object(State, ObjectType, Body2) of
+                   {true, Data} ->
                        Data2 = nebula2_db:unmarshall(Data),
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State};
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State};
                    false ->
                        {false, Req2, State}
                end,

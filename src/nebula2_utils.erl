@@ -15,8 +15,8 @@
 -export([
          beginswith/2,
 		 check_base64/1,
+         create_object/3,
          create_object/4,
-         create_object/5,
          delete/1,
          delete_cache/1,
          delete_child_from_parent/3,
@@ -67,8 +67,9 @@ check_base64(Data) ->
     end.
 
 %% @doc Create a CDMI object
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, Body) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), map()) ->
+          {boolean(), map()}.
+create_object(State, ObjectType, Body) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
@@ -80,22 +81,25 @@ create_object(Req, State, ObjectType, Body) ->
                 {ok, ParentId} ->
                     {ok, Parent} = nebula2_db:read(Pid, ParentId),
                     DomainName = nebula2_utils:get_value(<<"domainURI">>, Parent, ""),
-                    create_object(Req, State, ObjectType, DomainName, Parent, Body);
+                    create_object(State, ObjectType, DomainName, Parent, Body);
                 {notfound, _} ->
                     pooler:return_member(riak_pool, Pid),
                     false
             end
     end.
 
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map(), binary() | string()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, DomainName, Body) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), list() | binary(), map()) ->
+          {boolean(), map()}.
+create_object(State, ObjectType, DomainName, Body) when is_list(DomainName)->
+    create_object(State, ObjectType, list_to_binary(DomainName), Body);
+create_object(State, ObjectType, DomainName, Body) when is_binary(DomainName)->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case nebula2_utils:get_object_oid(nebula2_utils:get_parent_uri(Path), State) of
         {ok, ParentId} ->
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
-            create_object(Req, State, ObjectType, DomainName, Parent, Body);
+            create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
             %% TODO: maybe leaking a pool connection here?
             pooler:return_member(riak_pool, Pid),
@@ -392,12 +396,12 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
 %% Internal functions
 %% ====================================================================
 
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
           {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
+create_object(State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
     D = list_to_binary(DomainName),
-    create_object(Req, State, ObjectType, D, Parent, Body);
-create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
+    create_object(State, ObjectType, D, Parent, Body);
+create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
 	case check_base64(Body) of
@@ -475,7 +479,7 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
     set_cache(Data7),
-    {true, Req, Data6}.
+    {true, Data6}.
 
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
