@@ -32,7 +32,8 @@ new_dataobject(Req, State, Body) ->
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     Response = case nebula2_utils:create_object(Req, State, ObjectType, Body) of
                    {true, Req2, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req2), State};
+                       Data2 = nebula2_db:unmarshall(Data),
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State};
                    false ->
                        {false, Req, State}
                end,
@@ -42,24 +43,24 @@ new_dataobject(Req, State, Body) ->
 -spec nebula2_dataobjects:update_dataobject(cowboy_req:req(), cdmi_state(), object_oid(), map()) -> {ok, json_value()}.
 update_dataobject(Req, State, Oid, NewData) ->
     lager:debug("Entry"),
-	{Pid, _EnvMap} = State,
-	nebula2_utils:check_base64(NewData),
+    {Pid, _EnvMap} = State,
+    nebula2_utils:check_base64(NewData),
     {ok, OldData} = nebula2_db:read(Pid, Oid),
-    OldMetaData = maps:get(<<"metadata">>, OldData, maps:new()),
-	MetaData = case maps:is_key(<<"metadata">>, NewData) of
-				   true ->
-    					NewMetaData = maps:get(<<"metadata">>, NewData, maps:new()),
-						maps:merge(OldMetaData, NewMetaData);
-				   false ->
-					   OldMetaData
-			   end,
+    OldMetaData = nebula2_utils:get_value(<<"metadata">>, OldData, maps:new()),
+    MetaData = case maps:is_key(<<"metadata">>, NewData) of
+                    true ->
+                        NewMetaData = nebula2_utils:get_value(<<"metadata">>, NewData, maps:new()),
+                        maps:merge(OldMetaData, NewMetaData);
+                    false ->
+                        OldMetaData
+               end,
     Data = maps:merge(OldData, NewData),
-    Data2 = maps:put(<<"metadata">>, MetaData, Data),
+    Data2 = nebula2_utils:put_value(<<"metadata">>, MetaData, Data),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_mtime">>,
              <<"cdmi_acount">>,
              <<"cdmi_mcount">>,
-			 <<"cdmi_size">>],
+             <<"cdmi_size">>],
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
     Response = case nebula2_db:update(Pid, Oid, Data3) of
                    ok ->

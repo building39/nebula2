@@ -52,56 +52,68 @@ rest_init(Req, _State) ->
     {ReqPath, Req7}     = cowboy_req:path(Req6),
     {AcceptType, Req8}  = cowboy_req:header(<<"accept">>, Req7),
     {Qs, Req9}          = cowboy_req:qs(Req8),
-    
     Url_S      = binary_to_list(Url),
     HostUrl_S  = binary_to_list(HostUrl),
     P          = string:tokens(binary_to_list(ReqPath), "/"),
     Path       = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
     Path2      = lists:nth(1, string:tokens(Path, "?")),
+    lager:debug("Path: ~p", [Path]),
+    lager:debug("Path2: ~p", [Path2]),
     ParentURI  = nebula2_utils:get_parent_uri(Path),
     Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
     Map   = maps:new(),
-    Map2  = maps:put(<<"method">>, Method, Map),
-    Map3  = maps:put(<<"url">>, Url, Map2),
-    Map4  = maps:put(<<"hosturl">>, HostUrl, Map3),
-    Map5  = maps:put(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
-    Map6  = maps:put(<<"domainURI">>, list_to_binary(map_domain_uri(PoolMember, HostUrl_S)), Map5),
-    DomainUri = maps:get(<<"domainURI">>, Map6),
-    Map7  = maps:put(<<"parentURI">>, ParentURI, Map6),
-    Map8  = maps:put(<<"objectName">>, list_to_binary(ObjectName), Map7),
-    Map9  = maps:put(<<"content-type">>, ContentType, Map8),
-    Map10 = maps:put(<<"accept">>, AcceptType, Map9),
-    Map11 = maps:put(<<"qs">>, Qs, Map10),
+    Map2  = nebula2_utils:put_value(<<"method">>, Method, Map),
+    Map3  = nebula2_utils:put_value(<<"url">>, Url, Map2),
+    Map4  = nebula2_utils:put_value(<<"hosturl">>, HostUrl, Map3),
+    Map5  = nebula2_utils:put_value(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
+    Map6  = nebula2_utils:put_value(<<"domainURI">>, list_to_binary(map_domain_uri(PoolMember, HostUrl_S)), Map5),
+    DomainUri = case nebula2_utils:beginswith(Path, "/cdmi_capabilities/") of
+                    true ->
+                        <<"">>;
+                    false ->
+                        nebula2_utils:get_value(<<"domainURI">>, Map6)
+                end,
+    Map7  = nebula2_utils:put_value(<<"parentURI">>, ParentURI, Map6),
+    Map8  = nebula2_utils:put_value(<<"objectName">>, list_to_binary(ObjectName), Map7),
+    Map9  = nebula2_utils:put_value(<<"content-type">>, ContentType, Map8),
+    Map10 = nebula2_utils:put_value(<<"accept">>, AcceptType, Map9),
+    Map11 = nebula2_utils:put_value(<<"qs">>, Qs, Map10),
     NoDomain = nebula2_utils:get_domain_hash(<<"">>),
-    SysCap = case nebula2_db:search(NoDomain ++ "/cdmi_capabilities/", {PoolMember, Map11}) of 
+    SysCapKey = NoDomain ++ "/cdmi_capabilities/",
+    SysCap = case nebula2_db:search(SysCapKey, {PoolMember, Map11}) of 
                 {ok, SystemCapabilities} ->
-                    Cap = maps:get(<<"capabilities">>, SystemCapabilities, maps:new()),
+                    Cap = nebula2_utils:get_value(<<"capabilities">>, SystemCapabilities, maps:new()),
                     Cap;
                 _ ->
                     maps:new()
             end,
-
-    Map12 = maps:put(<<"system_capabilities">>, SysCap, Map11),
-
-    DomainHash = nebula2_utils:get_domain_hash(DomainUri),
-    Parent = nebula2_db:search(DomainHash ++ ParentURI, {PoolMember, Map12}),
-    Map13 = maps:put(<<"is_envmap">>, true, Map12),
+    Map12 = nebula2_utils:put_value(<<"system_capabilities">>, SysCap, Map11),
+    DomainHash =  nebula2_utils:get_domain_hash(DomainUri),
+    lager:debug("DomainUri: ~p", [DomainUri]),
+    SystemDomainHash =  nebula2_utils:get_domain_hash(<<"/cdmi_domains/system_domain/">>),
+    Parent = if
+                 Path == "/cdmi_capabilities/" ->
+                     get_parent(ParentURI, SystemDomainHash, {PoolMember, Map12});
+                 true ->
+                     get_parent(ParentURI, DomainHash, {PoolMember, Map12})
+             end,
+    Map13 = nebula2_utils:put_value(<<"is_envmap">>, true, Map12),
 
     FinalMap = case Parent of
-                    {ok, Data} ->
-                        ParentID  = maps:get(<<"objectID">>, Data),
-                        Map14     = maps:put(<<"parentID">>, ParentID, Map13),
-                        KeyExists = maps:is_key(<<"capabilitiesURI">>, Data),
+                    {ok, FData} ->
+                        ParentID  = nebula2_utils:get_value(<<"objectID">>, FData),
+                        Map14     = nebula2_utils:put_value(<<"parentID">>, ParentID, Map13),
+                        KeyExists = maps:is_key(<<"capabilitiesURI">>, FData),
                         if 
                             KeyExists == true ->
-                                ParentCapabilitiesURI = binary_to_list(maps:get(<<"capabilitiesURI">>, Data)),
+                                ParentCapabilitiesURI = binary_to_list(nebula2_utils:get_value(<<"capabilitiesURI">>, FData)),
                                 ParentCapabilities    = nebula2_db:search(NoDomain ++ ParentCapabilitiesURI,
                                                                           {PoolMember, Map14}),
                                 case ParentCapabilities of
                                     {ok, CapData} ->
-                                        CapMap = maps:get(<<"capabilities">>, CapData, maps:new()),
-                                        maps:put(<<"parent_capabilities">>, CapMap, Map14);
+                                        CapMap = nebula2_utils:get_value(<<"capabilities">>, CapData, maps:new()),
+                                        nebula2_utils:put_value(<<"parent_capabilities">>, CapMap, Map14);
                                     {error, _} ->
                                         Map14
                                 end;
@@ -147,7 +159,7 @@ delete_completed(Req, State) ->
 delete_resource(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
         true ->
             nebula2_domains:delete_domain(Req, State);
@@ -174,9 +186,9 @@ from_cdmi_capability(Req, State) ->
     lager:debug("Entry"),
     {_Pid, EnvMap} = State,
 	try
-	    case maps:get(<<"exists">>, EnvMap) of
+	    case nebula2_utils:get_value(<<"exists">>, EnvMap) of
 	        true ->
-	            ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	            ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
 	            nebula2_capabilities:update_capability(Req, State, ObjectId);
 	        false ->
 	            nebula2_capabilities:new_capability(Req, State)
@@ -191,14 +203,14 @@ from_cdmi_capability(Req, State) ->
 from_cdmi_container(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    ObjectName = binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
 	try
 	    case LastChar of
 	        "/" ->
-	            Response = case maps:get(<<"exists">>, EnvMap) of
+	            Response = case nebula2_utils:get_value(<<"exists">>, EnvMap) of
 	                            true ->
-	                                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
+	                                ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
 	                                nebula2_containers:update_container(Req, State, ObjectId);
 	                            false ->
 	                                nebula2_containers:new_container(Req, State)
@@ -217,7 +229,7 @@ from_cdmi_container(Req, State) ->
 from_cdmi_domain(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case string:substr(Path, length(Path)) of
         "/" ->
             nebula2_domains:new_domain(Req, State),
@@ -229,46 +241,47 @@ from_cdmi_domain(Req, State) ->
 from_cdmi_object(Req, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    ObjectName = binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
-	try
-	   case LastChar of
-		   "/" ->
+    try
+       case LastChar of
+           "/" ->
                lager:error("data object name must not end with '/'"),
-				bail(400, <<"data object name must not end with '/'\n">>, Req, State);
-		   _ ->
-                {ok, ReqBody, Req2} = cowboy_req:body(Req),
-                Body2 = try jsx:decode(ReqBody, [return_maps]) of
-                            NewBody -> NewBody
+               bail(400, <<"data object name must not end with '/'\n">>, Req, State);
+           _ ->
+                {ok, Body, Req2} = cowboy_req:body(Req),
+                Body2 = try jsx:decode(Body, [return_maps]) of
+                            NewBody ->
+                                nebula2_db:marshall(NewBody)
                         catch
                             error:badarg ->
                                 throw(badjson)
                         end,
-		        case maps:get(<<"exists">>, EnvMap) of
-		            true ->
-		                ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-		                nebula2_dataobjects:update_dataobject(Req2, State, ObjectId, Body2);
-		            false ->
-		                nebula2_dataobjects:new_dataobject(Req2, State, Body2)
-		        end
-		end
-	catch
-		throw:badjson ->
+                case nebula2_utils:get_value(<<"exists">>, EnvMap) of
+                    true ->
+                        ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
+                        nebula2_dataobjects:update_dataobject(Req2, State, ObjectId, Body2);
+                    false ->
+                        nebula2_dataobjects:new_dataobject(Req2, State, Body2)
+                end
+        end
+    catch
+        throw:badjson ->
             lager:error("bad json"),
-			bail(400, <<"bad json\n">>, Req, State);
-		throw:badencoding ->
+            bail(400, <<"bad json\n">>, Req, State);
+        throw:badencoding ->
             lager:error("bad encoding"),
-			bail(400, <<"bad encoding\n">>, Req, State)
-	end.
+            bail(400, <<"bad encoding\n">>, Req, State)
+    end.
 
 from_multipart_mixed(Req, State) ->
     lager:debug("Enter"),
     {_, EnvMap} = State,
-    SysCap = maps:get(<<"system_capabilities">>, EnvMap, maps:new()),
+    SysCap = nebula2_utils:get_value(<<"system_capabilities">>, EnvMap, maps:new()),
     lager:debug("Not yet..."),
     lager:debug("SysCap: ~p", [SysCap]),
     lager:debug("OK"),
-    case maps:get(<<"cdmi_multipart_mime">>, SysCap, <<"false">>) of
+    case nebula2_utils:get_value(<<"cdmi_multipart_mime">>, SysCap, <<"false">>) of
         <<"true">> ->
             from_multipart_mixed(Req, State, ok);
         _ ->
@@ -279,7 +292,7 @@ from_multipart_mixed(Req, State) ->
 from_multipart_mixed(Req, State, ok) ->
     lager:debug("Enter"),
     {_, EnvMap} = State,
-    ObjectName = binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     LastChar = string:substr(ObjectName, string:len(ObjectName)),
     try
        case LastChar of
@@ -288,16 +301,22 @@ from_multipart_mixed(Req, State, ok) ->
                 bail(400, <<"data object name must not end with '/'\n">>, Req, State);
             _ ->
                 {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
-                Body = jsx:decode(BodyPart1, [return_maps]),
+                Body = try jsx:decode(BodyPart1, [return_maps]) of
+                           NewBody ->
+                               nebula2_db:marshall(NewBody)
+                       catch
+                           error:badarg ->
+                               throw(badjson)
+                       end,
                 lager:debug("Body json: ~p", [Body]),
-                NewBody = maps:put(<<"value">>, BodyPart2, Body),
-                case maps:get(<<"exists">>, EnvMap) of
+                NewBody2 = nebula2_utils:put_value(<<"value">>, BodyPart2, Body),
+                case nebula2_utils:get_value(<<"exists">>, EnvMap) of
                     true ->
-                        ObjectId = maps:get(<<"objectID">>, maps:get(<<"object_map">>, EnvMap)),
-                        nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody);
+                        ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
+                        nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody2);
                     false ->
                         
-                        nebula2_dataobjects:new_dataobject(Req, State, NewBody)
+                        nebula2_dataobjects:new_dataobject(Req, State, NewBody2)
             end
         end
     catch
@@ -347,7 +366,7 @@ is_authorized_handler(AuthString, Req, State) ->
             {{false, "Basic realm=\"default\""}, Req, State};
         true ->
             {Pid, EnvMap} = State,
-            NewEnvMap = maps:put(<<"auth_as">>, list_to_binary(UserId), EnvMap),
+            NewEnvMap = nebula2_utils:put_value(<<"auth_as">>, list_to_binary(UserId), EnvMap),
             {true, Req, {Pid, NewEnvMap}}
     end.
 
@@ -356,8 +375,8 @@ is_conflict(Req, State) ->
     {false, Req, State}.
 %%    {_Pid, EnvMap} = State,
 %%    % lager:debug("Entry is_conflict: ~p", [EnvMap]),
-%%    Method = maps:get(<<"method">>, EnvMap),
-%%    Exists = maps:get(<<"exists">>, EnvMap),
+%%    Method = nebula2_utils:get_value(<<"method">>, EnvMap),
+%%    Exists = nebula2_utils:get_value(<<"exists">>, EnvMap),
 %%    Conflicts = handle_is_conflict(Method, Exists),
 %%    {Conflicts, Req, State}.
 %%handle_is_conflict(<<"PUT">>, Exists) ->
@@ -398,7 +417,7 @@ malformed_request(Req, State) ->
 moved_permanently(Req, State) ->
     lager:debug("Entry"),
     {_Pid, EnvMap} = State,
-    Moved = maps:get(<<"moved_permanently">>, EnvMap, false),
+    Moved = nebula2_utils:get_value(<<"moved_permanently">>, EnvMap, false),
     {Moved, Req, State}.
 
 %% Has the resource has moved, temporarily?
@@ -416,53 +435,68 @@ multiple_choices(Req, State) ->
 previously_existed(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)) ++ "/",
-    ObjectName = binary_to_list(maps:get(<<"objectName">>, EnvMap)) ++ "/",
-    EnvMap2 = maps:update(<<"objectName">>, list_to_binary(ObjectName), EnvMap),
-    EnvMap3 = maps:update(<<"path">>, list_to_binary(Path), EnvMap2),
-    State2 = {Pid, EnvMap3},
-    {Response, Req3, State3} = resource_exists(Req, State2),
-    {Pid, EnvMap4} = State3,
-    EnvMap5 = case Response of 
-                true ->
-                    maps:put(<<"moved_permanently">>, {true, Path}, EnvMap4);
-                false ->
-                    maps:put(<<"moved_permanently">>, false, EnvMap4)
-              end,
-    {Response, Req3, {Pid, EnvMap5}}.
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    case [lists:last(binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)))] of
+        "/" ->
+            lager:debug("Exit1: EnvMap: ~p", [EnvMap]),
+            {false, Req, State};
+        Other ->
+            lager:debug("Other: ~p", [Other]),
+            Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)) ++ "/",
+            ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) ++ "/",
+            EnvMap2 = maps:update(<<"objectName">>, list_to_binary(ObjectName), EnvMap),
+            EnvMap3 = maps:update(<<"path">>, list_to_binary(Path), EnvMap2),
+            State2 = {Pid, EnvMap3},
+            {Response, Req3, State3} = resource_exists(Req, State2),
+            {Pid, EnvMap4} = State3,
+            EnvMap5 = case Response of 
+                        true ->
+                            nebula2_utils:put_value(<<"moved_permanently">>, {true, Path}, EnvMap4);
+                        false ->
+                            nebula2_utils:put_value(<<"moved_permanently">>, false, EnvMap4)
+                      end,
+            lager:debug("Exit2: EnvMap: ~p", [EnvMap5]),
+            {Response, Req3, {Pid, EnvMap5}}
+    end.
 
 %% Does the resource exist?
 resource_exists(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    ParentURI = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)),
     lager:debug("EnvMap: ~p", [EnvMap]),
-    ParentURI = binary_to_list(maps:get(<<"parentURI">>, EnvMap)),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,
-    NewEnvMap2 = maps:put(<<"exists">>, Response, NewEnvMap),
+    lager:debug("NewEnvMap: ~p", [NewEnvMap]),
+    NewEnvMap2 = nebula2_utils:put_value(<<"exists">>, Response, NewEnvMap),
+    lager:debug("NewEnvMap2: ~p", [NewEnvMap2]),
+    lager:debug("Exit: Response: ~p", [Response]),
     {Response, NewReq, {Pid, NewEnvMap2}}.
 
 resource_exists_handler("/cdmi_objectid/", Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Oid = binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    Oid = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     case nebula2_db:read(Pid, Oid) of
         {error, _Status} ->
             {false, Req, State};
         {ok, Data} ->
-            {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}}
+            nebula2_utils:set_cache(Data),
+            {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}}
     end;
 resource_exists_handler(_, Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case Path of
         "/" ->
             {true, Req, State};
         _ ->
+            Sk = nebula2_utils:make_search_key(EnvMap),
+            lager:debug("SearchKey: ~p", [Sk]),
             case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
                 {ok, Data} ->
-                    {true, Req, {Pid, maps:put(<<"object_map">>, Data, EnvMap)}};
+                    {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
                 _ ->
                     {false, Req, State}
             end
@@ -500,8 +534,8 @@ to_cdmi_domain(Req, State) ->
 to_cdmi_object(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
-    Response = to_cdmi_object_handler(Req, State, Path, binary_to_list(maps:get(<<"parentURI">>, EnvMap))),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+    Response = to_cdmi_object_handler(Req, State, Path, binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap))),
     pooler:return_member(riak_pool, Pid),
     Response.
 
@@ -509,47 +543,50 @@ to_cdmi_object(Req, State) ->
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Oid = binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    Oid = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     case nebula2_db:read(Pid, Oid) of
-        {ok, Map} ->
-            Data = list_to_binary(jsx:encode(Map)),
-            {Data, Req, State};
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
         {error, Status} -> 
             {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
     end;
 to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
-        {ok, Map} ->
-            Data = jsx:encode(Map),
-            {Data, Req, State};
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
     end;
 to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
-        {ok, Map} ->
-            Data = jsx:encode(Map),
-            {Data, Req, State};
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
         {error, Status} ->
             {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}, Req]), State}
     end;
 to_cdmi_object_handler(Req, State, _, _) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
         {ok, Map} ->
             {_, EnvMap} = State,
-            Qs = binary_to_list(maps:get(<<"qs">>, EnvMap)),
+            Qs = binary_to_list(nebula2_utils:get_value(<<"qs">>, EnvMap)),
             Map2 = handle_query_string(Map, Qs),
             CList = [<<"cdmi_atime">>,
                      <<"cdmi_acount">>],
             Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
-            Data = jsx:encode(Map3),
-            {Data, Req, State};
+            nebula2_utils:set_cache(Map3),
+            {jsx:encode(nebula2_db:unmarshall(Map3)), Req, State};
         {error, Status} ->
             lager:debug("Status: ~p", [Status]),
             lager:debug("State: ~p", [State]),
@@ -572,23 +609,23 @@ basic(Auth, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
     [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
-    DomainUri = maps:get(<<"domainURI">>, EnvMap),
+    DomainUri = nebula2_utils:get_value(<<"domainURI">>, EnvMap),
     Domain = nebula2_utils:get_domain_hash(DomainUri),
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     lager:debug("SearchKey: ~p", [SearchKey]),
     Result = case nebula2_db:search(SearchKey, State) of
-                 {ok, Json} ->
-                     {true, Json};
-                 {error, _Status} ->
-                     false
+                {ok, Json} ->
+                    {true, Json};
+                {error, _Status} ->
+                    false
              end,
     case Result of
         false ->
             {false, ""};
         {true, Data} ->
-            Value = maps:get(<<"value">>, Data),
+            Value = nebula2_utils:get_value(<<"value">>, Data),
             VMap = jsx:decode(Value, [return_maps]),
-            Creds = binary_to_list(maps:get(<<"cdmi_member_credentials">>, VMap)),
+            Creds = binary_to_list(nebula2_utils:get_value(<<"cdmi_member_credentials">>, VMap)),
             basic_auth_handler(Creds, UserId, Password)
     end.
 
@@ -610,6 +647,15 @@ get_domain(Maps, HostUrl) ->
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
 
+-spec get_parent(binary(), string(), {pid(), map()}) -> {ok | error, map() | term()}.
+get_parent(ParentUri, Domain, State) ->
+    case ParentUri of
+        <<>> ->
+            {error, notfound};
+        Uri ->
+            nebula2_db:search(Domain ++ binary_to_list(Uri), State)
+    end.
+
 %% @doc Handle query string
 -spec handle_query_string(map(), term()) -> map().
 handle_query_string(Data, <<>>) ->
@@ -630,12 +676,12 @@ map_build([H|T], Map, NewMap) ->
     FieldName = list_to_binary(lists:nth(1, QueryItem)),
     Data = case length(QueryItem) of
                1 ->
-                   maps:get(FieldName, Map, "");
+                   nebula2_utils:get_value(FieldName, Map, "");
                2 ->
                    lager:debug("FieldName: ~p", [FieldName]),
                    map_build_get_data(FieldName, lists:nth(2, QueryItem), Map)
            end,
-    NewMap2 = maps:put(FieldName, Data, NewMap),
+    NewMap2 = nebula2_utils:put_value(FieldName, Data, NewMap),
     map_build(T, Map, NewMap2).
 
 map_build_get_data(<<"children">>, Range, Map) ->
@@ -643,14 +689,14 @@ map_build_get_data(<<"children">>, Range, Map) ->
     {Start, _} = string:to_integer(S),
     {End, _} = string:to_integer(E),
     Num = End - Start + 1,
-    Data = maps:get(<<"children">>, Map, ""),
+    Data = nebula2_utils:get_value(<<"children">>, Map, ""),
     lists:sublist(Data, (Start+1), Num);
 map_build_get_data(<<"metadata">>, MDField, Map) ->
     lager:debug("MDField: %p", [MDField]),
-    MetaData = maps:get(<<"metadata">>, Map, ""),
-    maps:get(list_to_binary(MDField), MetaData, "");
+    MetaData = nebula2_utils:get_value(<<"metadata">>, Map, ""),
+    nebula2_utils:get_value(list_to_binary(MDField), MetaData, "");
 map_build_get_data(FieldName, _, Map) ->
-    maps:get(FieldName, Map, "").
+    nebula2_utils:get_value(FieldName, Map, "").
 
 %% @doc Map the domain URI
 -spec map_domain_uri(pid(), string()) -> string().
