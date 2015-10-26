@@ -52,7 +52,6 @@ rest_init(Req, _State) ->
     {ReqPath, Req7}     = cowboy_req:path(Req6),
     {AcceptType, Req8}  = cowboy_req:header(<<"accept">>, Req7),
     {Qs, Req9}          = cowboy_req:qs(Req8),
-    
     Url_S      = binary_to_list(Url),
     HostUrl_S  = binary_to_list(HostUrl),
     P          = string:tokens(binary_to_list(ReqPath), "/"),
@@ -69,7 +68,12 @@ rest_init(Req, _State) ->
     Map4  = nebula2_utils:put_value(<<"hosturl">>, HostUrl, Map3),
     Map5  = nebula2_utils:put_value(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
     Map6  = nebula2_utils:put_value(<<"domainURI">>, list_to_binary(map_domain_uri(PoolMember, HostUrl_S)), Map5),
-    DomainUri = nebula2_utils:get_value(<<"domainURI">>, Map6),
+    DomainUri = case nebula2_utils:beginswith(Path, "/cdmi_capabilities/") of
+                    true ->
+                        <<"">>;
+                    false ->
+                        nebula2_utils:get_value(<<"domainURI">>, Map6)
+                end,
     Map7  = nebula2_utils:put_value(<<"parentURI">>, ParentURI, Map6),
     Map8  = nebula2_utils:put_value(<<"objectName">>, list_to_binary(ObjectName), Map7),
     Map9  = nebula2_utils:put_value(<<"content-type">>, ContentType, Map8),
@@ -77,7 +81,6 @@ rest_init(Req, _State) ->
     Map11 = nebula2_utils:put_value(<<"qs">>, Qs, Map10),
     NoDomain = nebula2_utils:get_domain_hash(<<"">>),
     SysCapKey = NoDomain ++ "/cdmi_capabilities/",
-    lager:debug("Getting Capabilities"),
     SysCap = case nebula2_db:search(SysCapKey, {PoolMember, Map11}) of 
                 {ok, SystemCapabilities} ->
                     Cap = nebula2_utils:get_value(<<"capabilities">>, SystemCapabilities, maps:new()),
@@ -85,16 +88,15 @@ rest_init(Req, _State) ->
                 _ ->
                     maps:new()
             end,
-    lager:debug("Got Capabilities"),
     Map12 = nebula2_utils:put_value(<<"system_capabilities">>, SysCap, Map11),
-
-    DomainHash = nebula2_utils:get_domain_hash(DomainUri),
-    lager:debug("Domain Hash: ~p", [DomainHash]),
-    Parent = case ParentURI of
-                 <<>> ->
-                     {error, notfound};
-                 U ->
-                    nebula2_db:search(DomainHash ++ binary_to_list(U), {PoolMember, Map12})
+    DomainHash =  nebula2_utils:get_domain_hash(DomainUri),
+    lager:debug("DomainUri: ~p", [DomainUri]),
+    SystemDomainHash =  nebula2_utils:get_domain_hash(<<"/cdmi_domains/system_domain/">>),
+    Parent = if
+                 Path == "/cdmi_capabilities/" ->
+                     get_parent(ParentURI, SystemDomainHash, {PoolMember, Map12});
+                 true ->
+                     get_parent(ParentURI, DomainHash, {PoolMember, Map12})
              end,
     Map13 = nebula2_utils:put_value(<<"is_envmap">>, true, Map12),
 
@@ -644,6 +646,15 @@ get_domain(Maps, HostUrl) ->
     {ok, UrlParts} = http_uri:parse(HostUrl),
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
+
+-spec get_parent(binary(), string(), {pid(), map()}) -> {ok | error, map() | term()}.
+get_parent(ParentUri, Domain, State) ->
+    case ParentUri of
+        <<>> ->
+            {error, notfound};
+        Uri ->
+            nebula2_db:search(Domain ++ binary_to_list(Uri), State)
+    end.
 
 %% @doc Handle query string
 -spec handle_query_string(map(), term()) -> map().

@@ -126,9 +126,12 @@ delete_cache(Oid) ->
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
             SearchKey = newbula2_utils:make_search_key(Data),
-            mcd:delete(?MEMCACHE, SearchKey),
-            mcd:delete(?MEMCACHE, Oid);
-        _ ->
+            DSK = mcd:delete(?MEMCACHE, SearchKey),
+            lager:debug("DSK: ~p", [DSK]),
+            DOID = mcd:delete(?MEMCACHE, Oid),
+            lager:debug("Doid: ~p", [DOID]);
+        Response ->
+            lager:debug("Response: ~p", [Response]),
             {error, notfound}
     end.
 
@@ -297,6 +300,7 @@ make_search_key(Data) ->
                                 end
                         end;
                     true ->
+                        lager:debug("Making key for capabilities"),
                         <<"">>
                 end,
     lager:debug("Path: ~p", [Path]),
@@ -327,8 +331,11 @@ set_cache(Data) ->
     SearchKey = nebula2_utils:make_search_key(Data),
     lager:debug("SearchKey: ~p", [SearchKey]),
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
-    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
-    mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
+    Soid = mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    lager:debug("Soid: ~p", [Soid]),
+    SSK = mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY),
+    lager:debug("SSK: ~p", [SSK]),
+    SSK.
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
@@ -361,6 +368,7 @@ update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     ok;
 update_parent(ParentId, Path, ObjectType, Pid) ->
     lager:debug("Entry"),
+    lager:debug("Path: ~p", [Path]),
     N = case length(string:tokens(Path, "/")) of
             0 ->
                 "";
@@ -525,7 +533,17 @@ get_capability_uri(ObjectType) ->
 get_cache(Key) when is_list(Key) ->
     get_cache(list_to_binary(Key));
 get_cache(Key) when is_binary(Key) ->
-    mcd:get(?MEMCACHE, Key).
+    lager:debug("Cache Key: ~p", [Key]),
+    case mcd:get(?MEMCACHE, Key) of
+        {ok, Data} ->
+            lager:debug("Data: ~p", [Data]),
+            {ok, Data};
+        Response ->
+            lager:debug("Response: ~p", [Response]),
+            Response
+    end.
+%get_cache(_) -> 
+%    {error, notfound}.
 
 -spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->
