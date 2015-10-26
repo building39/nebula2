@@ -157,13 +157,20 @@ delete_resource(Req, State) ->
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
         true ->
-            nebula2_domains:delete_domain(Req, State);
+            case nebula2_domains:delete_domain(Req, State)of
+                ok ->
+                    lager:debug("deleted domain"),
+                    {true, Req, State};
+                _O ->
+                    lager:debug("domain delete failed: ~p", [_O]),
+                    bail(403, <<"Cannot delete this domain\n">>, Req, State)
+                end;
         false ->
             case nebula2_utils:delete(State) of
                 ok ->
                     {true, Req, State};
                 _ ->
-                    {false, Req, State}
+                    bail(409, <<"Delete failed\n">>, Req, State)
             end
     end.
 
@@ -180,19 +187,19 @@ forbidden(Req, State) ->
 from_cdmi_capability(Req, State) ->
     lager:debug("Entry"),
     {_Pid, EnvMap} = State,
-	try
-	    case nebula2_utils:get_value(<<"exists">>, EnvMap) of
-	        true ->
-	            ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
-	            nebula2_capabilities:update_capability(Req, State, ObjectId);
-	        false ->
-	            nebula2_capabilities:new_capability(Req, State)
-	    end
-	catch
-		throw:badjson ->
-			bail(400, <<"bad json\n">>, Req, State);
-		throw:badencoding ->
-			bail(400, <<"bad encoding\n">>, Req, State)
+    try
+        case nebula2_utils:get_value(<<"exists">>, EnvMap) of
+            true ->
+                ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
+                nebula2_capabilities:update_capability(Req, State, ObjectId);
+            false ->
+                nebula2_capabilities:new_capability(Req, State)
+        end
+    catch
+        throw:badjson ->
+            bail(400, <<"bad json\n">>, Req, State);
+        throw:badencoding ->
+            bail(400, <<"bad encoding\n">>, Req, State)
 	end.
 
 from_cdmi_container(Req, State) ->

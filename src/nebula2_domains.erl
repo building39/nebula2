@@ -26,34 +26,36 @@
 delete_domain(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
-    EnvMap2 = nebula2_utils:put_value(<<"domainURI">>, Path, EnvMap),
-    State2 = {Pid, EnvMap2},    %% Domain URI is the path for new domains.
-    SearchKey = nebula2_utils:get_domain_hash(Path) ++ Path,
-    {ok, Data} = nebula2_db:search(SearchKey, State2),
-    lager:debug("Data: ~p", [Data]),
-    Oid = nebula2_utils:get_value(<<"objectID">>, Data),
-    lager:debug("Oid: ~p", [Oid]),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
-    lager:debug("Metadata: ~p", [Metadata]),
-    ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
-    lager:debug("ReassignTo: ~p", [ReassignTo]),
-    case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
-        nil ->
-            Children =  nebula2_utils:get_value(<<"children">>, Data, []),
-            %% TODO: check for existence of child domains and domain members before deleting.
-            case Children of
-                [] ->
-                    ok = nebula2_utils:delete_child_from_parent(Pid,
-                                                                nebula2_utils:get_value(<<"parentID">>, Data),
-                                                                nebula2_utils:get_value(<<"objectName">>, Data)),
-                    handle_delete(nebula2_db:delete(Pid, Oid), Req, State2);
-                _ ->
-                    {error, 400}
+    case binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) == "system_domain/" of
+        false ->
+            Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+            EnvMap2 = nebula2_utils:put_value(<<"domainURI">>, Path, EnvMap),
+            State2 = {Pid, EnvMap2},    %% Domain URI is the path for new domains.
+            SearchKey = nebula2_utils:get_domain_hash(Path) ++ Path,
+            {ok, Data} = nebula2_db:search(SearchKey, State2),
+            Oid = nebula2_utils:get_value(<<"objectID">>, Data),
+            Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
+            ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
+            case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
+                nil ->
+                    Children =  nebula2_utils:get_value(<<"children">>, Data, []),
+                    %% TODO: check for existence of child domains and domain members before deleting.
+                    case Children of
+                        [] ->
+                            ok = nebula2_utils:delete_child_from_parent(Pid,
+                                                                        nebula2_utils:get_value(<<"parentID">>, Data),
+                                                                        nebula2_utils:get_value(<<"objectName">>, Data)),
+                            handle_delete(nebula2_db:delete(Pid, Oid), Req, State2);
+                        _ ->
+                            {error, 400}
+                    end;
+                ReassignTo ->
+                    %% TODO: Implement cdmi_domain_delete_reassign.
+                    {error, 501}
             end;
-        ReassignTo ->
-            %% TODO: Implement cdmi_domain_delete_reassign.
-            {error, 501}
+        true ->
+            lager:error("Cannot delete system domain!"),
+            {error, 400}
     end.
 
 %% @doc Create a new CDMI domain
