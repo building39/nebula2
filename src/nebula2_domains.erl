@@ -80,7 +80,8 @@ new_domain(Req, State) ->
     lager:debug("Body2: ~p", [Body2]),
     case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
         {true, Data} ->
-            case new_member_and_summary_containers(State, SearchKey) of
+            Containers = [<<"cdmi_domain_members/">>, <<"cdmi_domain_summary/">>],
+            case new_member_and_summary_containers(State, SearchKey, Containers) of
                 true ->
                     Data2 = nebula2_db:unmarshall(Data),
                     {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
@@ -108,15 +109,17 @@ handle_delete({error, _Error}, Req, State) ->
     lager:debug("Entry"),
     {false, Req, State}.
 
--spec new_member_and_summary_containers(cdmi_state(), string()) -> boolean().
-new_member_and_summary_containers(State, SearchKey) ->
+-spec new_member_and_summary_containers(cdmi_state(), string(), list()) -> boolean().
+new_member_and_summary_containers(State, SearchKey, Containers) ->
     lager:debug("Entry"),
     lager:debug("Search Key: ~p", [SearchKey]),
     {ok, Parent} = nebula2_db:search(SearchKey, State),
-    Containers = [<<"cdmi_domain_members/">>, <<"cdmi_domain_summary/">>],
     case new_containers(State, SearchKey, Parent, Containers, {}) of
         true ->
-            new_summary_containers(State, SearchKey);
+            Containers2 = [<<"daily/">>, <<"weekly/">>, <<"monthly/">>, <<"yearly/">>],
+            SearchKey2 = SearchKey ++ "cdmi_domain_summary/",
+            {ok, Parent2} = nebula2_db:search(SearchKey2, State),
+            new_containers(State, SearchKey, Parent2, Containers2, {});
         false ->
             false
     end.
@@ -142,6 +145,7 @@ new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
                           {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
                          ]),
     lager:debug("Marshalling..."),
+    lager:debug("Data: ~p", [Data]),
     Data2 = nebula2_db:marshall(Data),
     lager:debug("marshalling done."),
     {Pid, _} = State,
@@ -158,20 +162,6 @@ new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
             lager:debug("new container create failed: ~p", [_Other]),
             new_containers(State, SearchKey, Parent, [], false)
     end.
-
--spec new_summary_containers(cdmi_state(), binary()) -> boolean().
-new_summary_containers(State, _SearchKey) ->
-    lager:debug("Entry"),
-    Summaries = ["daily", "weekly", "monthly", "yearly"],
-    new_summary_container(State, [], Summaries),
-    true.
-
-new_summary_container(_State, [], Response) ->
-    lager:debug("Entry"),
-    Response;
-new_summary_container(State, [H|T], Response) ->
-    H,
-    new_summary_container(State, T, Response).
 
 %% ====================================================================
 %% eunit tests
