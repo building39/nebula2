@@ -42,6 +42,9 @@ delete_domain(Req, State) ->
         nil ->
             case nebula2_utils:get_value(<<"children">>, Data, []) of
                 [] ->
+                    ok = nebula2_utils:delete_child_from_parent(Pid,
+                                                                nebula2_utils:get_value(<<"parentID">>, Data),
+                                                                nebula2_utils:get_value(<<"objectName">>, Data)),
                     handle_delete(nebula2_db:delete(Pid, Oid), Req, State2);
                 _ ->
                     {error, 400}
@@ -55,14 +58,19 @@ delete_domain(Req, State) ->
 -spec nebula2_domains:new_domain(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_domain(Req, State) ->
     lager:debug("Entry"),
-    {_Pid, EnvMap} = State,
-    DomainName = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)) ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
+    {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    DomainName = maps:get(<<"path">>, EnvMap),  %% A domain always belongs to itself.
+    SearchKey = nebula2_utils:get_domain_hash(DomainName) ++ binary_to_list(DomainName),
+    EM2 = maps:put(<<"domainURI">>, DomainName, EnvMap),
+    EM3 = maps:put(<<"searchKey">>, SearchKey, EM2),
+    State2 = {Pid, EM3},
     lager:debug("Domain name: ~p", [DomainName]),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
     {ok, Body, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(Body, [return_maps]) of
                 NewBody ->
-                    nebula2_db:marshall(NewBody)
+                    nebula2_db:marshall(NewBody, SearchKey)
             catch
                 error:badarg ->
                     throw(badjson)
@@ -71,12 +79,18 @@ new_domain(Req, State) ->
     Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
                    {true, Req3, Data} ->
                        Data2 = nebula2_db:unmarshall(Data),
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State};
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req3), State2};
                    false ->
-                       {false, Req2, State}
+                       {false, Req2, State2}
                end,
-    Response.
-    
+    {Success, Req4, State4} = Response,
+    Resp2 = case Success of
+                true ->
+                    new_member_and_summary_containers(Req4, State4);
+                false ->
+                    Response
+            end,
+    Resp2.
 
 %% @doc Update a CDMI domain
 -spec nebula2_domains:update_domain(pid(), object_oid(), map()) -> {ok, json_value()}.
@@ -89,11 +103,17 @@ update_domain(_Pid, _ObjectId, Data) ->
 %% Internal functions
 %% ====================================================================
 handle_delete(ok, Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {true, Req, State};
 handle_delete({error, _Error}, Req, State) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     {false, Req, State}.
+
+-spec new_member_and_summary_containers(cowboy_req:req(), cdmi_state()) ->
+          {boolean(), cowboy_req:req(), cdmi_state()}.
+new_member_and_summary_containers(Req, State) ->
+    lager:debug("Entry"),
+    {true, Req, State}.
 
 %% ====================================================================
 %% eunit tests

@@ -14,6 +14,7 @@
          delete/2,
          get_domain_maps/1,
          marshall/1,
+         marshall/2,
          read/2,
          search/2,
          unmarshall/1,
@@ -73,10 +74,15 @@ get_domain_maps(Pid) ->
 -spec marshall(map()) -> map().
 marshall(Data) ->
     lager:debug("Entry"),
+    SearchKey = nebula2_utils:make_search_key(Data),
+    marshall(Data, SearchKey).
+
+-spec marshall(map(), binary()) -> map().
+marshall(Data, SearchKey) ->
+    lager:debug("Entry"),
     Data2 = maps:new(),
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
     Data3 = nebula2_utils:put_value(<<"k">>, ObjectId, Data2),
-    SearchKey = nebula2_utils:make_search_key(Data),
     Data4 = nebula2_utils:put_value(<<"sp">>, SearchKey, Data3),
     maps:put(<<"cdmi">>, Data, Data4).
 

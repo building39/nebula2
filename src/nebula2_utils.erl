@@ -130,6 +130,8 @@ delete_child_from_parent(Pid, ParentId, Name) ->
     lager:debug("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
     Children = nebula2_utils:get_value(<<"children">>, Parent, ""),
+    lager:debug("Children: ~p", [Children]),
+    lager:debug("Name: ~p", [Name]),
     NewParent1 = case Children of
                      [] ->
                          maps:remove(<<"children">>, Parent);
@@ -144,6 +146,7 @@ delete_child_from_parent(Pid, ParentId, Name) ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          nebula2_utils:put_value(<<"childrenrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
+    lager:debug("NewParent2: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% @doc Extract the Parent URI from the path.
