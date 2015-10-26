@@ -450,6 +450,7 @@ previously_existed(Req, State) ->
 resource_exists(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
     ParentURI = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,
@@ -470,12 +471,17 @@ resource_exists_handler("/cdmi_objectid/", Req, State) ->
 resource_exists_handler(_, Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+    ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
     case Path of
         "/" ->
             {true, Req, State};
         _ ->
-            case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
+            lager:debug("ObjectName: ~p", [ObjectName]),
+            SearchKey = nebula2_utils:make_search_key(EnvMap),
+            lager:debug("Search Key: ~p", [SearchKey]),
+            case nebula2_db:search(SearchKey, State) of
                 {ok, Data} ->
                     {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
                 _ ->

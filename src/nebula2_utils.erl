@@ -291,8 +291,14 @@ make_search_key(Data) ->
                                 case Path == "/cdmi_domains/" of
                                     true ->     %% always belongs to /cdmi/system_domain
                                         <<"/cdmi_domains/system_domain/">>; 
-                                    false ->    %% a domain always belongs to itself.
-                                        list_to_binary(Path)
+                                    false ->
+                                        ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)),
+                                        case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
+                                            true ->
+                                                get_domain_from_path(Path);
+                                            false -> %% a domain always belongs to itself.
+                                                list_to_binary(Path)
+                                        end
                                 end
                         end;
                     true ->
@@ -303,9 +309,9 @@ make_search_key(Data) ->
 %%     lager:debug("ObjectName: ~p", [ObjectName]),
 %%     lager:debug("DomainUri: ~p", [DomainUri]),
 %%     lager:debug("ParentUri: ~p", [ParentUri]),
-    Domain = get_domain_hash(DomainUri),
+    DomainHash = get_domain_hash(DomainUri),
 %%    lager:debug("Hashed domain: ~p", [Domain]),
-    Key = Domain ++ ParentUri ++ ObjectName,
+    Key = DomainHash ++ ParentUri ++ ObjectName,
 %%   lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
 
@@ -512,15 +518,19 @@ get_cache(Key) when is_binary(Key) ->
     lager:debug("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
         {ok, Data} ->
-            lager:debug("Data: ~p", [Data]),
             {ok, Data};
         Response ->
-            lager:debug("Response: ~p", [Response]),
             Response
     end.
 %get_cache(_) -> 
 %    {error, notfound}.
 
+get_domain_from_path(Path) ->
+    lager:debug("Entry"),
+    Parts = string:tokens(Path, "/"),
+    DomainParts = lists:takewhile(fun(X) -> true /= nebula2_utils:beginswith(X, "cdmi_domain_") end, Parts),
+    "/" ++ string:join(DomainParts, "/") ++ "/".
+  
 -spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->
     get_domain_hash(list_to_binary(Domain));
