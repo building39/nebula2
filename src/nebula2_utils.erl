@@ -118,9 +118,9 @@ delete_cache(Oid) ->
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
             SearchKey = newbula2_utils:make_search_key(Data),
-            DSK = mcd:delete(?MEMCACHE, SearchKey),
-            DOID = mcd:delete(?MEMCACHE, Oid),
-        Response ->
+            mcd:delete(?MEMCACHE, SearchKey),
+            mcd:delete(?MEMCACHE, Oid);
+        _Response ->
             {error, notfound}
     end.
 
@@ -319,9 +319,8 @@ set_cache(Data) ->
     lager:debug("Entry"),
     SearchKey = nebula2_utils:make_search_key(Data),
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
-    Soid = mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
-    SSK = mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY),
-    SSK.
+    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().

@@ -27,20 +27,27 @@ delete_domain(Req, State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
-    lager:debug("Path: ~p", [Path]),
-    Data = nebula2_db:search(Path, State),
+    EnvMap2 = nebula2_utils:put_value(<<"domainURI">>, Path, EnvMap),
+    State2 = {Pid, EnvMap2},    %% Domain URI is the path for new domains.
+    SearchKey = nebula2_utils:get_domain_hash(Path) ++ Path,
+    {ok, Data} = nebula2_db:search(SearchKey, State2),
+    lager:debug("Data: ~p", [Data]),
     Oid = nebula2_utils:get_value(<<"objectID">>, Data),
+    lager:debug("Oid: ~p", [Oid]),
     Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
+    lager:debug("Metadata: ~p", [Metadata]),
     ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
+    lager:debug("ReassignTo: ~p", [ReassignTo]),
     case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
         nil ->
             case nebula2_utils:get_value(<<"children">>, Data, []) of
                 [] ->
-                    handle_delete(nebula2_db:delete(Pid, Oid), Req, State);
+                    handle_delete(nebula2_db:delete(Pid, Oid), Req, State2);
                 _ ->
                     {error, 400}
             end;
         ReassignTo ->
+            %% TODO: Implement cdmi_domain_delete_reassign.
             {error, 501}
     end.
 

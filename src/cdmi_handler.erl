@@ -429,7 +429,7 @@ previously_existed(Req, State) ->
     case [lists:last(binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)))] of
         "/" ->
             {false, Req, State};
-        Other ->
+        _Other ->
             Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)) ++ "/",
             ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) ++ "/",
             EnvMap2 = maps:update(<<"objectName">>, list_to_binary(ObjectName), EnvMap),
@@ -475,7 +475,6 @@ resource_exists_handler(_, Req, State) ->
         "/" ->
             {true, Req, State};
         _ ->
-            Sk = nebula2_utils:make_search_key(EnvMap),
             case nebula2_db:search(nebula2_utils:make_search_key(EnvMap), State) of
                 {ok, Data} ->
                     {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
