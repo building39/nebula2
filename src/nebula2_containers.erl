@@ -22,11 +22,14 @@
         when Req::cowboy_req:req().
 new_container(Req, State) ->
     lager:debug("Entry"),
+    {_, EnvMap} = State,
+    Domain = nebula2_utils:get_value(<<"domainURI">>, EnvMap),
+    lager:debug("Domain: ~p", [Domain]),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     {ok, Body, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(Body, [return_maps]) of
                 NewBody ->
-                    nebula2_db:marshall(NewBody)
+                    NewBody
             catch
                 error:badarg ->
                     throw(badjson)
@@ -45,8 +48,7 @@ new_container(Req, State) ->
 update_container(Req, State, Oid) ->
     lager:debug("Entry"),
     {Pid, _} = State,
-    {ok, B, Req2} = cowboy_req:body(Req),
-    Body = nebula2_db:marshall(B),
+    {ok, Body, Req2} = cowboy_req:body(Req),
     NewData = try jsx:decode(Body, [return_maps]) of
                   NewBody -> NewBody
               catch
@@ -64,7 +66,8 @@ update_container(Req, State, Oid) ->
              <<"cdmi_acount">>,
              <<"cdmi_mcount">>],
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
-    Response = case nebula2_db:update(Pid, Oid, Data3) of
+    Data4 = nebula2_db:marshall(Data3),
+    Response = case nebula2_db:update(Pid, Oid, Data4) of
                    ok ->
                        {true, Req2, State};
                    _  ->

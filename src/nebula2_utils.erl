@@ -449,7 +449,6 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
     OldMetadata = nebula2_utils:get_value(<<"metadata">>, Body, maps:new()),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
-    CdmiData = maps:get(<<"cdmi">>, Data),
     Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, Oid},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
@@ -459,7 +458,7 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                                        {<<"domainURI">>, DomainName},
                                        {<<"completionStatus">>, <<"Complete">>},
                                        {<<"metadata">>, Metadata3}]),
-                      CdmiData),
+                      Data),
     Data3 = case maps:is_key(<<"value">>, Data2) of
                 true ->
                     case maps:is_key(<<"valuetransferencoding">>, Data2) of

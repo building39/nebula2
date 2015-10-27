@@ -59,13 +59,17 @@ get_domain_maps(Pid) ->
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
             lager:debug("1 Cache Hit: Path: ~p", [Path]),
-            nebula2_utils:get_value(<<"value">>, Data, <<"[]">>);
+            D = nebula2_utils:get_value(<<"value">>, Data, <<"[]">>),
+            lager:debug("Found domain maps: ~p", [D]),
+            D;
         _ ->
             lager:debug("1 Cache Miss: ~p", [Path]),
             case Mod:get_domain_maps(Pid, Path) of
                 {ok, DomainMaps} ->
                     nebula2_utils:set_cache(DomainMaps),
-                    nebula2_utils:get_value(<<"value">>, DomainMaps, <<"[]">>);
+                    D = nebula2_utils:get_value(<<"value">>, DomainMaps, <<"[]">>),
+                    lager:debug("Found domain maps: ~p", [D]),
+                    D;
                 _ ->
                     <<"[]">>
             end
@@ -77,7 +81,9 @@ marshall(Data) ->
     SearchKey = nebula2_utils:make_search_key(Data),
     marshall(Data, SearchKey).
 
--spec marshall(map(), binary()) -> map().
+-spec marshall(map(), binary() | list) -> map().
+marshall(Data, SearchKey) when is_list(SearchKey) ->
+    marshall(Data, list_to_binary(SearchKey));
 marshall(Data, SearchKey) ->
     lager:debug("Entry"),
     lager:debug("SearchKey: ~p", [SearchKey]),

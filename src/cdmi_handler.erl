@@ -18,7 +18,7 @@
          from_cdmi_container/2,
          from_cdmi_domain/2,
          from_cdmi_object/2,
-		 from_multipart_mixed/2,
+         from_multipart_mixed/2,
          forbidden/2,
          generate_etag/2,
          is_authorized/2,
@@ -59,8 +59,16 @@ rest_init(Req, _State) ->
     ParentURI  = nebula2_utils:get_parent_uri(Path),
     Parts      = string:tokens(Path, "/"),
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
+    SysDomainHash = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
     Map   = maps:new(),
-    Map2  = nebula2_utils:put_value(<<"method">>, Method, Map),
+    Map2 = case nebula2_db:search(SysDomainHash ++ ?SYSTEM_DOMAIN_URI, {PoolMember, Map}) of
+                {ok, Root} ->
+                    Map1  = nebula2_utils:put_value(<<"root_oid">>, nebula2_utils:get_value(<<"objectID">>, Root), Map),
+                    nebula2_utils:put_value(<<"method">>, Method, Map1);
+                _ ->
+                    %% This case should only happen on bootstrap.
+                    nebula2_utils:put_value(<<"method">>, Method, Map)
+           end,
     Map3  = nebula2_utils:put_value(<<"url">>, Url, Map2),
     Map4  = nebula2_utils:put_value(<<"hosturl">>, HostUrl, Map3),
     Map5  = nebula2_utils:put_value(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present
@@ -261,7 +269,7 @@ from_cdmi_object(Req, State) ->
                 {ok, Body, Req2} = cowboy_req:body(Req),
                 Body2 = try jsx:decode(Body, [return_maps]) of
                             NewBody ->
-                                nebula2_db:marshall(NewBody)
+                                NewBody
                         catch
                             error:badarg ->
                                 throw(badjson)
@@ -309,7 +317,7 @@ from_multipart_mixed(Req, State, ok) ->
                 {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
                 Body = try jsx:decode(BodyPart1, [return_maps]) of
                            NewBody ->
-                               nebula2_db:marshall(NewBody)
+                               NewBody
                        catch
                            error:badarg ->
                                throw(badjson)
@@ -357,6 +365,7 @@ is_authorized_handler(undefined, Req, State) ->
     {{false, "Basic realm=\"default\""}, Req, State};
 is_authorized_handler(AuthString, Req, State) ->
     lager:debug("Entry"),
+    {_, EnvMap} = State,
     AuthString2 = binary_to_list(AuthString),
     [AuthMethod, Auth] = string:tokens(AuthString2, " "),
     {Authenticated, UserId} = case string:to_lower(AuthMethod) of
@@ -606,8 +615,24 @@ bail(Reason, Msg, Req, State) ->
 basic(Auth, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
-    DomainUri = nebula2_utils:get_value(<<"domainURI">>, EnvMap),
+    [UserId, Rest] = string:tokens(base64:decode_to_string(Auth), ":"),
+    P = string:tokens(Rest, ";"),
+    Password = lists:nth(1, P),
+    DomainUri = if
+                    length(P) == 1 ->
+                        nebula2_utils:get_value(<<"domainURI">>, EnvMap);
+                    true ->
+                        Opts = string:tokens(lists:nth(2, P), ","),
+                        OptMap = parse_options(Opts),
+                        Realm = maps:get("realm", OptMap, ""),
+                        if
+                            Realm == "" ->
+                                nebula2_utils:get_value(<<"domainURI">>, EnvMap);
+                            true ->
+                                list_to_binary("/cdmi_domains/" ++ Realm ++ "/")
+                        end
+                end,
+    lager:debug("Realm-based domain: ~p", [DomainUri]),
     Domain = nebula2_utils:get_domain_hash(DomainUri),
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     Result = case nebula2_db:search(SearchKey, State) of
@@ -625,6 +650,18 @@ basic(Auth, State) ->
             Creds = binary_to_list(nebula2_utils:get_value(<<"cdmi_member_credentials">>, VMap)),
             basic_auth_handler(Creds, UserId, Password)
     end.
+
+-spec parse_options(list()) -> map().
+parse_options(List) ->
+    parse_options(List, maps:new()).
+
+-spec parse_options(list(), map()) -> map().
+parse_options([], Map) ->
+    Map;
+parse_options([H|T], Map) ->
+    [Option, Value] = string:tokens(H, "="),
+    Map2 = maps:put(Option, Value, Map),
+    parse_options(T, Map2).
 
 -spec basic_auth_handler(list(), nonempty_string(), nonempty_string()) -> {true|false, nonempty_string()}.
 basic_auth_handler(Creds, UserId, Password) ->
@@ -697,7 +734,18 @@ map_build_get_data(FieldName, _, Map) ->
 map_domain_uri(Pid, HostUrl) ->
     lager:debug("Entry"),
     Maps = nebula2_db:get_domain_maps(Pid),
-    Domain = get_domain(Maps, HostUrl),
+    D = get_domain(Maps, HostUrl),
+    Domain = case nebula2_utils:beginswith(D, "/cdmi_domains") of
+                 true ->
+                     D;
+                 false ->
+                     case lists:nth(1, D) == "/" of
+                         true ->
+                             "/cdmi_domains" ++ D;
+                         false ->
+                             "/cdmi_domains/" ++ D
+                     end
+             end,
     lager:debug("Exit: ~p", [Domain]),
     Domain.
 
