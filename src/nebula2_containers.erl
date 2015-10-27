@@ -29,7 +29,7 @@ new_container(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(Body, [return_maps]) of
                 NewBody ->
-                    nebula2_db:marshall(NewBody)
+                    NewBody
             catch
                 error:badarg ->
                     throw(badjson)

@@ -77,7 +77,7 @@ new_domain(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(Body, [return_maps]) of
                 NewBody ->
-                    nebula2_db:marshall(NewBody, SearchKey)
+                     NewBody
             catch
                 error:badarg ->
                     throw(badjson)

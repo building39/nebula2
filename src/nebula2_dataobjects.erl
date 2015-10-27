@@ -35,6 +35,7 @@ new_dataobject(Req, State, Body) ->
                        Data2 = nebula2_db:unmarshall(Data),
                        {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req), State};
                    false ->
+                       lager:error("Error on new object create"),
                        {false, Req, State}
                end,
     Response.

@@ -18,7 +18,7 @@
          from_cdmi_container/2,
          from_cdmi_domain/2,
          from_cdmi_object/2,
-		 from_multipart_mixed/2,
+         from_multipart_mixed/2,
          forbidden/2,
          generate_etag/2,
          is_authorized/2,
@@ -66,6 +66,7 @@ rest_init(Req, _State) ->
                     Map1  = nebula2_utils:put_value(<<"root_oid">>, nebula2_utils:get_value(<<"objectID">>, Root), Map),
                     nebula2_utils:put_value(<<"method">>, Method, Map1);
                 _ ->
+                    %% This case should only happen on bootstrap.
                     nebula2_utils:put_value(<<"method">>, Method, Map)
            end,
     Map3  = nebula2_utils:put_value(<<"url">>, Url, Map2),
@@ -316,7 +317,7 @@ from_multipart_mixed(Req, State, ok) ->
                 {Req2, [BodyPart1, BodyPart2]} = multipart(Req, []),
                 Body = try jsx:decode(BodyPart1, [return_maps]) of
                            NewBody ->
-                               nebula2_db:marshall(NewBody)
+                               NewBody
                        catch
                            error:badarg ->
                                throw(badjson)

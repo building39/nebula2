@@ -81,7 +81,9 @@ marshall(Data) ->
     SearchKey = nebula2_utils:make_search_key(Data),
     marshall(Data, SearchKey).
 
--spec marshall(map(), binary()) -> map().
+-spec marshall(map(), binary() | list) -> map().
+marshall(Data, SearchKey) when is_list(SearchKey) ->
+    marshall(Data, list_to_binary(SearchKey));
 marshall(Data, SearchKey) ->
     lager:debug("Entry"),
     lager:debug("SearchKey: ~p", [SearchKey]),
