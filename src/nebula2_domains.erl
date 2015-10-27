@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([
-            delete_domain/2,
+            delete_domain/1,
             new_domain/2,
             update_domain/3
         ]).
@@ -22,10 +22,11 @@
 %% TODO: Enforce CDMI domain deletion rules - i.e. move populated domains to metadata: cdmi_domain_delete_reassign
 %%       if the domain contains objects and then delete the domain, or fail with 400 if the domain contains objects
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
--spec nebula2_domains:delete_domain(cowboy_req:req(), cdmi_state()) -> ok | {error, term()}.
-delete_domain(Req, State) ->
+-spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, term()}.
+delete_domain(State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
     case binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) == "system_domain/" of
         false ->
             Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
@@ -33,19 +34,20 @@ delete_domain(Req, State) ->
             State2 = {Pid, EnvMap2},    %% Domain URI is the path for new domains.
             SearchKey = nebula2_utils:get_domain_hash(Path) ++ Path,
             {ok, Data} = nebula2_db:search(SearchKey, State2),
-            Oid = nebula2_utils:get_value(<<"objectID">>, Data),
             Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
             ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
             case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
                 nil ->
-                    Children =  nebula2_utils:get_value(<<"children">>, Data, []),
                     %% TODO: check for existence of child domains and domain members before deleting.
+                    SChildren = lists:filtermap(fun(X) -> {true, binary_to_list(X)} end,
+                                                nebula2_utils:get_value(<<"children">>, Data, [])),
+                    Children = lists:filter(fun(X) -> true /= nebula2_utils:beginswith(X, "cdmi_domain_") end, SChildren),
                     case Children of
                         [] ->
                             ok = nebula2_utils:delete_child_from_parent(Pid,
                                                                         nebula2_utils:get_value(<<"parentID">>, Data),
                                                                         nebula2_utils:get_value(<<"objectName">>, Data)),
-                            handle_delete(nebula2_db:delete(Pid, Oid), Req, State2);
+                            nebula2_utils:delete(State2);
                         _ ->
                             {error, 400}
                     end;
@@ -104,12 +106,6 @@ update_domain(_Pid, _ObjectId, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-handle_delete(ok, Req, State) ->
-    lager:debug("Entry"),
-    {true, Req, State};
-handle_delete({error, _Error}, Req, State) ->
-    lager:debug("Entry"),
-    {false, Req, State}.
 
 -spec new_member_and_summary_containers(cdmi_state(), string(), list()) -> boolean().
 new_member_and_summary_containers(State, SearchKey, Containers) ->

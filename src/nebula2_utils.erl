@@ -112,9 +112,11 @@ delete(State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Data = nebula2_utils:get_value(<<"object_map">>, EnvMap),
+    lager:debug("Data: ~p", [Data]),
     {Pid, _} = State,
     Children = nebula2_utils:get_value(<<"children">>, Data, []),
-    handle_delete(Pid, Data, State, Children).
+    Path = binary_to_list(get_value(<<"parentURI">>, Data)) ++ binary_to_list(get_value(<<"objectName">>, Data)),
+    handle_delete(Pid, Data, State, list_to_binary(Path), Children).
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) ->
@@ -278,7 +280,7 @@ make_key() ->
 -spec make_search_key(map()) -> list().
 make_search_key(Data) ->
     lager:debug("Entry"),
-%    lager:debug("Data: ~p", [Data]),
+    lager:debug("Data: ~p", [Data]),
     ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)),
     ParentUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Data, <<"">>)),
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, Data, <<"">>)),
@@ -292,7 +294,6 @@ make_search_key(Data) ->
                                     true ->     %% always belongs to /cdmi/system_domain
                                         <<"/cdmi_domains/system_domain/">>; 
                                     false ->
-                                        ObjectName = binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)),
                                         case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
                                             true ->
                                                 get_domain_from_path(Path);
@@ -539,27 +540,30 @@ get_domain_hash(Domain) when is_binary(Domain) ->
     lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
-handle_delete(Pid, Data, _, []) ->
+handle_delete(Pid, Data, _, _, []) ->
     lager:debug("Entry"),
-    case nebula2_db:delete(Pid, nebula2_utils:get_value(<<"objectID">>, Data)) of
+    Oid = nebula2_utils:get_value(<<"objectID">>, Data),
+    case nebula2_db:delete(Pid, Oid) of
         ok ->
              ParentId = nebula2_utils:get_value(<<"parentID">>, Data, []),
              ObjectName = nebula2_utils:get_value(<<"objectName">>, Data),
              delete_child_from_parent(Pid, ParentId, ObjectName),
              ok;
         Other ->
+            lager:debug("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
             Other
     end;
-handle_delete(Pid, Data, State, [Head | Tail]) ->
+handle_delete(Pid, Data, State, Path, [Child | Tail]) ->
     lager:debug("Entry"),
-    Child = binary_to_list(Head),
-    ParentUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Data, "")),
-    ChildPath = ParentUri ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)) ++ Child,
-    {ok, ChildData} = nebula2_db:search(ChildPath, State),
+    ChildPath = binary_to_list(Path) ++ binary_to_list(Child),
+    KeyMap = maps:from_list([{<<"objectName">>, Child},
+                             {<<"path">>, list_to_binary(ChildPath)},
+                             {<<"parentURI">>, Path}]),
+    NewPath = make_search_key(KeyMap),
+    {ok, ChildData} = nebula2_db:search(NewPath, State),
     GrandChildren = nebula2_utils:get_value(<<"children">>, ChildData, []),
-    handle_delete(Pid, ChildData, State, GrandChildren),
-    handle_delete(Pid, Data, State, Tail),
-    nebula2_db:delete(Pid, nebula2_utils:get_value(<<"objectID">>, Data)).
+    handle_delete(Pid, ChildData, State, list_to_binary(ChildPath), GrandChildren),
+    handle_delete(Pid, Data, State, Path, Tail).
 
 sanitize_body([], Body) ->
     Body;

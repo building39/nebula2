@@ -158,7 +158,7 @@ delete_resource(Req, State) ->
     try
         case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
             true ->
-                case nebula2_domains:delete_domain(Req, State)of
+                case nebula2_domains:delete_domain(State)of
                     ok ->
                         lager:debug("deleted domain"),
                         {true, Req, State};
