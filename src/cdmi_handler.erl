@@ -61,9 +61,13 @@ rest_init(Req, _State) ->
     ObjectName = nebula2_utils:get_object_name(Parts, Path),
     SysDomainHash = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
     Map   = maps:new(),
-    {ok, Root}  = nebula2_db:search(SysDomainHash ++ ?SYSTEM_DOMAIN_URI, {PoolMember, Map}),
-    Map1  = nebula2_utils:put_value(<<"root_oid">>, nebula2_utils:get_value(<<"objectID">>, Root), Map),
-    Map2  = nebula2_utils:put_value(<<"method">>, Method, Map1),
+    Map2 = case nebula2_db:search(SysDomainHash ++ ?SYSTEM_DOMAIN_URI, {PoolMember, Map}) of
+                {ok, Root} ->
+                    Map1  = nebula2_utils:put_value(<<"root_oid">>, nebula2_utils:get_value(<<"objectID">>, Root), Map),
+                    nebula2_utils:put_value(<<"method">>, Method, Map1);
+                _ ->
+                    nebula2_utils:put_value(<<"method">>, Method, Map)
+           end,
     Map3  = nebula2_utils:put_value(<<"url">>, Url, Map2),
     Map4  = nebula2_utils:put_value(<<"hosturl">>, HostUrl, Map3),
     Map5  = nebula2_utils:put_value(<<"path">>, list_to_binary(Path2), Map4), %% strip out query string if present

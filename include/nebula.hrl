@@ -35,7 +35,7 @@
 
 %% Memcached parameters
 -define(MEMCACHE, nebula_memcache).
--define(MEMCACHE_EXPIRY, 600).   %% Expire after 60 seconds.
+-define(MEMCACHE_EXPIRY, 60).   %% Expire after 60 seconds.
 
 %% Header macros.
 -define(ACCEPT_HEADER, "accept").
