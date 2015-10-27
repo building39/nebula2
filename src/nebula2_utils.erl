@@ -15,8 +15,8 @@
 -export([
          beginswith/2,
 		 check_base64/1,
+         create_object/3,
          create_object/4,
-         create_object/5,
          delete/1,
          delete_cache/1,
          delete_child_from_parent/3,
@@ -67,8 +67,9 @@ check_base64(Data) ->
     end.
 
 %% @doc Create a CDMI object
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, Body) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), map()) ->
+          {boolean(), map()}.
+create_object(State, ObjectType, Body) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
@@ -80,31 +81,27 @@ create_object(Req, State, ObjectType, Body) ->
                 {ok, ParentId} ->
                     {ok, Parent} = nebula2_db:read(Pid, ParentId),
                     DomainName = nebula2_utils:get_value(<<"domainURI">>, Parent, ""),
-                    create_object(Req, State, ObjectType, DomainName, Parent, Body);
+                    create_object(State, ObjectType, DomainName, Parent, Body);
                 {notfound, _} ->
                     pooler:return_member(riak_pool, Pid),
                     false
             end
     end.
 
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), map(), binary() | string()) -> {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, DomainName, Body) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), list() | binary(), map()) ->
+          {boolean(), map()}.
+create_object(State, ObjectType, DomainName, Body) when is_list(DomainName)->
+    create_object(State, ObjectType, list_to_binary(DomainName), Body);
+create_object(State, ObjectType, DomainName, Body) when is_binary(DomainName)->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case nebula2_utils:get_object_oid(nebula2_utils:get_parent_uri(Path), State) of
         {ok, ParentId} ->
-            lager:debug("Got parentID: ~p", [ParentId]),
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
-            lager:debug("Req: ~p", [Req]),
-            lager:debug("State: ~p", [State]),
-            lager:debug("ObjectType: ~p", [ObjectType]),
-            lager:debug("DomainName: ~p", [DomainName]),
-            lager:debug("Parent: ~p", [Parent]),
-            lager:debug("Body: ~p", [Body]),
-            create_object(Req, State, ObjectType, DomainName, Parent, Body);
+            create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
-            lager:debug("Parent not found: ~p", Path),
+            %% TODO: maybe leaking a pool connection here?
             pooler:return_member(riak_pool, Pid),
             false
     end.
@@ -115,23 +112,21 @@ delete(State) ->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
     Data = nebula2_utils:get_value(<<"object_map">>, EnvMap),
+    lager:debug("Data: ~p", [Data]),
     {Pid, _} = State,
     Children = nebula2_utils:get_value(<<"children">>, Data, []),
-    handle_delete(Pid, Data, State, Children).
+    Path = binary_to_list(get_value(<<"parentURI">>, Data)) ++ binary_to_list(get_value(<<"objectName">>, Data)),
+    handle_delete(Pid, Data, State, list_to_binary(Path), Children).
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) ->
     lager:debug("Entry"),
-    lager:debug("Oid: ~p", [Oid]),
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
             SearchKey = newbula2_utils:make_search_key(Data),
-            DSK = mcd:delete(?MEMCACHE, SearchKey),
-            lager:debug("DSK: ~p", [DSK]),
-            DOID = mcd:delete(?MEMCACHE, Oid),
-            lager:debug("Doid: ~p", [DOID]);
-        Response ->
-            lager:debug("Response: ~p", [Response]),
+            mcd:delete(?MEMCACHE, SearchKey),
+            mcd:delete(?MEMCACHE, Oid);
+        _Response ->
             {error, notfound}
     end.
 
@@ -141,6 +136,8 @@ delete_child_from_parent(Pid, ParentId, Name) ->
     lager:debug("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
     Children = nebula2_utils:get_value(<<"children">>, Parent, ""),
+    lager:debug("Children: ~p", [Children]),
+    lager:debug("Name: ~p", [Name]),
     NewParent1 = case Children of
                      [] ->
                          maps:remove(<<"children">>, Parent);
@@ -155,6 +152,7 @@ delete_child_from_parent(Pid, ParentId, Name) ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          nebula2_utils:put_value(<<"childrenrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
+    lager:debug("NewParent2: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% @doc Extract the Parent URI from the path.
@@ -295,22 +293,27 @@ make_search_key(Data) ->
                                 case Path == "/cdmi_domains/" of
                                     true ->     %% always belongs to /cdmi/system_domain
                                         <<"/cdmi_domains/system_domain/">>; 
-                                    false ->    %% a domain always belongs to itself.
-                                        list_to_binary(Path)
+                                    false ->
+                                        case nebula2_utils:beginswith(Path, "/cdmi_domains/") of
+                                            true ->
+                                                get_domain_from_path(Path);
+                                            false -> %% a domain always belongs to itself.
+                                                list_to_binary(Path)
+                                        end
                                 end
                         end;
                     true ->
                         lager:debug("Making key for capabilities"),
                         <<"">>
                 end,
-    lager:debug("Path: ~p", [Path]),
-    lager:debug("ObjectName: ~p", [ObjectName]),
-    lager:debug("DomainUri: ~p", [DomainUri]),
-    lager:debug("ParentUri: ~p", [ParentUri]),
-    Domain = get_domain_hash(DomainUri),
-    lager:debug("Hashed domain: ~p", [Domain]),
-    Key = Domain ++ ParentUri ++ ObjectName,
-    lager:debug("Key: ~p", [Key]),
+%%     lager:debug("Path: ~p", [Path]),
+%%     lager:debug("ObjectName: ~p", [ObjectName]),
+%%     lager:debug("DomainUri: ~p", [DomainUri]),
+%%     lager:debug("ParentUri: ~p", [ParentUri]),
+    DomainHash = get_domain_hash(DomainUri),
+%%    lager:debug("Hashed domain: ~p", [Domain]),
+    Key = DomainHash ++ ParentUri ++ ObjectName,
+%%   lager:debug("Key: ~p", [Key]),
     list_to_binary(Key).
 
 %% @doc Put a value to the data map.
@@ -329,13 +332,9 @@ put_value(Key, Value, Map) ->
 set_cache(Data) ->
     lager:debug("Entry"),
     SearchKey = nebula2_utils:make_search_key(Data),
-    lager:debug("SearchKey: ~p", [SearchKey]),
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
-    Soid = mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
-    lager:debug("Soid: ~p", [Soid]),
-    SSK = mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY),
-    lager:debug("SSK: ~p", [SSK]),
-    SSK.
+    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().
@@ -352,8 +351,6 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_binary(
     update_data_system_metadata(CList, Data, binary_to_list(CapabilitiesURI), State);
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     lager:debug("Entry"),
-    lager:debug("Cap URI: ~p", [CapabilitiesURI]),
-    lager:debug("State: ~p",[State]),
     Domain = get_domain_hash(<<"">>),
     {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
     Capabilities = nebula2_utils:get_value(<<"capabilities">>, C1),
@@ -386,15 +383,12 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                    N
            end,
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
-    lager:debug("Parent: ~p", [Parent]),
     Children = case nebula2_utils:get_value(<<"children">>, Parent) of
                      <<"">> ->
-                         lager:debug("First Child: ~p", [Name]),
                          [list_to_binary(Name)];
                      Ch ->
                          lists:append(Ch, [list_to_binary(Name)])
                  end,
-    lager:debug("Children: ~p", [Children]),
     ChildrenRange = case nebula2_utils:get_value(<<"childrenrange">>, Parent, "") of
                      "" ->
                          "0-0";
@@ -404,22 +398,20 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
                  end,
     NewParent1 = nebula2_utils:put_value(<<"children">>, Children, Parent),
     NewParent2 = nebula2_utils:put_value(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
-    lager:debug("Updated Children: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
--spec nebula2_utils:create_object(cowboy_req:req(), {pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
+-spec nebula2_utils:create_object({pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
           {boolean(), cowboy_req:req(), {pid(), map()}}.
-create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
+create_object(State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
     D = list_to_binary(DomainName),
-    create_object(Req, State, ObjectType, D, Parent, Body);
-create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
+    create_object(State, ObjectType, D, Parent, Body);
+create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
     lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    lager:debug("Body: ~p", [Body]),
 	case check_base64(Body) of
 		false ->
 		   throw(badencoding);
@@ -443,7 +435,6 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
                           <<"parentURI">>,
                           <<"completionStatus">>],
                          Body),
-    lager:debug("Data: ~p", [Data]),
     Oid = nebula2_utils:make_key(),
     Location = list_to_binary(application:get_env(nebula2, cdmi_location, ?DEFAULT_LOCATION)),
     Owner = nebula2_utils:get_value(<<"auth_as">>, EnvMap, ""),
@@ -455,12 +446,9 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
                                   {<<"nebula_data_location">>, [Location]},
                                   {<<"cdmi_owner">>, Owner}
                                  ]),
-    lager:debug("NewMetadata: ~p", [NewMetadata]),
     OldMetadata = nebula2_utils:get_value(<<"metadata">>, Body, maps:new()),
-    lager:debug("OldMetadata: ~p", [OldMetadata]),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
-    lager:debug("Metadata3: ~p", [Metadata3]),
     CdmiData = maps:get(<<"cdmi">>, Data),
     Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, Oid},
@@ -472,7 +460,6 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
                                        {<<"completionStatus">>, <<"Complete">>},
                                        {<<"metadata">>, Metadata3}]),
                       CdmiData),
-    lager:debug("Data2: ~p", [Data2]),
     Data3 = case maps:is_key(<<"value">>, Data2) of
                 true ->
                     case maps:is_key(<<"valuetransferencoding">>, Data2) of
@@ -484,9 +471,7 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
                 false ->
                     Data2
             end,
-    lager:debug("Data3: ~p", [Data3]),
     Data4 = nebula2_utils:put_value(<<"metadata">>, Metadata3, Data3),
-    lager:debug("Data4: ~p", [Data4]),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_ctime">>,
              <<"cdmi_mtime">>,
@@ -495,7 +480,6 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
              <<"cdmi_size">>
     ],
     Data5 = nebula2_utils:update_data_system_metadata(CList, Data4, CapabilitiesURI, State),
-    lager:debug("Data5: ~p", [Data5]),
     SearchKey = nebula2_utils:make_search_key(Data5),
     Data6 = maps:put(<<"cdmi">>, Data5, Data),      %% really needs to be maps:put, not nebula2_utils:put_value
     Data7 = maps:put(<<"sp">>, SearchKey, Data6),   %% Ditto
@@ -503,8 +487,7 @@ create_object(Req, State, ObjectType, DomainName, Parent, Body) when is_binary(D
     ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
     set_cache(Data7),
-    lager:debug("Exit: Data6: ~p", [Data7]),
-    {true, Req, Data6}.
+    {true, Data6}.
 
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
@@ -536,15 +519,19 @@ get_cache(Key) when is_binary(Key) ->
     lager:debug("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
         {ok, Data} ->
-            lager:debug("Data: ~p", [Data]),
             {ok, Data};
         Response ->
-            lager:debug("Response: ~p", [Response]),
             Response
     end.
 %get_cache(_) -> 
 %    {error, notfound}.
 
+get_domain_from_path(Path) ->
+    lager:debug("Entry"),
+    Parts = string:tokens(Path, "/"),
+    DomainParts = lists:takewhile(fun(X) -> true /= nebula2_utils:beginswith(X, "cdmi_domain_") end, Parts),
+    "/" ++ string:join(DomainParts, "/") ++ "/".
+  
 -spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->
     get_domain_hash(list_to_binary(Domain));
@@ -553,27 +540,30 @@ get_domain_hash(Domain) when is_binary(Domain) ->
     lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
-handle_delete(Pid, Data, _, []) ->
+handle_delete(Pid, Data, _, _, []) ->
     lager:debug("Entry"),
-    case nebula2_db:delete(Pid, nebula2_utils:get_value(<<"objectID">>, Data)) of
+    Oid = nebula2_utils:get_value(<<"objectID">>, Data),
+    case nebula2_db:delete(Pid, Oid) of
         ok ->
              ParentId = nebula2_utils:get_value(<<"parentID">>, Data, []),
              ObjectName = nebula2_utils:get_value(<<"objectName">>, Data),
              delete_child_from_parent(Pid, ParentId, ObjectName),
              ok;
         Other ->
+            lager:debug("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
             Other
     end;
-handle_delete(Pid, Data, State, [Head | Tail]) ->
+handle_delete(Pid, Data, State, Path, [Child | Tail]) ->
     lager:debug("Entry"),
-    Child = binary_to_list(Head),
-    ParentUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Data, "")),
-    ChildPath = ParentUri ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, Data)) ++ Child,
-    {ok, ChildData} = nebula2_db:search(ChildPath, State),
+    ChildPath = binary_to_list(Path) ++ binary_to_list(Child),
+    KeyMap = maps:from_list([{<<"objectName">>, Child},
+                             {<<"path">>, list_to_binary(ChildPath)},
+                             {<<"parentURI">>, Path}]),
+    NewPath = make_search_key(KeyMap),
+    {ok, ChildData} = nebula2_db:search(NewPath, State),
     GrandChildren = nebula2_utils:get_value(<<"children">>, ChildData, []),
-    handle_delete(Pid, ChildData, State, GrandChildren),
-    handle_delete(Pid, Data, State, Tail),
-    nebula2_db:delete(Pid, nebula2_utils:get_value(<<"objectID">>, Data)).
+    handle_delete(Pid, ChildData, State, list_to_binary(ChildPath), GrandChildren),
+    handle_delete(Pid, Data, State, Path, Tail).
 
 sanitize_body([], Body) ->
     Body;

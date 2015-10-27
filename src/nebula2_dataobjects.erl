@@ -30,10 +30,10 @@ get_dataobject(Pid, Oid) ->
 new_dataobject(Req, State, Body) ->
     lager:debug("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
-    Response = case nebula2_utils:create_object(Req, State, ObjectType, Body) of
-                   {true, Req2, Data} ->
+    Response = case nebula2_utils:create_object(State, ObjectType, Body) of
+                   {true, Data} ->
                        Data2 = nebula2_db:unmarshall(Data),
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State};
+                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req), State};
                    false ->
                        {false, Req, State}
                end,
