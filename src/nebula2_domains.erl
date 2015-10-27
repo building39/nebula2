@@ -87,13 +87,17 @@ new_domain(Req, State) ->
         {true, Data} ->
             Containers = [<<"cdmi_domain_members/">>,
                           <<"cdmi_domain_summary/">>
-%%                          ,<<"nebula_domain_storage">>
                          ],
-            case new_member_and_summary_containers(State, SearchKey, Containers) of
-                true ->
-                    Data2 = nebula2_db:unmarshall(Data),
-                    {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
-                false ->
+            case new_domain_root(State, DomainName) of
+                ok ->
+                    case new_member_and_summary_containers(State, SearchKey, Containers) of
+                        true ->
+                            Data2 = nebula2_db:unmarshall(Data),
+                            {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
+                        false ->
+                            {false, Req2, State2}
+                    end;
+                _ ->
                     {false, Req2, State2}
             end;
         false ->
@@ -146,24 +150,44 @@ new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
                           {<<"completionStatus">>, <<"Complete">>},
                           {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
                          ]),
-    lager:debug("Marshalling..."),
-    lager:debug("Data: ~p", [Data]),
     Data2 = nebula2_db:marshall(Data),
-    lager:debug("marshalling done."),
     {Pid, _} = State,
     case nebula2_db:create(Pid, nebula2_utils:get_value(<<"objectID">>, Data2), Data2) of
         {ok, _} ->
-            lager:debug("new container created"),
-            lager:debug("Updating parent: ~p", [ParentUri]),
             ok = nebula2_utils:update_parent(nebula2_utils:get_value(<<"objectID">>, Parent),
                                              ParentUri ++ binary_to_list(ObjectName),
                                              ?CONTENT_TYPE_CDMI_CONTAINER,
                                              Pid),
             new_containers(State, SearchKey, Parent, T, true);
         _Other ->
-            lager:debug("new container create failed: ~p", [_Other]),
+            lager:error("new container create failed: ~p", [_Other]),
             new_containers(State, SearchKey, Parent, [], false)
     end.
+
+-spec new_domain_root(cdmi_state(), binary()) -> ok | {error, string()}.
+new_domain_root(State, DomainUri) ->
+    {Pid, EnvMap} = State,
+    {ok, SystemRoot} = nebula2_db:read(Pid, nebula2_utils:get_value(<<"root_oid">>, EnvMap)),
+    Metadata = nebula2_utils:get_value(<<"metadata">>, SystemRoot),
+    Oid = nebula2_utils:make_key(),
+    Map = nebula2_db:marshall(maps:from_list([
+                                                {<<"metadata">>, Metadata},
+                                                {<<"objectName">>, <<"/">>},
+                                                {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                                                {<<"objectID">>, Oid},
+                                                {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
+                                                {<<"completionStatus">>, <<"Complete">>},
+                                                {<<"domainURI">>, DomainUri}
+                                              ])),
+    case nebula2_db:create(Pid, Oid, Map) of
+        {ok, _} ->
+            ok;
+        Reason ->
+            lager:error("Creation of root container for the new domain ~p failed: ~p", [DomainUri, Reason]),
+            Reason
+    end.
+    
+        
 
 %% ====================================================================
 %% eunit tests
