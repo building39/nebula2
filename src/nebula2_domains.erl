@@ -84,7 +84,9 @@ new_domain(Req, State) ->
     lager:debug("Body2: ~p", [Body2]),
     case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
         {true, Data} ->
-            Containers = [<<"cdmi_domain_members/">>, <<"cdmi_domain_summary/">>],
+            Containers = [<<"cdmi_domain_members/">>,
+                          <<"cdmi_domain_summary/">>,
+                          <<"nebula_domain_storage">>],
             case new_member_and_summary_containers(State, SearchKey, Containers) of
                 true ->
                     Data2 = nebula2_db:unmarshall(Data),

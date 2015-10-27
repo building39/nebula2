@@ -394,16 +394,28 @@ cdmi_sanitization_method(_Methods, Data) ->
 %% @doc Apply cdmi_size
 -spec cdmi_size(string(), map()) -> map().
 cdmi_size(Doit, Data) ->
-    %% lager:debug("Entry"),
+    lager:debug("Entry"),
     case binary_to_list(nebula2_utils:get_value(<<"objectType">>, Data)) of
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
-                    Value = binary_to_list(nebula2_utils:get_value(<<"value">>, Data)),
+                    Val = nebula2_utils:get_value(<<"value">>, Data),
+                    Value = if
+                                is_binary(Val) ->
+                                    binary_to_list(Val);
+                                is_list(Val) ->
+                                    Val;
+                                true ->
+                                    lager:error("Type of value is ~p", [type_of(Val)]),
+                                    throw(badjson)
+                            end,
+                    lager:debug("Value: ~p", [Value]),
                     Size = string:len(Value),
                     MD = nebula2_utils:get_value(<<"metadata">>, Data),
                     MD2 = nebula2_utils:put_value(<<"cdmi_size">>, Size, MD),
-                    nebula2_utils:put_value(<<"metadata">>, MD2, Data);
+                    R = nebula2_utils:put_value(<<"metadata">>, MD2, Data),
+                    lager:debug("Returning ~p", [R]),
+                    R;
                 false ->
                     MD = nebula2_utils:get_value(<<"metadata">>, Data),
                     MD2 = maps:remove(<<"cdmi_size">>, MD),
@@ -442,6 +454,40 @@ build_path([], Acc) ->
 build_path([H|T], Acc) ->
     Acc2 = lists:append(Acc, binary_to_list(H) ++ "/"),
     build_path(T, Acc2).
+
+type_of(X) ->
+    if
+        is_atom(X) ->
+            <<"atom">>;
+        is_binary(X) ->
+            <<"binary">>;
+        is_bitstring(X) ->
+            <<"bitstring">>;
+        is_boolean(X) ->
+            <<"boolean">>;
+        is_float(X) ->
+            <<"float">>;
+        is_function(X) ->
+            <<"function">>;
+        is_integer(X) ->
+            <<"integer">>;
+        is_list(X) ->
+            <<"list">>;
+        is_number(X) ->
+            <<"number">>;
+        is_pid(X) ->
+            <<"pid">>;
+        is_port(X) ->
+            <<"port">>;
+        is_reference(X) ->
+            <<"reference">>;
+        is_tuple(X) ->
+            <<"tuple">>;
+        true ->
+            <<"I have no idea what it is">>
+    end.
+            
+            
 
 %% ====================================================================
 %% eunit tests

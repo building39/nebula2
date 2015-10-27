@@ -44,8 +44,12 @@ new_dataobject(Req, State, Body) ->
 update_dataobject(Req, State, Oid, NewData) ->
     lager:debug("Entry"),
     {Pid, _EnvMap} = State,
+    lager:debug("NewData: ~p", [NewData]),
     nebula2_utils:check_base64(NewData),
-    {ok, OldData} = nebula2_db:read(Pid, Oid),
+    {ok, CdmiData} = nebula2_db:read(Pid, Oid),
+    lager:debug("CdmiData: ~p", [CdmiData]),
+    OldData = nebula2_db:unmarshall(CdmiData),
+    lager:debug("OldData: ~p", [OldData]),
     OldMetaData = nebula2_utils:get_value(<<"metadata">>, OldData, maps:new()),
     MetaData = case maps:is_key(<<"metadata">>, NewData) of
                     true ->
@@ -62,7 +66,10 @@ update_dataobject(Req, State, Oid, NewData) ->
              <<"cdmi_mcount">>,
              <<"cdmi_size">>],
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
-    Response = case nebula2_db:update(Pid, Oid, Data3) of
+    lager:debug("Data3: ~p", [Data3]),
+    Data4 = nebula2_db:marshall(Data3),
+    lager:debug("Data4: ~p", [Data4]),
+    Response = case nebula2_db:update(Pid, Oid, Data4) of
                    ok ->
                        {true, Req, State};
                    _  ->
