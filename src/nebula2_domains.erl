@@ -49,6 +49,7 @@ delete_domain(State) ->
                                                                         nebula2_utils:get_value(<<"objectName">>, Data)),
                             nebula2_utils:delete(State2);
                         _ ->
+                            lager:error("Cannot delete non-empty domain ~p", [Path]),
                             {error, 400}
                     end;
                 ReassignTo ->
@@ -85,8 +86,9 @@ new_domain(Req, State) ->
     case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
         {true, Data} ->
             Containers = [<<"cdmi_domain_members/">>,
-                          <<"cdmi_domain_summary/">>,
-                          <<"nebula_domain_storage">>],
+                          <<"cdmi_domain_summary/">>
+%%                          ,<<"nebula_domain_storage">>
+                         ],
             case new_member_and_summary_containers(State, SearchKey, Containers) of
                 true ->
                     Data2 = nebula2_db:unmarshall(Data),

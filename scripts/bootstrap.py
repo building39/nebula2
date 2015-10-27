@@ -35,7 +35,7 @@ MAX_METADATA_ITEMS = 1024
 MAX_METADATA_SIZE = 8192
 MAX_METADATA_TOTAL_SIZE = (MAX_METADATA_ITEMS * MAX_METADATA_SIZE)
 CDMI_ACE_ACCESS_ALLOW = 0x0
-CDMI_ACE_ACCESS_DENY  = 0x1
+CDMI_ACE_ACCESS_DENY = 0x1
 CDMI_ACE_SYSTEM_AUDIT = 0x2
 
 CDMI_ACE_FLAGS_NONE = 0x00000000
@@ -81,7 +81,7 @@ CDMI_ACE_RW_ALL = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRIT
 CDMI_ACE_RW = CDMI_ACE_READ_OBJECT | CDMI_ACE_LIST_CONTAINER | CDMI_ACE_WRITE_OBJECT | CDMI_ACE_ADD_OBJECT | \
               CDMI_ACE_APPEND_DATA | CDMI_ACE_ADD_SUBCONTAINER | CDMI_ACE_READ_METADATA | \
               CDMI_ACE_WRITE_METADATA
-              
+
 ROOT_OWNER_ACL = {
     'acetype': 'ALLOW',
     'identifier': 'OWNER@',
@@ -297,9 +297,9 @@ CDMI_CAPABILITIES_SYSTEM = '/cdmi_capabilities/'
 CDMI_SYSTEM_DOMAIN = '/cdmi_domains/system_domain/'
 
 OBJECT_TYPE_CAPABILITY = 'application/cdmi-capability'
-OBJECT_TYPE_CONTAINER  = 'application/cdmi-container'
+OBJECT_TYPE_CONTAINER = 'application/cdmi-container'
 OBJECT_TYPE_DATAOBJECT = 'application/cdmi-object'
-OBJECT_TYPE_DOMAIN     = 'application/cdmi-domain'
+OBJECT_TYPE_DOMAIN = 'application/cdmi-domain'
 
 class Bootstrap(object):
 
@@ -318,36 +318,43 @@ class Bootstrap(object):
         self.port = port
 
     def bootstrap(self):
-        
+
         # Create the root container
         print("...Priming root document")
         if self.commit:
             self._create_root()
         else:
             print("Dry run: Created root.")
-    
+
         # Create the domains container
         print("...Priming cdmi_domains")
         if self.commit:
             self._create_domain()
         else:
             print("Dry run: Created cdmi_domains.")
-            
-            
+
+
         # Create the system domain container
         print("...Priming cdmi_domains/system_domain")
         if self.commit:
             self._create_system_domain()
         else:
             print("Dry run: Created system domain.")
-            
+
         # Create the system domain members container
         print("...Priming cdmi_domains/system_domain/cdmi_domain_members")
         if self.commit:
             self._create_system_domain_members()
         else:
             print("Dry run: Created system domain members container.")
-            
+
+        # Create the system domain storage container
+        # print("...Priming cdmi_domains/system_domain/nebula_domain_storage")
+        # if self.commit:
+        #    self._create_system_domain_storage()
+        # else:
+        #    print("Dry run: Created system domain storage container."
+
         # Create the system domain summary container
         print("...Priming cdmi_domains/system_domain/cdmi_domain_summary")
         if self.commit:
@@ -368,49 +375,49 @@ class Bootstrap(object):
             self._create_system_configuration()
         else:
             print("Dry run: Created system configuration.")
-    
+
         # Create the system configuration environment variables container
         print("...Priming system_configuration environment variables")
         if self.commit:
             self._create_system_configuration_environment()
         else:
             print("Dry run: Created system configuration environment variables.")
-            
+
         # Create the system configuration domain maps object
         print("...Priming system_configuration domain maps")
         if self.commit:
             self._create_system_configuration_domainmap()
         else:
             print("Dry run: Created system configuration domain maps.")
-        
+
         # Create the system default capabilities
         print("...Priming capabilities")
         if self.commit:
             self._create_system_capabilities()
         else:
             print("Dry run: Created capabilities.")
-            
+
         # Create the container container capabilities
         print("...Priming container capabilities")
         if self.commit:
             self._create_container_capabilities()
         else:
             print("Dry run: Created container capabilities.")
-            
+
         # Create the dataobject default capabilities
         print("...Priming dataobject capabilities")
         if self.commit:
             self._create_dataobject_capabilities()
         else:
             print("Dry run: Created dataobject capabilities.")
-            
+
         # Create the domain default capabilities
         print("...Priming domain capabilities")
         if self.commit:
             self._create_domain_capabilities()
         else:
             print("Dry run: Created domain capabilities.")
-            
+
         # Create the container permanent capabilities
         print("...Priming container permanent capabilities")
         if self.commit:
@@ -424,7 +431,7 @@ class Bootstrap(object):
             self._create_dataobject_permanent_capabilities()
         else:
             print("Dry run: Created dataobject permanent capabilities.")
-            
+
 
         # Create the domain member capabilities
         print("...Priming domain member capabilities")
@@ -434,7 +441,7 @@ class Bootstrap(object):
             print("Dry run: Created dataobject member capabilities.")
 
         return
-    
+
     def _create_root(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_SYSTEM,
@@ -446,7 +453,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/' % (self.host, int(self.port))
         self.root_oid = self._create(headers, url, doc, acls)
-       
+
     def _create_domain(self):
         acls = [DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
@@ -460,7 +467,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/' % (self.host, int(self.port))
         self.domains_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_storage_root(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
@@ -474,7 +481,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/storage_root/' % (self.host, int(self.port))
         self._create(headers, url, doc, acls)
-        
+
     def _create_system_domain(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_DOMAIN,
@@ -488,7 +495,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_DOMAIN
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain' % (self.host, int(self.port))
         self.system_domain_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_system_domain_members(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
@@ -502,7 +509,21 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_members/' % (self.host, int(self.port))
         self.system_domain_members_oid = self._create(headers, url, doc, acls)
-        
+
+    def _create_system_domain_storage(self):
+        acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
+        doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
+               'domainURI': CDMI_SYSTEM_DOMAIN,
+               'completionStatus': 'complete',
+               'objectName': 'nebula_domain_storage/',
+               'objectType': OBJECT_TYPE_CONTAINER,
+               'parentURI': '/cdmi_domains/system_domain/',
+               'parentID': self.system_domain_oid}
+        headers = HEADERS.copy()
+        headers['Content-Type'] = OBJECT_TYPE_CONTAINER
+        url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/nebula_domain_storage/' % (self.host, int(self.port))
+        self.system_domain_members_oid = self._create(headers, url, doc, acls)
+
     def _create_system_domain_summary(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
@@ -518,7 +539,7 @@ class Bootstrap(object):
         self.system_domain_summary_oid = self._create(headers, url, doc, acls)
         for period in ['yearly/', 'monthly/', 'weekly/', 'daily/']:
             self._create_system_domain_summary_subcontainer(period)
-        
+
     def _create_system_domain_summary_subcontainer(self, period):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER,
@@ -532,10 +553,10 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/cdmi_domains/system_domain/cdmi_domain_summary/%s' % (self.host, int(self.port), period)
         self._create(headers, url, doc, acls, wait=0)
-        
+
     def _create_system_administrator_member(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
-        credentials = hmac.HMAC(key=self.adminid,msg=self.adminpw, digestmod=hashlib.sha1).hexdigest()
+        credentials = hmac.HMAC(key=self.adminid, msg=self.adminpw, digestmod=hashlib.sha1).hexdigest()
         value = '{"cdmi_member_enabled": "true",' \
                  '"cdmi_member_type": "user", ' \
                  '"cdmi_member_name": "%s",' \
@@ -572,7 +593,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/system_configuration/' % (self.host, int(self.port))
         self.system_config_oid = self._create(headers, url, doc, acls)
-           
+
     def _create_system_configuration_environment(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_CONTAINER_PERMANENT,
@@ -586,7 +607,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CONTAINER
         url = 'http://%s:%d/bootstrap/system_configuration/environment_variables' % (self.host, int(self.port))
         self.system_envvar_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_system_configuration_domainmap(self):
         acls = [ROOT_OWNER_ACL, ROOT_AUTHD_ACL, DOMAIN_OWNER_ACL, DOMAIN_AUTHD_ACL]
         doc = {'capabilitiesURI': CDMI_CAPABILITIES_DATAOBJECT_PERMANENT,
@@ -603,7 +624,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_DATAOBJECT
         url = 'http://%s:%d/bootstrap/system_configuration/domain_maps' % (self.host, int(self.port))
         self.system_envvar_oid = self._create(headers, url, doc, acls, wait=0)
-           
+
     def _create_system_capabilities(self):
         acls = None
         doc = {'capabilities': SYSTEM_CAPABILITIES,
@@ -615,7 +636,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/' % (self.host, int(self.port))
         self.caps_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_container_capabilities(self):
         acls = None
         localdict = CONTAINER_CAPABILITIES.copy()
@@ -630,7 +651,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/container/' % (self.host, int(self.port))
         self.container_caps_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_container_permanent_capabilities(self):
         acls = None
         localdict = CONTAINER_CAPABILITIES.copy()
@@ -645,7 +666,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/container/permanent/' % (self.host, int(self.port))
         self._create(headers, url, doc, acls)
-        
+
     def _create_dataobject_capabilities(self):
         acls = None
         localdict = DATAOBJECT_CAPABILITIES.copy()
@@ -660,7 +681,7 @@ class Bootstrap(object):
         headers['Content-Type'] = OBJECT_TYPE_CAPABILITY
         url = 'http://%s:%d/bootstrap/cdmi_capabilities/dataobject/' % (self.host, int(self.port))
         self.dataobject_caps_oid = self._create(headers, url, doc, acls)
-        
+
     def _create_dataobject_permanent_capabilities(self):
         acls = None
         localdict = DATAOBJECT_PERMANENT_CAPABILITIES.copy()
@@ -756,10 +777,10 @@ class Bootstrap(object):
         if r.status_code in [200, 201, 204]:
             body = json.loads(r.text)
             print('status code: %d' % r.status_code)
-            #print('got object: %s' % body)
+            # print('got object: %s' % body)
             oid = body['objectID']
             self.newobjects += 1
-            time.sleep(wait) # give riak time to index
+            time.sleep(wait)  # give riak time to index
         elif r.status_code in [409]:
             print("CDMI is already bootstrapped.")
             sys.exit(1)
@@ -786,7 +807,7 @@ def usage():
     print ('  --commit    - Optional. Bootstrap committed if present, otherwise')
     print ('                the objects that would have been bootstrapped are')
     print ('                displayed.')
-    
+
 def main(argv):
 
 #    import sys; sys.path.append('/opt/eclipse/plugins/org.python.pydev_3.9.2.201502050007/pysrc')
@@ -833,11 +854,11 @@ def main(argv):
             host = arg
         elif opt == '--port':
             port = arg
-        
+
     if host is None:
         usage()
         sys.exit(1)
-        
+
     while adminpw == '':
         adminpw = getpass.getpass('Please enter a password for the admin user')
 
@@ -849,9 +870,9 @@ def main(argv):
                    verbose=verbose)  # print verbose information on progress
 
     bs.bootstrap()
-    
+
     print 'Bootstrapped %d new objects' % bs.newobjects
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-    
+

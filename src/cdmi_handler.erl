@@ -357,6 +357,7 @@ is_authorized_handler(undefined, Req, State) ->
     {{false, "Basic realm=\"default\""}, Req, State};
 is_authorized_handler(AuthString, Req, State) ->
     lager:debug("Entry"),
+    {_, EnvMap} = State,
     AuthString2 = binary_to_list(AuthString),
     [AuthMethod, Auth] = string:tokens(AuthString2, " "),
     {Authenticated, UserId} = case string:to_lower(AuthMethod) of
@@ -606,8 +607,24 @@ bail(Reason, Msg, Req, State) ->
 basic(Auth, State) ->
     lager:debug("Entry"),
     {_, EnvMap} = State,
-    [UserId, Password] = string:tokens(base64:decode_to_string(Auth), ":"),
-    DomainUri = nebula2_utils:get_value(<<"domainURI">>, EnvMap),
+    [UserId, Rest] = string:tokens(base64:decode_to_string(Auth), ":"),
+    P = string:tokens(Rest, ";"),
+    Password = lists:nth(1, P),
+    DomainUri = if
+                    length(P) == 1 ->
+                        nebula2_utils:get_value(<<"domainURI">>, EnvMap);
+                    true ->
+                        Opts = string:tokens(lists:nth(2, P), ","),
+                        OptMap = parse_options(Opts),
+                        Realm = maps:get("realm", OptMap, ""),
+                        if
+                            Realm == "" ->
+                                nebula2_utils:get_value(<<"domainURI">>, EnvMap);
+                            true ->
+                                list_to_binary("/cdmi_domains/" ++ Realm ++ "/")
+                        end
+                end,
+    lager:debug("Realm-based domain: ~p", [DomainUri]),
     Domain = nebula2_utils:get_domain_hash(DomainUri),
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     Result = case nebula2_db:search(SearchKey, State) of
@@ -625,6 +642,18 @@ basic(Auth, State) ->
             Creds = binary_to_list(nebula2_utils:get_value(<<"cdmi_member_credentials">>, VMap)),
             basic_auth_handler(Creds, UserId, Password)
     end.
+
+-spec parse_options(list()) -> map().
+parse_options(List) ->
+    parse_options(List, maps:new()).
+
+-spec parse_options(list(), map()) -> map().
+parse_options([], Map) ->
+    Map;
+parse_options([H|T], Map) ->
+    [Option, Value] = string:tokens(H, "="),
+    Map2 = maps:put(Option, Value, Map),
+    parse_options(T, Map2).
 
 -spec basic_auth_handler(list(), nonempty_string(), nonempty_string()) -> {true|false, nonempty_string()}.
 basic_auth_handler(Creds, UserId, Password) ->
@@ -697,7 +726,18 @@ map_build_get_data(FieldName, _, Map) ->
 map_domain_uri(Pid, HostUrl) ->
     lager:debug("Entry"),
     Maps = nebula2_db:get_domain_maps(Pid),
-    Domain = get_domain(Maps, HostUrl),
+    D = get_domain(Maps, HostUrl),
+    Domain = case nebula2_utils:beginswith(D, "/cdmi_domains") of
+                 true ->
+                     D;
+                 false ->
+                     case lists:nth(1, D) == "/" of
+                         true ->
+                             "/cdmi_domains" ++ D;
+                         false ->
+                             "/cdmi_domains/" ++ D
+                     end
+             end,
     lager:debug("Exit: ~p", [Domain]),
     Domain.
 

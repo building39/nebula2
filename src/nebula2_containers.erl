@@ -22,6 +22,9 @@
         when Req::cowboy_req:req().
 new_container(Req, State) ->
     lager:debug("Entry"),
+    {_, EnvMap} = State,
+    Domain = nebula2_utils:get_value(<<"domainURI">>, EnvMap),
+    lager:debug("Domain: ~p", [Domain]),
     ObjectType = ?CONTENT_TYPE_CDMI_CONTAINER,
     {ok, Body, Req2} = cowboy_req:body(Req),
     Body2 = try jsx:decode(Body, [return_maps]) of
