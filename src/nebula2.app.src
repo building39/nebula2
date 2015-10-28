@@ -13,6 +13,8 @@
             crc16,
             uuid,
             jsx,
+            folsom,
+            cuttlefish,
             cowboy
 	]},
     {included_applications, [pooler, mcd]},
