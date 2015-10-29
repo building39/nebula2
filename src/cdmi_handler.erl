@@ -43,7 +43,7 @@ init(_, _Req, _Opts) ->
 
 rest_init(Req, _State) ->
     lager:debug("Entry"),
-    PoolMember          = pooler:take_member(riak_pool),
+    PoolMember          = get_pooler(),
     {Method, Req2}      = cowboy_req:method(Req),
     {Url, Req3}         = cowboy_req:url(Req2),
     {HostUrl, Req4}     = cowboy_req:host_url(Req3),
@@ -688,6 +688,27 @@ get_parent(ParentUri, Domain, State) ->
             {error, notfound};
         Uri ->
             nebula2_db:search(Domain ++ binary_to_list(Uri), State)
+    end.
+
+-spec get_pooler() -> pid().
+get_pooler() ->
+    case pooler:take_member(riak_pool) of
+        error_no_members ->
+            Retries = 5,
+            get_pooler_retry(Retries);
+        Pid ->
+            Pid
+    end.
+get_pooler_retry(0) ->
+    lager:debug(error, "Out of pool connections."),
+    error_no_members;
+get_pooler_retry(Retries) ->
+    timer:sleep(1000),        %% give pooler 1 second to get more connections.
+    case get_pooler() of
+        error_no_members ->
+            get_pooler_retry(Retries - 1);
+        Pid ->
+            Pid
     end.
 
 %% @doc Handle query string
