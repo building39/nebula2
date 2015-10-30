@@ -30,7 +30,7 @@
 
 %% @doc Ping the riak cluster.
 -spec nebula2_riak:available(pid()) -> boolean().
-available(Pid) ->
+available(Pid) when is_pid(Pid) ->
     lager:debug("Entry"),
     case riakc_pb_socket:ping(Pid) of
         pong ->
@@ -175,42 +175,49 @@ fetch(Pid, Data) ->
 %% ====================================================================
 -ifdef(EUNIT).
 
-create_query_test() ->
-    Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWlubXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
-
-%% Test with no {metadata: {cdmi_owner: ""}}
-create_query2_test() ->
-    Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWluYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
-
-%% Test with no {domainURI: }
-create_query3_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vbXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
-
-%% Test with no {domainURI: } AND no {metadata: {cdmi_owner}}
-create_query4_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
-
-%% Test with no {domainURI: } AND no {metadata: }
-create_query5_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\"}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
+available_test() ->
+    meck:new(riakc_pb_socket, [non_strict]),
+    Pid = self(),
+    meck:expect(riakc_pb_socket, ping, [Pid], pong),
+    ?assertMatch(true, nebula2_riak:available(Pid)),
+    meck:expect(riakc_pb_socket, ping, [Pid], pang),
+    ?assertMatch(false, nebula2_riak:available(Pid)).
+%%  create_query_test() ->
+%%      Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
+%%      Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
+%%      Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
+%%      SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
+%%      ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWlubXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
+%% 
+%% %% Test with no {metadata: {cdmi_owner: ""}}
+%% create_query2_test() ->
+%%     Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
+%%     Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
+%%     Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
+%%     SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
+%%     ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWluYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
+%% 
+%% %% Test with no {domainURI: }
+%% create_query3_test() ->
+%%     Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
+%%     Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
+%%     Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
+%%     SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
+%%     ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vbXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
+%% 
+%% %% Test with no {domainURI: } AND no {metadata: {cdmi_owner}}
+%% create_query4_test() ->
+%%     Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
+%%     Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
+%%     Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
+%%     SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
+%%     ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
+%% 
+%% %% Test with no {domainURI: } AND no {metadata: }
+%% create_query5_test() ->
+%%     Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\"}",
+%%     Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
+%%     Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
+%%     SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
+%%     ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
 -endif.
