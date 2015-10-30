@@ -36,6 +36,7 @@
          make_search_key/1,
          put_value/3,
          set_cache/1,
+         type_of/1,
          update_data_system_metadata/3,
          update_data_system_metadata/4,
          update_parent/4
@@ -335,6 +336,39 @@ set_cache(Data) ->
     ObjectId = nebula2_utils:get_value(<<"objectID">>, Data),
     mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
     mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
+
+-spec type_of(term()) -> boolean().
+type_of(X) ->
+    if
+        is_atom(X) ->
+            <<"atom">>;
+        is_binary(X) ->
+            <<"binary">>;
+        is_bitstring(X) ->
+            <<"bitstring">>;
+        is_boolean(X) ->
+            <<"boolean">>;
+        is_float(X) ->
+            <<"float">>;
+        is_function(X) ->
+            <<"function">>;
+        is_integer(X) ->
+            <<"integer">>;
+        is_list(X) ->
+            <<"list">>;
+        is_number(X) ->
+            <<"number">>;
+        is_pid(X) ->
+            <<"pid">>;
+        is_port(X) ->
+            <<"port">>;
+        is_reference(X) ->
+            <<"reference">>;
+        is_tuple(X) ->
+            <<"tuple">>;
+        true ->
+            <<"I have no idea what it is">>
+    end.
 
 %% Update Metadata
 -spec nebula2_utils:update_data_system_metadata(list(),map(), cdmi_state()) -> map().

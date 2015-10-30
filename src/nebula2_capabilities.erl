@@ -406,7 +406,7 @@ cdmi_size(Doit, Data) ->
                                 is_list(Val) ->
                                     Val;
                                 true ->
-                                    lager:error("Type of value is ~p", [type_of(Val)]),
+                                    lager:error("Type of value is ~p", [nebula2_utils:type_of(Val)]),
                                     throw(badjson)
                             end,
                     lager:debug("Value: ~p", [Value]),
@@ -455,37 +455,7 @@ build_path([H|T], Acc) ->
     Acc2 = lists:append(Acc, binary_to_list(H) ++ "/"),
     build_path(T, Acc2).
 
-type_of(X) ->
-    if
-        is_atom(X) ->
-            <<"atom">>;
-        is_binary(X) ->
-            <<"binary">>;
-        is_bitstring(X) ->
-            <<"bitstring">>;
-        is_boolean(X) ->
-            <<"boolean">>;
-        is_float(X) ->
-            <<"float">>;
-        is_function(X) ->
-            <<"function">>;
-        is_integer(X) ->
-            <<"integer">>;
-        is_list(X) ->
-            <<"list">>;
-        is_number(X) ->
-            <<"number">>;
-        is_pid(X) ->
-            <<"pid">>;
-        is_port(X) ->
-            <<"port">>;
-        is_reference(X) ->
-            <<"reference">>;
-        is_tuple(X) ->
-            <<"tuple">>;
-        true ->
-            <<"I have no idea what it is">>
-    end.
+
             
             
 
