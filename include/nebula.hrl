@@ -24,6 +24,15 @@
 -type search_predicate() :: nonempty_string().
 -type cdmi_state()       :: {pid(), map()}.
 
+%% Debug logging
+-ifdef(EUNIT).
+-define(nebMsg(X), ?debugMsg(X)).
+-define(nebFmt(X, Y), ?debugFmt(X, Y)).
+-else.
+-define(nebMsg(X), lager:debug(X)).
+-define(nebFmt(X, Y), lager:debug(X, Y)).
+-endif.
+
 %% Miscellaneous macros
 -define(DEFAULT_ADMINISTRATOR, "administrator").
 -define(DEFAULT_LOCATION, "US-TX").
