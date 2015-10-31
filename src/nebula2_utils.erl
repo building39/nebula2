@@ -614,19 +614,17 @@ beginswith_false_test() ->
     ?assertNot(beginswith("abcdef", "def")).
 
 %% @doc Test the get_parent/2 function.
-get_parent_root_test() -> 
-    ?assert(get_parent(ok, "/") == {ok, "", ""}).
-get_parent_object_test() ->
-    Data =  "{\"objectID\":\"parent_oid\",}",
-    Path = "/some/object",
-    meck:new(nebula2_riak, [non_strict]),
-    meck:expect(nebula2_riak, search, fun(ok, Path) -> {ok, Data} end),
-    ?assert(get_parent(ok, Path) == {ok, "/some/", "parent_oid"}),
-    meck:unload(nebula2_riak).
-get_parent_notfound_test() ->
-    Path = "/some/object",
-    meck:new(nebula2_riak, [non_strict]),
-    meck:expect(nebula2_riak, search, fun(ok, Path) -> {error, notfound} end),
-    ?assert(get_parent(ok, Path) == {error, notfound, "/some/"}),
-    meck:unload(nebula2_riak).
+%% get_parent_root_test() -> 
+%%     ?assert(get_parent(ok, "/") == {ok, "", ""}).
+%% get_parent_object_test() ->
+%%     Data =  "{\"objectID\":\"parent_oid\",}",
+%%     meck:new(nebula2_riak, [non_strict]),
+%%     meck:expect(nebula2_riak, search, fun(ok, "/some/object") -> {ok, Data} end),
+%%     ?assert(get_parent(ok, "/some/object") == {ok, "/some/", "parent_oid"}),
+%%     meck:unload(nebula2_riak).
+%% get_parent_notfound_test() ->
+%%     meck:new(nebula2_riak, [non_strict]),
+%%     meck:expect(nebula2_riak, search, fun(ok, "/some/object") -> {error, notfound} end),
+%%     ?assert(get_parent(ok, "/some/object") == {error, notfound, "/some/"}),
+%%     meck:unload(nebula2_riak).
 -endif.
