@@ -42,9 +42,7 @@ available(Pid) when is_pid(Pid) ->
 
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
-delete(Pid, Oid) when is_binary(Oid) ->
-    delete(Pid, binary_to_list(Oid));
-delete(Pid, Oid) ->
+delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
     ?nebMsg("Entry"),
     riakc_pb_socket:delete(Pid,
                            {list_to_binary(?BUCKET_TYPE),
@@ -181,6 +179,21 @@ available_test() ->
     meck:expect(riakc_pb_socket, ping, [Pid], pang),
     ?assertMatch(false, nebula2_riak:available(Pid)),
     meck:unload(riakc_pb_socket).
+
+delete_test() ->
+    Pid = self(),
+    TestOid = ?TestOid,
+    meck:new(riakc_pb_socket, [non_strict]),
+    Return1 = ok,
+    meck:expect(riakc_pb_socket, delete, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], Return1),
+    ?assertMatch(Return1, delete(Pid, TestOid)),
+    Return2 = {error, not_found},
+    meck:expect(riakc_pb_socket, delete, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], Return2),
+    ?assertMatch(Return2, delete(Pid, TestOid)),
+    ?assertException(error, function_clause, fetch(not_a_pid, TestOid)),
+    ?assertException(error, function_clause, fetch(Pid, not_a_list)),
+    meck:unload(riakc_pb_socket).
+
 fetch_test() ->
     Pid = self(),
     TestBinary = ?TestBinary,
