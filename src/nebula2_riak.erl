@@ -30,7 +30,7 @@
          update/3]).
 
 %% @doc Ping the riak cluster.
--spec nebula2_riak:available(pid()) -> boolean().
+-spec available(pid()) -> boolean().
 available(Pid) when is_pid(Pid) ->
 %    ?nebMsg("Entry"),
     case riakc_pb_socket:ping(Pid) of
@@ -41,7 +41,7 @@ available(Pid) when is_pid(Pid) ->
     end.
 
 %% @doc Delete an object from riak by bucket type, bucket and key.
--spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
+-spec delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
     ?nebMsg("Entry"),
     riakc_pb_socket:delete(Pid,
@@ -50,7 +50,7 @@ delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
                            Oid).
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
--spec nebula2_riak:get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
+-spec get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
 get(Pid, Oid) when is_binary(Oid) ->
 %%    ?nebMsg("Entry"),
     case riakc_pb_socket:get(Pid, {list_to_binary(?BUCKET_TYPE),
@@ -64,13 +64,13 @@ get(Pid, Oid) when is_binary(Oid) ->
     end.
 
 %% @doc Get the domain maps.
--spec nebula2_riak:get_domain_maps(pid(), object_path()) -> binary().
+-spec get_domain_maps(pid(), object_path()) -> binary().
 get_domain_maps(Pid, Path) ->
     ?nebMsg("Entry"),
     execute_search(Pid, "sp:\\" ++ Path).
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
--spec nebula2_riak:put(pid(),
+-spec put(pid(),
                        object_oid(),   %% Oid
                        map()           %% Data to store
                       ) -> {'error', _} | {'ok', _}.
@@ -78,7 +78,7 @@ put(Pid, Oid, Data) ->
     ?nebMsg("Entry"),
     do_put(Pid, Oid, Data).
 
--spec nebula2_riak:do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
+-spec do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
 do_put(Pid, Oid, Data) ->
     ?nebMsg("Entry"),
     Json = jsx:encode(Data),
@@ -95,7 +95,7 @@ do_put(Pid, Oid, Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec nebula2_riak:search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
+-spec search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
 search(Path, State) when is_binary(Path)->
     Path2 = binary_to_list(Path),
     search(Path2, State);
@@ -107,7 +107,7 @@ search(Path, State) ->
     Result.
 
 %% @doc Update an existing key/value pair.
--spec nebula2_riak:update(pid(),
+-spec update(pid(),
                           object_oid(),      %% Oid
                           map()              %% Data to store
                          ) -> ok | {error, term()}.
@@ -132,7 +132,7 @@ update(Pid, Oid, Data) ->
 %% ====================================================================
 
 %% @doc Execute a search.
--spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
+-spec execute_search(pid(),              %% Riak client pid.
                                   search_predicate()  %% URI.
                                  ) -> {error, 404|500} |{ok, map()}.
 execute_search(Pid, Query) ->
@@ -160,7 +160,7 @@ execute_search(Pid, Query) ->
     Response.
 
 %% @doc Fetch document.
--spec nebula2_riak:fetch(pid(), list()) -> {ok, map()}.
+-spec fetch(pid(), list()) -> {ok, map()}.
 fetch(Pid, Data) when is_pid(Pid); is_list(Data) ->
     ?nebMsg("Entry"),
     Oid = proplists:get_value(<<"_yz_rk">>, Data),
@@ -175,9 +175,9 @@ available_test() ->
     meck:new(riakc_pb_socket, [non_strict]),
     Pid = self(),
     meck:expect(riakc_pb_socket, ping, [Pid], pong),
-    ?assertMatch(true, nebula2_riak:available(Pid)),
+    ?assertMatch(true, available(Pid)),
     meck:expect(riakc_pb_socket, ping, [Pid], pang),
-    ?assertMatch(false, nebula2_riak:available(Pid)),
+    ?assertMatch(false, available(Pid)),
     meck:unload(riakc_pb_socket).
 
 delete_test() ->
