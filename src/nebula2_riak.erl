@@ -163,7 +163,7 @@ execute_search(Pid, Query) ->
 
 %% @doc Fetch document.
 -spec nebula2_riak:fetch(pid(), list()) -> {ok, map()}.
-fetch(Pid, Data) ->
+fetch(Pid, Data) when is_pid(Pid); is_list(Data) ->
     ?nebMsg("Entry"),
     Oid = proplists:get_value(<<"_yz_rk">>, Data),
     ?nebFmt("Oid: ~p", [Oid]),
