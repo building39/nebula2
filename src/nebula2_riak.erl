@@ -166,10 +166,7 @@ execute_search(Pid, Query) ->
 fetch(Pid, Data) when is_pid(Pid); is_list(Data) ->
     ?nebMsg("Entry"),
     Oid = proplists:get_value(<<"_yz_rk">>, Data),
-    ?nebFmt("Oid: ~p", [Oid]),
-    Response = get(Pid, Oid),
-    ?nebFmt("Response: ~p", [Response]),
-    Response.
+    get(Pid, Oid).
 
 %% ====================================================================
 %% eunit tests
@@ -195,8 +192,12 @@ fetch_test() ->
     meck:new(riakc_obj, [non_strict]),
     meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], {ok, TestObject}),
     meck:expect(riakc_obj, get_value, [TestObject], TestBinary),
-    Got = fetch(Pid, TestData),
-    ?assertMatch({ok, TestMap}, Got),
+    ?assertMatch({ok, TestMap}, fetch(Pid, TestData)),
+    meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], {error, not_found}),
+    ?assertMatch({error, not_found}, fetch(Pid, TestData)),
+    ?assertException(error, function_clause, fetch(not_a_pid, TestData)),
+    ?assertException(error, function_clause, fetch(Pid, not_a_list)),
+    meck:unload(riakc_obj),
     meck:unload(riakc_pb_socket).
     
 -endif.
