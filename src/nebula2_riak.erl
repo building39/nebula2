@@ -40,7 +40,7 @@ available(Pid) when is_pid(Pid) ->
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     riakc_pb_socket:delete(Pid,
                            ?RIAK_TYPE_AND_BUCKET,
                            Oid).
@@ -48,7 +48,7 @@ delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
 get(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case riakc_pb_socket:get(Pid, ?RIAK_TYPE_AND_BUCKET, Oid) of
                 {ok, Object} ->
                     Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
@@ -60,7 +60,7 @@ get(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
 %% @doc Get the domain maps.
 -spec get_domain_maps(pid(), object_path()) -> binary().
 get_domain_maps(Pid, Path) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     execute_search(Pid, "sp:\\" ++ Path).
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
@@ -69,7 +69,7 @@ get_domain_maps(Pid, Path) ->
           map()           %% Data to store
          ) -> {'error', _} | {'ok', _}.
 put(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_map(Data) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     Json = jsx:encode(Data),
     Object = riakc_obj:new(?RIAK_TYPE_AND_BUCKET,
                             Oid,
@@ -90,7 +90,7 @@ search(Path, State) when is_binary(Path); is_map(State) ->
     Path2 = binary_to_list(Path),
     search(Path2, State);
 search(Path, State) when is_list(Path); is_map(State) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
     Result =  execute_search(Pid, Query),
@@ -103,7 +103,7 @@ search(Path, State) when is_list(Path); is_map(State) ->
             ) -> ok | {error, term()}.
 
 update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case get(Pid, Oid) of
         {error, Term} ->
             {error, Term};
@@ -125,7 +125,7 @@ update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid) ->
                      search_predicate()  %% URI.
                     ) -> {error, 404|500} |{ok, map()}.
 execute_search(Pid, Query) when is_pid(Pid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     Index = ?CDMI_INDEX,
     Response = case riakc_pb_socket:search(Pid, Index, Query) of
                    {ok, Results} ->
