@@ -60,6 +60,7 @@
 -define(CONTENT_TYPE_CDMI_CONTAINER_JSON,  "application/cdmi-container+json").
 -define(CONTENT_TYPE_CDMI_DATAOBJECT_JSON, "application/cdmi-dataobject+json").
 -define(CONTENT_TYPE_CDMI_DOMAIN_JSON,     "application/cdmi-domain+json").
+-define(CONTENT_TYPE_JSON,                 "application/json").
 
 %% Capability URIs
 -define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/").

@@ -1,6 +1,7 @@
 PROJECT = nebula2
-DEPS = lager crc16 jsx uuid riakc folsom_cowboy folsom cowboy pooler mcd
+DEPS = lager meck crc16 jsx uuid riakc folsom_cowboy folsom cowboy pooler mcd
 dep_lager = git git@github.com:basho/lager.git 2.1.1
+dep_meck = git git@github.com:eproxus/meck.git 0.8.3
 dep_crc16 = git git@github.com:building39/crc16_nif.git 1.1
 dep_jsx = git git@github.com:talentdeficit/jsx.git master
 dep_uuid = git git://github.com/avtobiff/erlang-uuid.git v0.4.7

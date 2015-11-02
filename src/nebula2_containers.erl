@@ -44,8 +44,8 @@ new_container(Req, State) ->
     Response.
 
 %% @doc Update a CDMI container
--spec nebula2_containers:update_container(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
-update_container(Req, State, Oid) ->
+-spec nebula2_containers:update_container(cowboy_req:req(), map(), object_oid()) -> {ok, json_value()}.
+update_container(Req, State, Oid) when is_map(State); is_binary(Oid)->
     lager:debug("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),

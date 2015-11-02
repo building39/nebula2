@@ -147,10 +147,7 @@ unmarshall(Data) ->
              object_oid(),      %% Oid
              map()              %% Data to store
             ) -> ok | {error, term()}.
-update(Pid, Oid, Data) when is_binary(Oid) ->
-    lager:debug("Entry"),
-    update(Pid, binary_to_list(Oid), Data);
-update(Pid, Oid, Data) ->
+update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_binary(Data)->
     lager:debug("Entry"),
     {ok, Mod} = application:get_env(nebula2, cdmi_metadata_module),
     case Mod:update(Pid, Oid, jsx:encode(Data)) of
