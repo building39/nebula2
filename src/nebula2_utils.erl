@@ -5,6 +5,7 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-include("nebula2_test.hrl").
 -endif.
 
 -include("nebula.hrl").
@@ -45,7 +46,7 @@
 %% @doc Check if a string begins with a certain substring.
 -spec beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case string:left(Str, string:len(Substr)) of
         Substr -> true;
         _ -> false
@@ -120,7 +121,7 @@ delete(State) ->
     handle_delete(Pid, Data, State, list_to_binary(Path), Children).
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
-delete_cache(Oid) ->
+delete_cache(Oid) when is_binary(Oid) ->
     ?nebMsg("Entry"),
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
@@ -281,7 +282,7 @@ make_key() ->
 -spec make_search_key(map()) -> list().
 make_search_key(Data) ->
     ?nebMsg("Entry"),
-    ?nebFmt("Data: ~p", [Data]),
+%    ?nebFmt("Data: ~p", [Data]),
     ObjectName = binary_to_list(get_value(<<"objectName">>, Data)),
     ParentUri = binary_to_list(get_value(<<"parentURI">>, Data, <<"">>)),
     Path = binary_to_list(get_value(<<"path">>, Data, <<"">>)),
@@ -475,8 +476,11 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                                   {<<"cdmi_owner">>, Owner}
                                  ]),
     OldMetadata = get_value(<<"metadata">>, Body, maps:new()),
+    ?nebFmt("OldMetaData: ~p", [OldMetadata]),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
+    ?nebFmt("MetaData2: ~p", [Metadata2]),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
+    ?nebFmt("MetaData3: ~p", [Metadata3]),
     Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, Oid},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
@@ -487,6 +491,7 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                                        {<<"completionStatus">>, <<"Complete">>},
                                        {<<"metadata">>, Metadata3}]),
                       Data),
+    ?nebFmt("Data2: ~p", [Data2]),
     Data3 = case maps:is_key(<<"value">>, Data2) of
                 true ->
                     case maps:is_key(<<"valuetransferencoding">>, Data2) of
@@ -498,7 +503,9 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                 false ->
                     Data2
             end,
+    ?nebFmt("Data3: ~p", [Data3]),
     Data4 = put_value(<<"metadata">>, Metadata3, Data3),
+    ?nebFmt("Data4: ~p", [Data4]),
     CList = [<<"cdmi_atime">>,
              <<"cdmi_ctime">>,
              <<"cdmi_mtime">>,
@@ -507,13 +514,13 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
              <<"cdmi_size">>
     ],
     Data5 = update_data_system_metadata(CList, Data4, CapabilitiesURI, State),
+    ?nebFmt("Data5: ~p", [Data5]),
     SearchKey = make_search_key(Data5),
-    Data6 = maps:put(<<"cdmi">>, Data5, Data),      %% really needs to be maps:put, not nebula2_utils:put_value
-    Data7 = maps:put(<<"sp">>, SearchKey, Data6),   %% Ditto
-    {ok, Oid} = nebula2_db:create(Pid, Oid, Data7),
+    Data6 = maps:from_list([{<<"cdmi">>, Data5}, {<<"sp">>, SearchKey}]),
+    {ok, Oid} = nebula2_db:create(Pid, Oid, Data6),
     ok = update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
-    set_cache(Data7),
+    set_cache(Data6),
     {true, Data6}.
 
 -spec extract_parentURI(list(), list()) -> list().
@@ -539,9 +546,9 @@ get_capability_uri(ObjectType) ->
             ?DOMAIN_CAPABILITY_URI
     end.
 
--spec get_cache(binary() | list) -> {ok, map()} | {error, deleted | notfound}.
+-spec get_cache(binary()) -> {ok, map()} | {error, deleted | notfound}.
 get_cache(Key) when is_list(Key) ->
-    get_cache(list_to_binary(Key));
+   get_cache(list_to_binary(Key));
 get_cache(Key) when is_binary(Key) ->
     ?nebFmt("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
@@ -550,8 +557,6 @@ get_cache(Key) when is_binary(Key) ->
         Response ->
             Response
     end.
-%get_cache(_) -> 
-%    {error, notfound}.
 
 get_domain_from_path(Path) ->
     ?nebMsg("Entry"),
@@ -606,6 +611,9 @@ beginswith_true_test() ->
     ?assert(beginswith("abcdef", "abc")).
 beginswith_false_test() -> 
     ?assertNot(beginswith("abcdef", "def")).
+
+get_domain_hash_test() ->
+    ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI)).
 
 %% @doc Test the get_parent/2 function.
 %% get_parent_root_test() -> 
