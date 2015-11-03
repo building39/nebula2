@@ -39,7 +39,7 @@ available(Pid) when is_pid(Pid) ->
 
 %% @doc Delete an object from riak by bucket type, bucket and key.
 -spec delete(pid(), object_oid()) -> ok | {error, term()}.
-delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
+delete(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     riakc_pb_socket:delete(Pid,
                            ?RIAK_TYPE_AND_BUCKET,
@@ -47,7 +47,7 @@ delete(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
 -spec get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
-get(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
+get(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     case riakc_pb_socket:get(Pid, ?RIAK_TYPE_AND_BUCKET, Oid) of
                 {ok, Object} ->
@@ -59,7 +59,7 @@ get(Pid, Oid) when is_pid(Pid); is_binary(Oid) ->
 
 %% @doc Get the domain maps.
 -spec get_domain_maps(pid(), object_path()) -> binary().
-get_domain_maps(Pid, Path) ->
+get_domain_maps(Pid, Path) when is_pid(Pid), is_list(Path) ->
 %    ?nebMsg("Entry"),
     execute_search(Pid, "sp:\\" ++ Path).
 
@@ -68,7 +68,7 @@ get_domain_maps(Pid, Path) ->
           object_oid(),   %% Oid
           map()           %% Data to store
          ) -> {'error', _} | {'ok', _}.
-put(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_map(Data) ->
+put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
     Json = jsx:encode(Data),
     Object = riakc_obj:new(?RIAK_TYPE_AND_BUCKET,
@@ -77,32 +77,28 @@ put(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_map(Data) ->
                             list_to_binary(?CONTENT_TYPE_JSON)),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
-            ?nebMsg("ok"),
             {ok, Oid};
         {error, Term} ->
-            ?nebFmt("error, Term: ~p", [Term]),
             {error, Term}
     end.
 
 %% @doc Search an index for objects.
 -spec search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
-search(Path, State) when is_binary(Path); is_map(State) ->
-    Path2 = binary_to_list(Path),
-    search(Path2, State);
-search(Path, State) when is_list(Path); is_map(State) ->
-%    ?nebMsg("Entry"),
+search(Path, State) when is_list(Path), is_tuple(State) ->
+    ?nebMsg("Entry"),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
+    ?nebFmt("Query: ~p", [Query]),
     Result =  execute_search(Pid, Query),
     Result.
 
 %% @doc Update an existing key/value pair.
 -spec update(pid(),
              object_oid(),      %% Oid
-             map()              %% Data to store
+             binary()           %% Data to store
             ) -> ok | {error, term()}.
 
-update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid) ->
+update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     case get(Pid, Oid) of
         {error, Term} ->
@@ -112,8 +108,7 @@ update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid) ->
                                             ?RIAK_TYPE_AND_BUCKET,
                                             Oid),
             NewObj = riakc_obj:update_value(Obj, Data),
-            R = riakc_pb_socket:put(Pid, NewObj),
-            R
+            riakc_pb_socket:put(Pid, NewObj)
     end.
 
 %% ====================================================================
@@ -176,32 +171,39 @@ delete_test() ->
     ?assertException(error, function_clause, delete(Pid, not_a_list)),
     meck:unload(riakc_pb_socket).
 
-%% execute_search_test() ->
-%%     Pid = self(),
-%%     TestBinary = ?TestBinary,
-%%     TestSearchResults_1_Result = ?TestSearchResults_1_Result,
-%%     TestMap = jsx:decode(TestBinary, [return_maps]),
-%%     TestQuery = ?TestQuery,
-%%     TestRiakObject = ?TestRiakObject,
-%%     TestOid = ?TestOid,
-%%     
-%%     meck:new(riakc_pb_socket, [non_strict]),
-%%     meck:new(riakc_obj, [non_strict]),
-%%     
-%%     meck:expect(riakc_pb_socket, search, [Pid, ?CDMI_INDEX, TestQuery], {ok, TestSearchResults_1_Result}),
-%%     meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], {ok, TestRiakObject}),
-%%     meck:expect(riakc_obj, get_value, [TestRiakObject], TestBinary),
-%% 
-%% %    This test will error out for some mysterious reason.
-%% %    ?assertMatch({ok, TestMap}, execute_search(Pid, TestQuery)),
-%%     
-%%     meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], {error, not_found}),
-%%     
-%%     ?assertException(error, function_clause, execute_search(not_a_pid, TestQuery)),
-%%     ?assertException(error, function_clause, execute_search(Pid, not_a_list)),
-%%     
-%%     meck:unload(riakc_obj),
-%%     meck:unload(riakc_pb_socket).
+search_test() ->
+    Pid = self(),
+    Path = ?TestSystemDomainHash ++ "/system_configuration/"++ "domain_maps",
+    TestBinary = ?TestBinary,
+    TestSearchResults_1_Result = ?TestSearchResults_1_Result,
+    TestMap = jsx:decode(TestBinary, [return_maps]),
+    TestQuery = ?TestQuery2,
+    TestRiakObject = ?TestRiakObject,
+    TestOid = ?TestOid,
+    meck:new(riakc_pb_socket, [non_strict]),
+    meck:new(riakc_obj, [non_strict]),
+    meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, TestOid], {ok, TestRiakObject}),
+    meck:expect(riakc_obj, get_value, [TestRiakObject], TestBinary),
+
+    meck:expect(riakc_pb_socket, search, [Pid, ?CDMI_INDEX, TestQuery], {ok, TestSearchResults_1_Result}),
+    ?assertMatch({ok, TestMap}, execute_search(Pid, TestQuery)),
+    ?assertMatch({ok, TestMap}, search(Path, {Pid, maps:new()})),
+    ?assertMatch({ok, TestMap}, get_domain_maps(Pid, Path)),
+
+    meck:expect(riakc_pb_socket, search, [Pid, ?CDMI_INDEX, TestQuery], {ok, ?TestSearchResults_0_Result}),
+    ?assertMatch({error, 404}, execute_search(Pid, TestQuery)),
+
+    meck:expect(riakc_pb_socket, search, [Pid, ?CDMI_INDEX, TestQuery], {ok, ?TestSearchResults_2_Result}),
+    ?assertMatch({error, 500}, execute_search(Pid, TestQuery)),
+
+    meck:expect(riakc_pb_socket, search, [Pid, ?CDMI_INDEX, TestQuery], {error, not_found}),
+    ?assertMatch({error, 404}, execute_search(Pid, TestQuery)),
+    
+    ?assertException(error, function_clause, execute_search(not_a_pid, TestQuery)),
+    ?assertException(error, function_clause, execute_search(Pid, not_a_list)),
+
+    meck:unload(riakc_obj),
+    meck:unload(riakc_pb_socket).
 
 get_test() ->
     Pid = self(),
