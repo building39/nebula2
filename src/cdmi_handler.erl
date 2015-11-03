@@ -2,6 +2,7 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-include("nebula2_test.hrl").
 -endif.
 
 -include("nebula.hrl").
@@ -792,4 +793,21 @@ req_domain([H|T], HostUrl) ->
 %% eunit tests
 %% ====================================================================
 -ifdef(EUNIT).
+
+cdmi_handler_test_() ->
+    {foreach,
+     fun() ->
+            ok
+     end,
+     fun(_) ->
+            ok
+     end,
+     [{"Test init/3",
+       fun() ->
+              ?assertMatch({upgrade, protocol, cowboy_rest}, init(term, req, opts))
+       end
+      }
+     ]
+    }.
+
 -endif.

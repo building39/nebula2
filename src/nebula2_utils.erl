@@ -53,54 +53,51 @@ beginswith(Str, Substr) ->
     end.
 
 %% Check base64 encoding
--spec check_base64(binary() | list()) -> boolean().
-check_base64(Data) ->
-    case maps:is_key(<<"valuetransferencoding">>, Data) of
-        false ->
-            true;
-        true ->
+-spec check_base64(map()) -> boolean().
+check_base64(Data) when is_map(Data) ->
+    case maps:get(<<"valuetransferencoding">>, Data, <<"">>) of
+        <<"base64">> ->
             try base64:decode(binary_to_list(get_value(<<"value">>, Data))) of
                 _ -> 
                     true
             catch
                 _:_ ->
                     false
-            end
+            end;
+        _ ->
+            true
     end.
 
 %% @doc Create a CDMI object
--spec create_object({pid(), map()}, object_type(), map()) ->
-          {boolean(), map()}.
+-spec create_object(cdmi_state(), object_type(), map()) ->
+          {boolean(), map()} | false.
 create_object(State, ObjectType, Body) ->
     ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(get_value(<<"path">>, EnvMap)),
-    case get_cache(Path) of
-        {ok, Data} ->
-            Data;
-        _ ->
-            case get_object_oid(get_parent_uri(Path), State) of
-                {ok, ParentId} ->
-                    {ok, Parent} = nebula2_db:read(Pid, ParentId),
-                    DomainName = get_value(<<"domainURI">>, Parent, ""),
-                    create_object(State, ObjectType, DomainName, Parent, Body);
-                {notfound, _} ->
-                    pooler:return_member(riak_pool, Pid),
-                    false
-            end
+    ?nebFmt("Path: ~p", [Path]),
+    case get_object_oid(get_parent_uri(Path), State) of
+        {ok, ParentId} ->
+            {ok, Parent} = nebula2_db:read(Pid, ParentId),
+            DomainName = get_value(<<"domainURI">>, Parent, ""),
+            create_object(State, ObjectType, DomainName, Parent, Body);
+        {notfound, _} ->
+            ?nebMsg("notfound"),
+            pooler:return_member(riak_pool, Pid),
+            false
     end.
 
--spec create_object({pid(), map()}, object_type(), list() | binary(), map()) ->
-          {boolean(), map()}.
-create_object(State, ObjectType, DomainName, Body) when is_list(DomainName)->
-    create_object(State, ObjectType, list_to_binary(DomainName), Body);
-create_object(State, ObjectType, DomainName, Body) when is_binary(DomainName)->
+-spec create_object(cdmi_state(), object_type(), list() | binary(), map()) ->
+          {boolean(), map()} | false.
+create_object(State, ObjectType, DomainName, Body) when is_binary(DomainName), is_map(Body) ->
     ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(get_value(<<"path">>, EnvMap)),
     case get_object_oid(get_parent_uri(Path), State) of
         {ok, ParentId} ->
+            ?nebFmt("ok, ParentId: ~p", [ParentId]),
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
+            ?nebFmt("Parent: ~p", [Parent]),
             create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
             %% TODO: maybe leaking a pool connection here?
@@ -195,11 +192,10 @@ get_object_oid(State) ->
     get_object_oid(Path, State).
 
 %% @doc Get the object's oid.
--spec get_object_oid(string() | binary(), tuple()) -> {ok, term()}|{notfound, string()}.
-get_object_oid(Path, State) when is_binary(Path) ->
-    get_object_oid(binary_to_list(Path), State);
+-spec get_object_oid(string(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) ->
     ?nebMsg("Entry"),
+    ?nebFmt("Path: ~p", [Path]),
     RealPath = case beginswith(Path, "/capabilities/") of
                    true ->
                        get_domain_hash(<<"">>) ++ Path;
@@ -207,13 +203,15 @@ get_object_oid(Path, State) ->
                        {_, EnvMap} = State,
                        get_domain_hash(get_value(<<"domainURI">>, EnvMap, <<"">>)) ++ Path
                end,
-    Oid = case nebula2_db:search(RealPath, State) of
-            {error,_} -> 
-                {notfound, ""};
-            {ok, Data} ->
-                {ok, get_value(<<"objectID">>, Data)}
-          end,
-    Oid.
+    ?nebFmt("RealPath: ~p", [RealPath]),
+    case nebula2_db:search(RealPath, State) of
+        {error,_} ->
+            ?nebMsg("error"),
+            {notfound, ""};
+        {ok, Data} ->
+            ?nebFmt("ok, Data: ~p", [Data]),
+            {ok, get_value(<<"objectID">>, Data)}
+    end.
 
 %% @doc Construct the object's parent URI.
 -spec get_parent_uri(list()) -> string().
@@ -229,7 +227,7 @@ get_parent_uri(Path) ->
                         extract_parentURI(lists:droplast(Parts))
                 end,
     ?nebFmt("Exit: ~p", [ParentUri]),
-    list_to_binary(ParentUri).
+    ParentUri.
 
 %% @doc Get a value from the data map.
 -spec get_value(binary(), map()) -> binary().
@@ -373,8 +371,8 @@ update_data_system_metadata(CList, Data, State) when is_list(CList), is_map(Data
     ?nebFmt("Cap URI: ~p", [CapabilitiesURI]),
     update_data_system_metadata(CList, Data, CapabilitiesURI, State).
 
--spec update_data_system_metadata(list(),map(), string(), cdmi_state()) -> map().
-update_data_system_metadata(_CList, Data, [], _State) ->
+-spec update_data_system_metadata(list(),map(), binary() | string(), cdmi_state()) -> map().
+update_data_system_metadata(_, Data, [], _) when is_map(Data)->
     ?nebMsg("Entry"),
     Data;
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_binary(CapabilitiesURI) ->
@@ -382,6 +380,7 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_binary(
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     ?nebMsg("Entry"),
     Domain = get_domain_hash(<<"">>),
+    ?nebFmt("cap path: ~p", [Domain ++ CapabilitiesURI]),
     {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
     Capabilities = get_value(<<"capabilities">>, C1),
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
@@ -435,19 +434,19 @@ update_parent(ParentId, Path, ObjectType, Pid) ->
 %% ====================================================================
 
 -spec create_object({pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
-          {boolean(), cowboy_req:req(), {pid(), map()}}.
+          {boolean(), map()}.
 create_object(State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
     D = list_to_binary(DomainName),
     create_object(State, ObjectType, D, Parent, Body);
 create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
     ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-	case check_base64(Body) of
-		false ->
-		   throw(badencoding);
-		true ->
-			true
-	end,
+    case check_base64(Body) of
+        false ->
+            throw(badencoding);
+        true ->
+            true
+    end,
     Path = binary_to_list(get_value(<<"path">>, EnvMap)),
     ParentUri = get_parent_uri(Path),
     ParentId = get_value(<<"objectID">>, Parent),
@@ -477,22 +476,22 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                                   {<<"cdmi_owner">>, Owner}
                                  ]),
     OldMetadata = get_value(<<"metadata">>, Body, maps:new()),
-    ?nebFmt("OldMetaData: ~p", [OldMetadata]),
+%    ?nebFmt("OldMetaData: ~p", [OldMetadata]),
     Metadata2 = maps:merge(OldMetadata, NewMetadata),
-    ?nebFmt("MetaData2: ~p", [Metadata2]),
+%    ?nebFmt("MetaData2: ~p", [Metadata2]),
     Metadata3 = maps:merge(ParentMetadata, Metadata2),
-    ?nebFmt("MetaData3: ~p", [Metadata3]),
+%    ?nebFmt("MetaData3: ~p", [Metadata3]),
     Data2 = maps:merge(maps:from_list([{<<"objectType">>, list_to_binary(ObjectType)},
                                        {<<"objectID">>, Oid},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
                                        {<<"parentID">>, ParentId},
                                        {<<"parentURI">>, ParentUri},
-                                       {<<"capabilitiesURI">>, list_to_binary(CapabilitiesURI)},
+                                       {<<"capabilitiesURI">>, CapabilitiesURI},
                                        {<<"domainURI">>, DomainName},
                                        {<<"completionStatus">>, <<"Complete">>},
                                        {<<"metadata">>, Metadata3}]),
                       Data),
-    ?nebFmt("Data2: ~p", [Data2]),
+%    ?nebFmt("Data2: ~p", [Data2]),
     Data3 = case maps:is_key(<<"value">>, Data2) of
                 true ->
                     case maps:is_key(<<"valuetransferencoding">>, Data2) of
@@ -504,7 +503,7 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                 false ->
                     Data2
             end,
-    ?nebFmt("Data3: ~p", [Data3]),
+%    ?nebFmt("Data3: ~p", [Data3]),
     Data4 = put_value(<<"metadata">>, Metadata3, Data3),
     ?nebFmt("Data4: ~p", [Data4]),
     CList = [<<"cdmi_atime">>,
@@ -514,6 +513,7 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
              <<"cdmi_mcount">>,
              <<"cdmi_size">>
     ],
+    ?nebFmt("CapURI: ~p", [CapabilitiesURI]),
     Data5 = update_data_system_metadata(CList, Data4, CapabilitiesURI, State),
     ?nebFmt("Data5: ~p", [Data5]),
     SearchKey = make_search_key(Data5),
@@ -547,10 +547,8 @@ get_capability_uri(ObjectType) ->
             ?DOMAIN_CAPABILITY_URI
     end.
 
--spec get_cache(binary()) -> {ok, map()} | {error, deleted | notfound}.
+-spec get_cache(list()) -> {ok, map()} | {error, deleted | notfound}.
 get_cache(Key) when is_list(Key) ->
-   get_cache(list_to_binary(Key));
-get_cache(Key) when is_binary(Key) ->
     ?nebFmt("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
         {ok, Data} ->
@@ -608,26 +606,66 @@ sanitize_body([H|T], Body) ->
 %% ====================================================================
 -ifdef(EUNIT).
 %% @doc Test the beginswith/2 function.
-beginswith_true_test() ->
-    ?assert(beginswith("abcdef", "abc")).
-beginswith_false_test() -> 
-    ?assertNot(beginswith("abcdef", "def")).
 
-get_domain_hash_test() ->
-    ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI)).
+nebula2_utils_test_() ->
+    {foreach,
+     fun() ->
+             meck:new(nebula2_db, [non_strict]),
+             meck:new(pooler, [non_strict]),
+             meck:new(mcd, [non_strict])
+     end,
+     fun(_) ->
+             meck:unload(nebula2_db),
+             meck:unload(pooler),
+             meck:unload(mcd)
+     end,
+     [{"Test beginswith/2",
+       fun() ->
+               ?assert(beginswith("abcdef", "abc")),
+               ?assertNot(beginswith("abcdef", "def"))
+       end
+      },
+      {"Test check_base64/1",
+       fun() ->
+               EncodedData = "dGhpcyBpcyBzb21lIGRhdGEK",
+               Map = maps:from_list(([{<<"value">>, list_to_binary(EncodedData)},
+                                      {<<"valuetransferencoding">>, <<"base64">>}])),
+               ?assert(check_base64(Map)),
+               Map2 = maps:from_list(([{<<"value">>, <<"unencoded data">>},
+                                       {<<"valuetransferencoding">>, <<"base64">>}])),
+               ?assertNot(check_base64(Map2)),
+               ?assert(check_base64(maps:new())),
+               ?assertException(error, function_clause, check_base64(not_a_map))
+       end
+      },
+      {"Test create_object/3",
+       fun () ->
+                Pid = self(),
+                EnvMap = maps:from_list([{<<"path">>, <<"/system_configuration/domain_maps/">>},
+                                         {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}]),
+                State = {Pid, EnvMap},
+                TestMap = jsx:decode(?TestDomainMaps, [return_maps]),
+                TestParent = jsx:decode(?TestSystemConfiguration, [return_maps]),
+                ParentPath = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/system_configuration/",
+                ParentId = maps:get(<<"parentID">>, TestMap),
+                TestSystemCapabilitiesPath = ?TestSystemCapabilitiesPath,
+                TestSystemCapabilities = ?TestSystemCapabilities,
+                meck:expect(nebula2_db, read, [Pid, ParentId], {ok, TestParent}),
+                meck:expect(nebula2_db, search, [TestSystemCapabilitiesPath, State], {ok, TestSystemCapabilities}),
+                meck:expect(nebula2_db, search, [ParentPath, State], {ok, TestParent}),
+                meck:expect(mcd, get, [?MEMCACHE, '_'], {ok, TestMap}),
+                meck:expect(pooler, return_member, ['_', '_'], '_'),
+                ?assertMatch({true, TestMap}, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, TestMap)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(mcd)),
+                ?assert(meck:validate(pooler))
+        end
+      },
+      {"Test get_domain_hash/1",
+       fun () ->
+                ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI))
+       end
+      }
+     ]}.
 
-%% @doc Test the get_parent/2 function.
-%% get_parent_root_test() -> 
-%%     ?assert(get_parent(ok, "/") == {ok, "", ""}).
-%% get_parent_object_test() ->
-%%     Data =  "{\"objectID\":\"parent_oid\",}",
-%%     meck:new(nebula2_riak, [non_strict]),
-%%     meck:expect(nebula2_riak, search, fun(ok, "/some/object") -> {ok, Data} end),
-%%     ?assert(get_parent(ok, "/some/object") == {ok, "/some/", "parent_oid"}),
-%%     meck:unload(nebula2_riak).
-%% get_parent_notfound_test() ->
-%%     meck:new(nebula2_riak, [non_strict]),
-%%     meck:expect(nebula2_riak, search, fun(ok, "/some/object") -> {error, notfound} end),
-%%     ?assert(get_parent(ok, "/some/object") == {error, notfound, "/some/"}),
-%%     meck:unload(nebula2_riak).
 -endif.
