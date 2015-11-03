@@ -31,6 +31,7 @@
 -else.
 -define(nebMsg(X), lager:debug(X)).
 -define(nebFmt(X, Y), lager:debug(X, Y)).
+-define(GET_ENV(X, Y), application:get_env(X, Y)). %% see nebula2_test.hrl for unit testing version of this macro.
 -endif.
 
 %% Miscellaneous macros

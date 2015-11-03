@@ -115,8 +115,8 @@ update_domain(_Pid, _ObjectId, Data) ->
 %% Internal functions
 %% ====================================================================
 
--spec new_member_and_summary_containers(cdmi_state(), string(), list()) -> boolean().
-new_member_and_summary_containers(State, SearchKey, Containers) ->
+-spec new_member_and_summary_containers(cdmi_state(), binary(), list()) -> boolean().
+new_member_and_summary_containers(State, SearchKey, Containers) when is_tuple(State), is_binary(SearchKey), is_list(Containers) ->
     lager:debug("Entry"),
     lager:debug("Search Key: ~p", [SearchKey]),
     {ok, Parent} = nebula2_db:search(SearchKey, State),

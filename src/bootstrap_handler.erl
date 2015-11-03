@@ -97,7 +97,7 @@ resource_exists(Req, State) ->
     lager:debug("Entry"),
     % lager:debug("bootstrap: resource_exists:"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+    Path = nebula2_utils:get_value(<<"path">>, EnvMap),
     Response = case nebula2_db:search(Path, State) of
                    {error, _Status} ->
                        false;

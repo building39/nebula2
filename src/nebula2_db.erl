@@ -78,10 +78,10 @@ marshall(Data) when is_map(Data) ->
     SearchKey = nebula2_utils:make_search_key(Data),
     marshall(Data, SearchKey).
 
--spec marshall(map(), binary()) -> map().
-marshall(Data, SearchKey) when is_map(Data), is_binary(SearchKey) ->
+-spec marshall(map(), list()) -> map().
+marshall(Data, SearchKey) when is_map(Data), is_list(SearchKey) ->
 %    ?nebMsg("Entry"),
-    maps:from_list([{<<"cdmi">>, Data}, {<<"sp">>, SearchKey}]).
+    maps:from_list([{<<"cdmi">>, Data}, {<<"sp">>, list_to_binary(SearchKey)}]).
 
 %% @doc Read an object
 -spec read(pid(), object_oid()) -> {ok, map()}|{error, term()}.
@@ -129,7 +129,7 @@ unmarshall(Data) when is_map(Data) ->
              object_oid(),      %% Oid
              map()              %% Data to store
             ) -> ok | {error, term()}.
-update(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_map(Oid) ->
+update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     Data2 = jsx:encode(Data),
@@ -214,11 +214,13 @@ get_domain_maps_test() ->
 marshall_test() ->
     meck:new(nebula2_utils, [non_strict]),
     TestMap = jsx:decode(?TestDomainMaps, [return_maps]),
+    Key = binary_to_list(?TestSearchKey),
     CdmiMap = maps:from_list([{<<"cdmi">>, TestMap}, {<<"sp">>, ?TestSearchKey}]),
-    meck:expect(nebula2_utils, make_search_key, [TestMap], ?TestSearchKey),
+    meck:expect(nebula2_utils, make_search_key, [TestMap], Key),
     ?assertMatch(CdmiMap, marshall(TestMap)),
-    ?assertException(error, function_clause, marshall(not_a_binary)),
-    ?assertException(error, function_clause, marshall(TestMap, not_a_binary)),
+    ?assertMatch(CdmiMap, marshall(TestMap, Key)),
+    ?assertException(error, function_clause, marshall(not_a_map)),
+    ?assertException(error, function_clause, marshall(TestMap, not_a_list)),
     meck:unload(nebula2_utils).
 
 read_test() ->
@@ -257,6 +259,8 @@ search_test() ->
     ?assertMatch({ok, TestMap}, search(Path, {Pid, maps:new()})),
     meck:expect(Mod, search, [Path, State], {error, not_found}),
     ?assertMatch({error, not_found}, search(Path, {Pid, maps:new()})),
+    ?assertException(error, function_clause, search(not_a_list, State)),
+    ?assertException(error, function_clause, search(Path, not_a_tuple)),
     meck:unload(nebula2_utils),
     meck:unload(Mod).
     
@@ -270,16 +274,18 @@ update_test() ->
     Pid = self(),
     TestMap = jsx:decode(?TestDomainMaps, [return_maps]),
     CdmiMap = maps:from_list([{<<"cdmi">>, TestMap}, {<<"sp">>, ?TestSearchKey}]),
-    TestOid = ?TestOid,
+    TestOid = ?TestContainer7Oid,
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     meck:new(Mod, [non_script]),
     meck:new(nebula2_utils, [non_strict]),
-    meck:expect(Mod, update, ['_', '_', '_'], ok),
-    meck:expect(nebula2_utils, set_cache, ['_'], {ok, TestMap}),
+    meck:expect(Mod, update, [Pid, TestOid, '_'], ok),
+    meck:expect(nebula2_utils, set_cache, [CdmiMap], {ok, TestMap}),
     ?assertMatch(ok, update(Pid, TestOid, CdmiMap)),
-    meck:expect(Mod, update, ['_', '_', '_'], {error, term}),
+    meck:expect(Mod, update, [Pid, TestOid, '_'], {error, term}),
     ?assertMatch({error, term}, update(Pid, TestOid, CdmiMap)),
-
+    ?assertException(error, function_clause, update(not_a_pid, TestOid, CdmiMap)),
+    ?assertException(error, function_clause, update(Pid, not_a_binary, CdmiMap)),
+    ?assertException(error, function_clause, update(Pid, TestOid, not_a_map)),
     meck:unload(nebula2_utils),
     meck:unload(Mod).
 -endif.

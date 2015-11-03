@@ -67,6 +67,7 @@ update_container(Req, State, Oid) when is_map(State); is_binary(Oid)->
              <<"cdmi_acount">>,
              <<"cdmi_mcount">>],
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
+    ?nebFmt("Data3: ~p", [Data3]),
     Response = case nebula2_db:update(Pid, Oid, nebula2_db:marshall(Data3)) of
                    ok ->
                        {true, Req2, State};

@@ -97,7 +97,7 @@ search(Path, State) when is_list(Path), is_tuple(State) ->
              binary()           %% Data to store
             ) -> ok | {error, term()}.
 
-update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid) ->
+update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_binary(Data) ->
 %    ?nebMsg("Entry"),
     case get(Pid, Oid) of
         {error, Term} ->
@@ -123,7 +123,6 @@ execute_search(Pid, Query) when is_pid(Pid) ->
     Index = ?CDMI_INDEX,
     Response = case riakc_pb_socket:search(Pid, Index, Query) of
                    {ok, Results} ->
-                       ?nebFmt("ok Results: ~p", [Results]),
                        case Results#search_results.num_found of
                            0 ->
                                {error, 404}; %% Return 404

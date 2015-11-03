@@ -263,7 +263,7 @@ handle_content_type(State) ->
     {_, EnvMap} = State,
     case binary_to_list(get_value(<<"content-type">>, EnvMap, <<"">>)) of
         "" ->
-            Path = binary_to_list(get_value(<<"path">>, EnvMap)),
+            Path = get_value(<<"path">>, EnvMap),
             {ok, Data} = nebula2_db:search(Path, State),
             binary_to_list(get_value(<<"objectType">>, Data));
         CT ->
@@ -309,8 +309,7 @@ make_search_key(Data) ->
                         <<"">>
                 end,
     DomainHash = get_domain_hash(DomainUri),
-    Key = DomainHash ++ ParentUri ++ ObjectName,
-    list_to_binary(Key).
+    DomainHash ++ ParentUri ++ ObjectName.
 
 %% @doc Put a value to the data map.
 -spec put_value(binary(), term(), map()) -> map().
@@ -325,11 +324,12 @@ put_value(Key, Value, Map) ->
             maps:put(Key, Value, Map)
     end.
 -spec set_cache(map()) -> {ok, map()}.
-set_cache(Data) ->
+set_cache(Data) when is_map(Data) ->
     ?nebMsg("Entry"),
     SearchKey = make_search_key(Data),
     ObjectId = get_value(<<"objectID">>, Data),
-    mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    R = mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
+    ?nebFmt("mcd:set result: ~p", [R]),
     mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
 -spec type_of(term()) -> boolean().
@@ -366,10 +366,11 @@ type_of(X) ->
     end.
 
 %% Update Metadata
--spec update_data_system_metadata(list(),map(), cdmi_state()) -> map().
-update_data_system_metadata(CList, Data, State) ->
+-spec update_data_system_metadata(list(), map(), cdmi_state()) -> map().
+update_data_system_metadata(CList, Data, State) when is_list(CList), is_map(Data), is_tuple(State) ->
     ?nebMsg("Entry"),
     CapabilitiesURI = get_value(<<"capabilitiesURI">>, Data, []),
+    ?nebFmt("Cap URI: ~p", [CapabilitiesURI]),
     update_data_system_metadata(CList, Data, CapabilitiesURI, State).
 
 -spec update_data_system_metadata(list(),map(), string(), cdmi_state()) -> map().
@@ -564,7 +565,7 @@ get_domain_from_path(Path) ->
     DomainParts = lists:takewhile(fun(X) -> true /= beginswith(X, "cdmi_domain_") end, Parts),
     "/" ++ string:join(DomainParts, "/") ++ "/".
   
--spec get_domain_hash(binary() | list()) -> string().
+-spec get_domain_hash(binary()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->
     get_domain_hash(list_to_binary(Domain));
 get_domain_hash(Domain) when is_binary(Domain) ->
