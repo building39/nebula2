@@ -85,10 +85,9 @@ put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% @doc Search an index for objects.
 -spec search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
-    ?nebFmt("Query: ~p", [Query]),
     Result =  execute_search(Pid, Query),
     Result.
 
@@ -127,18 +126,15 @@ execute_search(Pid, Query) when is_pid(Pid) ->
                        ?nebFmt("ok Results: ~p", [Results]),
                        case Results#search_results.num_found of
                            0 ->
-                               ?nebMsg("Not Found"),
                                {error, 404}; %% Return 404
                            1 ->
                                [{_, Doc}] = Results#search_results.docs,
                                Oid = proplists:get_value(<<"_yz_rk">>, Doc),
                                get(Pid, Oid);
                            _N ->
-                               ?nebMsg("Something funky"),
                                {error, 500} %% Something's funky - return 500
                        end;
                    _ ->
-                       ?nebMsg("WTF?"),
                        {error, 404}
                end,
     Response.
