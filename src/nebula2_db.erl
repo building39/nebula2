@@ -36,7 +36,7 @@ available(Pid) when is_pid(Pid) ->
              object_oid(),   %% Oid
              map()           %% Data to store
             ) -> {'error', _} | {'ok', _}.
-create(Pid, Oid, Data) when is_pid(Pid); is_binary(Oid); is_map(Data) ->
+create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     Response = Mod:put(Pid, Oid, Data),
@@ -179,10 +179,11 @@ nebula2_db_test_() ->
             Pid = self(),
             TestMap = jsx:decode(?TestBinary, [return_maps]),
             {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
-            meck:expect(Mod, put, [Pid, ?TestOid, TestMap], {ok, ?TestOid}),
+            meck:sequence(Mod, put, 3, [{ok, ?TestOid},
+                                        {error,ioerror}
+                                       ]),
             meck:expect(nebula2_utils, set_cache, ['_'], '_'),
-            ?assertMatch({ok, ?TestOid}, create(Pid, ?TestOid, TestMap)),
-            meck:expect(Mod, put, [Pid, ?TestOid, TestMap], {error,ioerror}),
+            ?assertMatch({ok, ?TestOid},  create(Pid, ?TestOid, TestMap)),
             ?assertMatch({error,ioerror}, create(Pid, ?TestOid, TestMap)),
             ?assertException(error, function_clause, create(not_a_pid, ?TestOid, TestMap)),
             ?assertException(error, function_clause, create(Pid, not_an_oid, TestMap)),
@@ -295,16 +296,15 @@ nebula2_db_test_() ->
             Pid = self(),
             TestMap = jsx:decode(?TestDomainMaps, [return_maps]),
             CdmiMap = maps:from_list([{<<"cdmi">>, TestMap}, {<<"sp">>, ?TestSearchKey}]),
-            TestOid = ?TestContainer7Oid,
             {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
-            meck:expect(Mod, update, [Pid, TestOid, '_'], ok),
+            meck:expect(Mod, update, [Pid, ?TestContainer7Oid, '_'], ok),
             meck:expect(nebula2_utils, set_cache, [CdmiMap], {ok, TestMap}),
-            ?assertMatch(ok, update(Pid, TestOid, CdmiMap)),
-            meck:expect(Mod, update, [Pid, TestOid, '_'], {error, term}),
-            ?assertMatch({error, term}, update(Pid, TestOid, CdmiMap)),
-            ?assertException(error, function_clause, update(not_a_pid, TestOid, CdmiMap)),
+            ?assertMatch(ok, update(Pid, ?TestContainer7Oid, CdmiMap)),
+            meck:expect(Mod, update, [Pid, ?TestContainer7Oid, '_'], {error, term}),
+            ?assertMatch({error, term}, update(Pid, ?TestContainer7Oid, CdmiMap)),
+            ?assertException(error, function_clause, update(not_a_pid, ?TestContainer7Oid, CdmiMap)),
             ?assertException(error, function_clause, update(Pid, not_a_binary, CdmiMap)),
-            ?assertException(error, function_clause, update(Pid, TestOid, not_a_map)),
+            ?assertException(error, function_clause, update(Pid, ?TestContainer7Oid, not_a_map)),
             ?assert(meck:validate(nebula2_utils)),
             ?assert(meck:validate(Mod))
        end
