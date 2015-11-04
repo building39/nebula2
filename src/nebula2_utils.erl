@@ -115,10 +115,10 @@ delete(State) ->
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) when is_binary(Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case mcd:get(?MEMCACHE, Oid) of
         {ok, Data} ->
-            SearchKey = newbula2_utils:make_search_key(Data),
+            SearchKey = nebula2_utils:make_search_key(Data),
             mcd:delete(?MEMCACHE, SearchKey),
             mcd:delete(?MEMCACHE, Oid);
         _Response ->
@@ -127,25 +127,31 @@ delete_cache(Oid) when is_binary(Oid) ->
 
 %% @doc Delete a child from its parent
 -spec delete_child_from_parent(pid(), object_oid(), string()) -> ok | {error, term()}.
-delete_child_from_parent(Pid, ParentId, Name) ->
-    ?nebMsg("Entry"),
+delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(ParentId), is_binary(Name) ->
+%    ?nebMsg("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
     Children = get_value(<<"children">>, Parent, ""),
     NewParent1 = case Children of
                      [] ->
                          maps:remove(<<"children">>, Parent);
-                     _  ->
+                     _Children  ->
                          NewChildren = lists:delete(Name, Children),
-                         put_value(<<"children">>, NewChildren, Parent)
+                         if
+                             length(NewChildren) == 0 ->
+                                 maps:remove(<<"children">>, Parent);
+                             true ->
+                                 put_value(<<"children">>, NewChildren, Parent)
+                         end
                  end,
-    NewParent2 = case get_value(<<"childrenrange">>, Parent, "") of
-                    "0-0" ->
-                        maps:remove(<<"childrenrange">>, Parent);
+    NewParent2 = case get_value(<<"childrenrange">>, NewParent1, "") of
+                     "" ->
+                         NewParent1;
+                    <<"0-0">> ->
+                        maps:remove(<<"childrenrange">>, NewParent1);
                      Cr ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
                          put_value(<<"childrenrange">>, list_to_binary(lists:concat(["0-", Num - 1])), NewParent1)
                  end,
-    ?nebFmt("NewParent2: ~p", [NewParent2]),
     nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% @doc Extract the Parent URI from the path.
@@ -267,7 +273,7 @@ make_key() ->
     list_to_binary(string:to_lower(Uid ++ ?OID_SUFFIX ++ Crc)).
 
 -spec make_search_key(map()) -> list().
-make_search_key(Data) ->
+make_search_key(Data) when is_map(Data) ->
     ?nebMsg("Entry"),
     ObjectName = binary_to_list(get_value(<<"objectName">>, Data)),
     ParentUri = binary_to_list(get_value(<<"parentURI">>, Data, <<"">>)),
@@ -628,16 +634,16 @@ nebula2_utils_test_() ->
                 TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
                                                     {<<"sp">>, ?TestCreateContainerSearchPath}
                                                    ]),
-                TestRootObject = jsx:decode(?TestRootObject, [return_maps]),
+                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
                 TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
                 meck:expect(uuid, uuid4, [], ?TestUuid4),
                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
                 meck:expect(mcd, set, 4, ['_']),
                 meck:expect(pooler, return_member, ['_', '_'], '_'),
                 meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
-                meck:sequence(nebula2_db, read,   2, [{ok, TestRootObject}
+                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
                                                      ]),
-                meck:sequence(nebula2_db, search, 2, [{ok, TestRootObject},
+                meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
                                                       {ok, TestSystemCapabilities},
                                                       {error, '_'}
                                                      ]),
@@ -662,6 +668,102 @@ nebula2_utils_test_() ->
                 ?assert(meck:validate(mcd)),
                 ?assert(meck:validate(pooler)),
                 ?assert(meck:validate(uuid))
+       end
+      },
+      {"Test create_object/4",
+       fun () ->
+                Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
+                EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+                                         {<<"auth_as">>, <<"MickeyMouse">>},
+                                         {<<"domainURI">>, <<"/new_container/">>}]),
+                Pid = self(),
+                State = {Pid, EnvMap},
+                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+                TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
+                                                    {<<"sp">>, ?TestCreateContainerSearchPath}
+                                                   ]),
+                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+                meck:expect(uuid, uuid4, [], ?TestUuid4),
+                meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+                meck:expect(mcd, set, 4, ['_']),
+                meck:expect(pooler, return_member, ['_', '_'], '_'),
+                meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+                                                     ]),
+                meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
+                                                      {ok, TestSystemCapabilities},
+                                                      {error, '_'}
+                                                     ]),
+                meck:sequence(nebula2_db, update, 3, [ok]),
+                {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body),
+                NewObject2 = maps:get(<<"cdmi">>, NewObject),
+                SearchPath = maps:get(<<"sp">>, NewObject),
+                Metadata = maps:get(<<"metadata">>, NewObject2),
+                TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
+                                            {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
+                                            {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
+                                           ]),
+                Metadata2 = maps:merge(Metadata, TestTimes),
+                NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
+                NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
+                                             {<<"sp">>, SearchPath}]),
+                ?assertMatch(TestNewObjectCDMI, NewObject4),
+                ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body)),
+                ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
+                ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(mcd)),
+                ?assert(meck:validate(pooler)),
+                ?assert(meck:validate(uuid))
+       end
+      },
+      {"Test delete/1",
+       fun () ->
+                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+                                         {<<"auth_as">>, <<"MickeyMouse">>},
+                                         {<<"domainURI">>, <<"/new_container/">>},
+                                         {<<"object_map">>, TestNewObject}
+                                        ]),
+                Pid = self(),
+                State = {Pid, EnvMap},
+                meck:sequence(nebula2_db, delete, 2, [ok, {error, notfound}]),
+                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}]),
+                meck:sequence(nebula2_db, update, 3, [ok]),
+                ?assertMatch(ok, delete(State)),
+                ?assert(meck:validate(nebula2_db))
+       end
+      },
+      {"Test delete_cache/1",
+       fun () ->
+                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+                meck:sequence(mcd, delete, 2, [{ok, deleted}]),
+                meck:sequence(mcd, get,    2, [{ok, TestNewObject},
+                                               {error, notfound}
+                                              ]),
+                ?assertMatch({ok, deleted}, delete_cache(?TestOid)),
+                ?assertMatch({error, notfound}, delete_cache(?TestOid)),
+                ?assertException(error, function_clause, delete_cache(not_a_binary)),
+                meck:validate(mcd)
+       end
+      },
+      {"Test delete_child_from_parent/3",
+       fun () ->
+                Pid = self(),
+                Child = <<"a_child">>,
+                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+                ParentId = maps:get(<<"objectID">>, TestNewObject),
+                WithChild = maps:put(<<"children">>, [Child], maps:put(<<"childrenrange">>, <<"0-0">>, TestNewObject)),
+                meck:sequence(nebula2_db, read, 2, [{ok, WithChild},
+                                                    {ok, TestNewObject}
+                                                   ]),
+                meck:expect(nebula2_db, update, [Pid, ParentId, TestNewObject], {ok, TestNewObject}),
+                ?nebFmt("WithChild: ~p", [WithChild]),
+                ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
+                ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
+                meck:validate(nebula2_db)
        end
       },
       {"Test get_domain_hash/1",
