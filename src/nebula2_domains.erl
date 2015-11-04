@@ -141,11 +141,11 @@ new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
     ParentId  = nebula2_utils:get_value(<<"objectID">>, Parent),
     Data = maps:from_list([
                           {<<"objectName">>, ObjectName},
-                          {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                          {<<"objectType">>, ?CONTENT_TYPE_CDMI_CONTAINER},
                           {<<"objectID">>, Oid},
                           {<<"parentID">>, ParentId},
                           {<<"parentURI">>, list_to_binary(ParentUri)},
-                          {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
+                          {<<"capabilitiesURI">>, ?CONTAINER_CAPABILITY_URI},
                           {<<"domainURI">>, nebula2_utils:get_value(<<"domainURI">>, Parent)},
                           {<<"completionStatus">>, <<"Complete">>},
                           {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
@@ -173,9 +173,9 @@ new_domain_root(State, DomainUri) ->
     Map = nebula2_db:marshall(maps:from_list([
                                                 {<<"metadata">>, Metadata},
                                                 {<<"objectName">>, <<"/">>},
-                                                {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                                                {<<"objectType">>, ?CONTENT_TYPE_CDMI_CONTAINER},
                                                 {<<"objectID">>, Oid},
-                                                {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
+                                                {<<"capabilitiesURI">>, ?CONTAINER_CAPABILITY_URI},
                                                 {<<"completionStatus">>, <<"Complete">>},
                                                 {<<"domainURI">>, DomainUri}
                                               ])),

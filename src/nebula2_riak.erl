@@ -74,7 +74,7 @@ put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
     Object = riakc_obj:new(?RIAK_TYPE_AND_BUCKET,
                             Oid,
                             Json,
-                            list_to_binary(?CONTENT_TYPE_JSON)),
+                            ?CONTENT_TYPE_JSON),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
             {ok, Oid};
@@ -193,7 +193,7 @@ nebula2_riak_test_() ->
        fun() ->
             Pid = self(),
             TestMap = jsx:decode(?TestBinary, [return_maps]),
-            meck:expect(riakc_obj, new, [?RIAK_TYPE_AND_BUCKET, ?TestOid, ?TestBinary, list_to_binary(?CONTENT_TYPE_JSON)], ?TestRiakObject),
+            meck:expect(riakc_obj, new, [?RIAK_TYPE_AND_BUCKET, ?TestOid, ?TestBinary, ?CONTENT_TYPE_JSON], ?TestRiakObject),
             meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], ok),
             ?assertMatch({ok, ?TestOid}, put(Pid, ?TestOid, TestMap)),
             meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], {error, ioerror}),

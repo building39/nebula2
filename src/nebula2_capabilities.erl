@@ -395,7 +395,7 @@ cdmi_sanitization_method(_Methods, Data) ->
 -spec cdmi_size(string(), map()) -> map().
 cdmi_size(Doit, Data) ->
     lager:debug("Entry"),
-    case binary_to_list(nebula2_utils:get_value(<<"objectType">>, Data)) of
+    case nebula2_utils:get_value(<<"objectType">>, Data) of
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
                 true ->
