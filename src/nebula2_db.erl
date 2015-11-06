@@ -133,13 +133,15 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     Data2 = jsx:encode(Data),
-    case Mod:update(Pid, Oid, Data2) of
+    R = case Mod:update(Pid, Oid, Data2) of
         ok ->
             nebula2_utils:set_cache(Data),
             {ok, Data};
         Failure ->
             Failure
-    end.
+    end,
+    ?nebFmt("R: ~p", [R]),
+    R.
     
 %% ====================================================================
 %% Internal functions

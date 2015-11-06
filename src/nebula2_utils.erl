@@ -74,7 +74,7 @@ check_base64(Data) when is_map(Data) ->
 create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) ->
     ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(get_value(<<"path">>, EnvMap)),
+    Path = get_value(<<"path">>, EnvMap),
     case get_object_oid(get_parent_uri(Path), State) of
         {ok, ParentId} ->
             {ok, Parent} = nebula2_db:read(Pid, ParentId),
@@ -126,7 +126,7 @@ delete_cache(Oid) when is_binary(Oid) ->
     end.
 
 %% @doc Delete a child from its parent
--spec delete_child_from_parent(pid(), object_oid(), string()) -> ok | {error, term()}.
+-spec delete_child_from_parent(pid(), object_oid(), string()) -> {ok, map()}  | {error, term()}.
 delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(ParentId), is_binary(Name) ->
 %    ?nebMsg("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
@@ -158,6 +158,7 @@ delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(Parent
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
     ?nebMsg("Entry"),
+    ?nebFmt("Path: ~p", [Path]),
     extract_parentURI(Path, "") ++ "/".
 
 %% @doc Generate hash.
@@ -192,8 +193,10 @@ get_object_oid(State) ->
     get_object_oid(Path, State).
 
 %% @doc Get the object's oid.
--spec get_object_oid(string(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
-get_object_oid(Path, State) ->
+-spec get_object_oid(string() | binary(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
+get_object_oid(Path, State) when is_binary(Path) ->
+    get_object_oid(binary_to_list(Path), State);
+get_object_oid(Path, State) when is_list(Path) ->
     ?nebMsg("Entry"),
     RealPath = case beginswith(Path, "/capabilities/") of
                    true ->
@@ -210,10 +213,13 @@ get_object_oid(Path, State) ->
     end.
 
 %% @doc Construct the object's parent URI.
--spec get_parent_uri(list()) -> string().
-get_parent_uri(Path) ->
+-spec get_parent_uri(list() | binary()) -> binary().
+get_parent_uri(Path) when is_list(Path) ->
+    get_parent_uri(list_to_binary(Path));
+get_parent_uri(Path) when is_binary(Path) ->
     ?nebMsg("Entry"),
-    Parts = string:tokens(Path, "/"),
+    PathString = binary_to_list(Path),
+    Parts = string:tokens(PathString, "/"),
     ParentUri = case length(Parts) of
                     0 ->
                         "";     %% Root has no parent
@@ -222,7 +228,7 @@ get_parent_uri(Path) ->
                     _ ->
                         extract_parentURI(lists:droplast(Parts))
                 end,
-    ParentUri.
+    list_to_binary(ParentUri).
 
 %% @doc Get a value from the data map.
 -spec get_value(binary(), map()) -> binary().
@@ -378,11 +384,11 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
     nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
 
 %% @doc Update a parent object with a new child
--spec update_parent(object_oid(), string(), object_type(), pid()) -> ok | {error, term()}.
+-spec update_parent(object_oid(), string(), object_type(), pid()) -> {ok, map()} | {error, term()}.
 update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
     ?nebMsg("Entry"),
     %% Must be the root, since there is no parent.
-    ok;
+    {ok, <<"">>};
 update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_binary(ObjectType), is_pid(Pid) ->
     ?nebMsg("Entry"),
     N = case length(string:tokens(Path, "/")) of
@@ -417,7 +423,8 @@ update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_bina
                  end,
     NewParent1 = put_value(<<"children">>, Children, Parent),
     NewParent2 = put_value(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
-    nebula2_db:update(Pid, ParentId, NewParent2).
+    R = nebula2_db:update(Pid, ParentId, NewParent2),
+    ?nebFmt("R: ~p", [R]).
 
 %% ====================================================================
 %% Internal functions
@@ -472,7 +479,7 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
                                        {<<"objectID">>, Oid},
                                        {<<"objectName">>, list_to_binary(ObjectName)},
                                        {<<"parentID">>, ParentId},
-                                       {<<"parentURI">>, list_to_binary(ParentUri)},
+                                       {<<"parentURI">>, ParentUri},
                                        {<<"capabilitiesURI">>, CapabilitiesURI},
                                        {<<"domainURI">>, DomainName},
                                        {<<"completionStatus">>, <<"Complete">>},
@@ -501,18 +508,24 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
     SearchKey = make_search_key(Data5),
     Data6 = maps:from_list([{<<"cdmi">>, Data5}, {<<"sp">>, list_to_binary(SearchKey)}]),
     {ok, Oid} = nebula2_db:create(Pid, Oid, Data6),
-    ok = update_parent(ParentId, ObjectName, ObjectType, Pid),
+    R = update_parent(ParentId, ObjectName, ObjectType, Pid),
+    ?nebFmt("update parent returned ~p", [R]),
     pooler:return_member(riak_pool, Pid),
     set_cache(Data6),
     {true, Data6}.
 
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
+    ?nebFmt("Acc: ~p", [Acc]),
     Acc;
 extract_parentURI([H|T], Acc) when is_binary(H) ->
+    ?nebFmt("H: ~p", [H]),
+    ?nebFmt("Acc: ~p", [Acc]),
     Acc2 = Acc ++ "/" ++ binary_to_list(H),
     extract_parentURI(T, Acc2);
 extract_parentURI([H|T], Acc) ->
+    ?nebFmt("H: ~p", [H]),
+    ?nebFmt("Acc: ~p", [Acc]),
     Acc2 = Acc ++ "/" ++ H,
     extract_parentURI(T, Acc2).
 
@@ -529,8 +542,10 @@ get_capability_uri(ObjectType) ->
             ?DOMAIN_CAPABILITY_URI
     end.
 
--spec get_cache(list()) -> {ok, map()} | {error, deleted | notfound}.
+-spec get_cache(binary() | list()) -> {ok, map()} | {error, deleted | notfound}.
 get_cache(Key) when is_list(Key) ->
+    get_cache(list_to_binary(Key));
+get_cache(Key) when is_binary(Key) ->
     ?nebFmt("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
         {ok, Data} ->
@@ -553,6 +568,7 @@ get_domain_hash(Domain) when is_binary(Domain) ->
     lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
+-spec handle_delete(pid(), map(), cdmi_state(), list(), list()) -> ok | {error, term()}.
 handle_delete(Pid, Data, _, _, []) ->
     ?nebMsg("Entry"),
     Oid = get_value(<<"objectID">>, Data),
@@ -647,7 +663,7 @@ nebula2_utils_test_() ->
                                                       {ok, TestSystemCapabilities},
                                                       {error, '_'}
                                                      ]),
-                meck:sequence(nebula2_db, update, 3, [ok]),
+                meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body),
                 NewObject2 = maps:get(<<"cdmi">>, NewObject),
                 SearchPath = maps:get(<<"sp">>, NewObject),
@@ -695,7 +711,7 @@ nebula2_utils_test_() ->
                                                       {ok, TestSystemCapabilities},
                                                       {error, '_'}
                                                      ]),
-                meck:sequence(nebula2_db, update, 3, [ok]),
+                meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body),
                 NewObject2 = maps:get(<<"cdmi">>, NewObject),
                 SearchPath = maps:get(<<"sp">>, NewObject),
@@ -729,9 +745,10 @@ nebula2_utils_test_() ->
                                         ]),
                 Pid = self(),
                 State = {Pid, EnvMap},
+                Map = maps:new(),
                 meck:sequence(nebula2_db, delete, 2, [ok, {error, notfound}]),
                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}]),
-                meck:sequence(nebula2_db, update, 3, [ok]),
+                meck:sequence(nebula2_db, update, 3, [{ok, Map}]),
                 ?assertMatch(ok, delete(State)),
                 ?assert(meck:validate(nebula2_db))
        end
@@ -764,6 +781,12 @@ nebula2_utils_test_() ->
                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
                 meck:validate(nebula2_db)
+       end
+      },
+      {"Test extract_parentURI/1",
+       fun () ->
+                ?assertMatch("/parent/child/", extract_parentURI(["parent", "child"])),
+                ?assertException(error, function_clause, extract_parentURI(not_a_list))
        end
       },
       {"Test get_domain_hash/1",

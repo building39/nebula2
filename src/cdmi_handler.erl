@@ -690,7 +690,7 @@ get_parent(ParentUri, Domain, State) ->
         <<>> ->
             {error, notfound};
         Uri ->
-            nebula2_db:search(Domain ++ binary_to_list(Uri), State)
+            nebula2_db:search(Domain ++ Uri, State)
     end.
 
 -spec get_pooler() -> pid().
