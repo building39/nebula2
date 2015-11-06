@@ -81,7 +81,6 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
             DomainName = get_value(<<"domainURI">>, Parent, ""),
             create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
-            ?nebMsg("notfound"),
             pooler:return_member(riak_pool, Pid),
             false
     end.
@@ -157,8 +156,7 @@ delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(Parent
 %% @doc Extract the Parent URI from the path.
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
-    ?nebMsg("Entry"),
-    ?nebFmt("Path: ~p", [Path]),
+%    ?nebMsg("Entry"),
     extract_parentURI(Path, "") ++ "/".
 
 %% @doc Generate hash.
@@ -423,8 +421,7 @@ update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_bina
                  end,
     NewParent1 = put_value(<<"children">>, Children, Parent),
     NewParent2 = put_value(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
-    R = nebula2_db:update(Pid, ParentId, NewParent2),
-    ?nebFmt("R: ~p", [R]).
+    nebula2_db:update(Pid, ParentId, NewParent2).
 
 %% ====================================================================
 %% Internal functions
@@ -508,24 +505,18 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
     SearchKey = make_search_key(Data5),
     Data6 = maps:from_list([{<<"cdmi">>, Data5}, {<<"sp">>, list_to_binary(SearchKey)}]),
     {ok, Oid} = nebula2_db:create(Pid, Oid, Data6),
-    R = update_parent(ParentId, ObjectName, ObjectType, Pid),
-    ?nebFmt("update parent returned ~p", [R]),
+    {ok, _} = update_parent(ParentId, ObjectName, ObjectType, Pid),
     pooler:return_member(riak_pool, Pid),
     set_cache(Data6),
     {true, Data6}.
 
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
-    ?nebFmt("Acc: ~p", [Acc]),
     Acc;
 extract_parentURI([H|T], Acc) when is_binary(H) ->
-    ?nebFmt("H: ~p", [H]),
-    ?nebFmt("Acc: ~p", [Acc]),
     Acc2 = Acc ++ "/" ++ binary_to_list(H),
     extract_parentURI(T, Acc2);
 extract_parentURI([H|T], Acc) ->
-    ?nebFmt("H: ~p", [H]),
-    ?nebFmt("Acc: ~p", [Acc]),
     Acc2 = Acc ++ "/" ++ H,
     extract_parentURI(T, Acc2).
 
@@ -539,14 +530,15 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             ?DATAOBJECT_CAPABILITY_URI;
         ?CONTENT_TYPE_CDMI_DOMAIN ->
-            ?DOMAIN_CAPABILITY_URI
+            ?DOMAIN_CAPABILITY_URI;
+        _Other ->
+            "unknown"
     end.
 
 -spec get_cache(binary() | list()) -> {ok, map()} | {error, deleted | notfound}.
 get_cache(Key) when is_list(Key) ->
     get_cache(list_to_binary(Key));
 get_cache(Key) when is_binary(Key) ->
-    ?nebFmt("Cache Key: ~p", [Key]),
     case mcd:get(?MEMCACHE, Key) of
         {ok, Data} ->
             {ok, Data};
@@ -777,7 +769,6 @@ nebula2_utils_test_() ->
                                                     {ok, TestNewObject}
                                                    ]),
                 meck:expect(nebula2_db, update, [Pid, ParentId, TestNewObject], {ok, TestNewObject}),
-                ?nebFmt("WithChild: ~p", [WithChild]),
                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
                 meck:validate(nebula2_db)
@@ -795,6 +786,29 @@ nebula2_utils_test_() ->
                 Algo = "sha256",
                 Hash = "dff90087e2a95f1c093cf40e7be6ef4e998e21b4ea38d0b494ea2fdb2576fcfe",
                 ?assertMatch(Hash, generate_hash(Algo, Data))
+       end
+      },
+      {"Test get_cache/1",
+       fun () ->
+                KeyList = "a key",
+                KeyBinary = <<"a binary key">>,
+                Data = "test data",
+                meck:sequence(mcd, get, 2, [{ok, Data},
+                                            {ok, Data},
+                                            {error, notfound}]),
+                ?assertMatch({ok, Data}, get_cache(KeyList)),
+                ?assertMatch({ok, Data}, get_cache(KeyBinary)),
+                ?assertMatch({error, notfound}, get_cache(KeyList)),
+                meck:validate(mcd)
+       end
+      },
+      {"Test get_capability_uri/1",
+       fun () ->
+                ?assertMatch(?DOMAIN_SUMMARY_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CAPABILITY)),
+                ?assertMatch(?CONTAINER_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CONTAINER)),
+                ?assertMatch(?DATAOBJECT_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DATAOBJECT)),
+                ?assertMatch(?DOMAIN_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DOMAIN)),
+                ?assertMatch("unknown", get_capability_uri("bogus capability"))
        end
       },
       {"Test get_domain_hash/1",
