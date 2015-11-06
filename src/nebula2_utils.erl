@@ -26,7 +26,6 @@
          get_cache/1,
          get_domain_hash/1,
          get_object_name/1,
-         get_object_oid/1,
          get_object_oid/2,
          get_parent_uri/1,
          get_value/2,
@@ -110,7 +109,7 @@ delete(State) ->
     {Pid, _} = State,
     Children = get_value(<<"children">>, Data, []),
     Path = binary_to_list(get_value(<<"parentURI">>, Data)) ++ binary_to_list(get_value(<<"objectName">>, Data)),
-    handle_delete(Pid, Data, State, list_to_binary(Path), Children).
+    handle_delete(Data, State, list_to_binary(Path), Children).
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) when is_binary(Oid) ->
@@ -185,19 +184,12 @@ get_object_name(Path) when is_list(Path) ->
     end.
 
 %% @doc Get the object's oid.
--spec get_object_oid(map()) -> {ok, term()}|{notfound, string()}.
-get_object_oid(State) ->
-    ?nebMsg("Entry"),
-    {_, Path} = State,
-    get_object_oid(Path, State).
-
-%% @doc Get the object's oid.
 -spec get_object_oid(string() | binary(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
-get_object_oid(Path, State) when is_binary(Path) ->
+get_object_oid(Path, State) when is_binary(Path), is_tuple(State) ->
     get_object_oid(binary_to_list(Path), State);
-get_object_oid(Path, State) when is_list(Path) ->
+get_object_oid(Path, State) when is_list(Path), is_tuple(State) ->
     ?nebMsg("Entry"),
-    RealPath = case beginswith(Path, "/capabilities/") of
+    RealPath = case beginswith(Path, "/cdmi_capabilities/") of
                    true ->
                        get_domain_hash(<<"">>) ++ Path;
                    false ->
@@ -232,13 +224,13 @@ get_parent_uri(Path) when is_binary(Path) ->
 %% @doc Get a value from the data map.
 -spec get_value(binary(), map()) -> binary().
 get_value(Key, Map) when is_binary(Key), is_map(Map) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     get_value(Key, Map, <<"">>).
 
 %% @doc Get a value from the data map.
 -spec get_value(binary(), map(), term()) -> binary().
 get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case maps:is_key(<<"cdmi">>, Map) of
         true ->
             maps:get(Key, maps:get(<<"cdmi">>, Map), Default);
@@ -249,23 +241,23 @@ get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
 %% @doc Return current time in ISO 8601:2004 extended representation.
 -spec get_time() -> string().
 get_time() ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
 
 %% Get the content type for the request
--spec handle_content_type({pid(),map()}) -> string().
-handle_content_type(State) ->
+-spec handle_content_type(cdmi_state()) -> string().
+handle_content_type(State) when is_tuple(State) ->
     ?nebMsg("Entry"),
     {_, EnvMap} = State,
-    case binary_to_list(get_value(<<"content-type">>, EnvMap, <<"">>)) of
-        "" ->
+    case get_value(<<"content-type">>, EnvMap, <<"">>) of
+        <<"">> ->
             Path = get_value(<<"path">>, EnvMap),
             {ok, Data} = nebula2_db:search(Path, State),
-            binary_to_list(get_value(<<"objectType">>, Data));
+            get_value(<<"objectType">>, Data);
         CT ->
-            binary_to_list(CT)
+            CT
     end.
 
 %% @doc Make a primary key for storing a new object.
@@ -280,6 +272,7 @@ make_key() ->
 -spec make_search_key(map()) -> list().
 make_search_key(Data) when is_map(Data) ->
     ?nebMsg("Entry"),
+%    ?nebFmt("Data: ~p", [Data]),
     ObjectName = binary_to_list(get_value(<<"objectName">>, Data)),
     ParentUri = binary_to_list(get_value(<<"parentURI">>, Data, <<"">>)),
     Path = binary_to_list(get_value(<<"path">>, Data, <<"">>)),
@@ -563,22 +556,23 @@ get_domain_hash(Domain) when is_binary(Domain) ->
     lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
--spec handle_delete(pid(), map(), cdmi_state(), list(), list()) -> ok | {error, term()}.
-handle_delete(Pid, Data, _, _, []) ->
+-spec handle_delete(map(), cdmi_state(), list(), list()) -> ok | {error, term()}.
+handle_delete(Data, State, _, []) ->
 %    ?nebMsg("Entry"),
+    {Pid, _} = State,
     Oid = get_value(<<"objectID">>, Data),
     case nebula2_db:delete(Pid, Oid) of
         ok ->
-             ParentId = get_value(<<"parentID">>, Data, []),
-             ObjectName = get_value(<<"objectName">>, Data),
-             delete_child_from_parent(Pid, ParentId, ObjectName),
-             ok;
+            ParentId = get_value(<<"parentID">>, Data, []),
+            ObjectName = get_value(<<"objectName">>, Data),
+            delete_child_from_parent(Pid, ParentId, ObjectName),
+            ok;
         Other ->
             ?nebFmt("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
             Other
     end;
-handle_delete(Pid, Data, State, Path, [Child | Tail]) ->
-    ?nebMsg("Entry"),
+handle_delete(Data, State, Path, [Child | Tail]) ->
+%    ?nebMsg("Entry"),
     ChildPath = binary_to_list(Path) ++ binary_to_list(Child),
     KeyMap = maps:from_list([{<<"objectName">>, Child},
                              {<<"path">>, list_to_binary(ChildPath)},
@@ -586,8 +580,8 @@ handle_delete(Pid, Data, State, Path, [Child | Tail]) ->
     NewPath = make_search_key(KeyMap),
     {ok, ChildData} = nebula2_db:search(NewPath, State),
     GrandChildren = get_value(<<"children">>, ChildData, []),
-    handle_delete(Pid, ChildData, State, list_to_binary(ChildPath), GrandChildren),
-    handle_delete(Pid, Data, State, Path, Tail).
+    handle_delete(ChildData, State, list_to_binary(ChildPath), GrandChildren),
+    handle_delete(Data, State, Path, Tail).
 
 sanitize_body([], Body) ->
     Body;
@@ -620,228 +614,346 @@ nebula2_utils_test_() ->
                ?assertNot(beginswith("abcdef", "def"))
        end
       },
-      {"Test check_base64/1",
-       fun() ->
-               EncodedData = "dGhpcyBpcyBzb21lIGRhdGEK",
-               Map = maps:from_list(([{<<"value">>, list_to_binary(EncodedData)},
-                                      {<<"valuetransferencoding">>, <<"base64">>}])),
-               ?assert(check_base64(Map)),
-               Map2 = maps:from_list(([{<<"value">>, <<"unencoded data">>},
-                                       {<<"valuetransferencoding">>, <<"base64">>}])),
-               ?assertNot(check_base64(Map2)),
-               ?assert(check_base64(maps:new())),
-               ?assertException(error, function_clause, check_base64(not_a_map))
-       end
-      },
-      {"Test create_object/3",
+%%       {"Test check_base64/1",
+%%        fun() ->
+%%                EncodedData = "dGhpcyBpcyBzb21lIGRhdGEK",
+%%                Map = maps:from_list(([{<<"value">>, list_to_binary(EncodedData)},
+%%                                       {<<"valuetransferencoding">>, <<"base64">>}])),
+%%                ?assert(check_base64(Map)),
+%%                Map2 = maps:from_list(([{<<"value">>, <<"unencoded data">>},
+%%                                        {<<"valuetransferencoding">>, <<"base64">>}])),
+%%                ?assertNot(check_base64(Map2)),
+%%                ?assert(check_base64(maps:new())),
+%%                ?assertException(error, function_clause, check_base64(not_a_map))
+%%        end
+%%       },
+%%       {"Test create_object/3",
+%%        fun () ->
+%%                 Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
+%%                 EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+%%                                          {<<"auth_as">>, <<"MickeyMouse">>},
+%%                                          {<<"domainURI">>, <<"/new_container/">>}]),
+%%                 Pid = self(),
+%%                 State = {Pid, EnvMap},
+%%                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
+%%                                                     {<<"sp">>, ?TestCreateContainerSearchPath}
+%%                                                    ]),
+%%                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+%%                 TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+%%                 meck:expect(uuid, uuid4, [], ?TestUuid4),
+%%                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+%%                 meck:expect(mcd, set, 4, ['_']),
+%%                 meck:expect(pooler, return_member, ['_', '_'], '_'),
+%%                 meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+%%                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+%%                                                      ]),
+%%                 meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
+%%                                                       {ok, TestSystemCapabilities},
+%%                                                       {error, '_'}
+%%                                                      ]),
+%%                 meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
+%%                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body),
+%%                 NewObject2 = maps:get(<<"cdmi">>, NewObject),
+%%                 SearchPath = maps:get(<<"sp">>, NewObject),
+%%                 Metadata = maps:get(<<"metadata">>, NewObject2),
+%%                 TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
+%%                                             {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
+%%                                             {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
+%%                                            ]),
+%%                 Metadata2 = maps:merge(Metadata, TestTimes),
+%%                 NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
+%%                 NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
+%%                                              {<<"sp">>, SearchPath}]),
+%%                 ?assertMatch(TestNewObjectCDMI, NewObject4),
+%%                 ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body)),
+%%                 ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
+%%                 ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
+%%                 ?assert(meck:validate(nebula2_db)),
+%%                 ?assert(meck:validate(mcd)),
+%%                 ?assert(meck:validate(pooler)),
+%%                 ?assert(meck:validate(uuid))
+%%        end
+%%       },
+%%       {"Test create_object/4",
+%%        fun () ->
+%%                 Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
+%%                 EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+%%                                          {<<"auth_as">>, <<"MickeyMouse">>},
+%%                                          {<<"domainURI">>, <<"/new_container/">>}]),
+%%                 Pid = self(),
+%%                 State = {Pid, EnvMap},
+%%                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
+%%                                                     {<<"sp">>, ?TestCreateContainerSearchPath}
+%%                                                    ]),
+%%                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+%%                 TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+%%                 meck:expect(uuid, uuid4, [], ?TestUuid4),
+%%                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+%%                 meck:expect(mcd, set, 4, ['_']),
+%%                 meck:expect(pooler, return_member, ['_', '_'], '_'),
+%%                 meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+%%                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+%%                                                      ]),
+%%                 meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
+%%                                                       {ok, TestSystemCapabilities},
+%%                                                       {error, '_'}
+%%                                                      ]),
+%%                 meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
+%%                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body),
+%%                 NewObject2 = maps:get(<<"cdmi">>, NewObject),
+%%                 SearchPath = maps:get(<<"sp">>, NewObject),
+%%                 Metadata = maps:get(<<"metadata">>, NewObject2),
+%%                 TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
+%%                                             {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
+%%                                             {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
+%%                                            ]),
+%%                 Metadata2 = maps:merge(Metadata, TestTimes),
+%%                 NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
+%%                 NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
+%%                                              {<<"sp">>, SearchPath}]),
+%%                 ?assertMatch(TestNewObjectCDMI, NewObject4),
+%%                 ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body)),
+%%                 ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
+%%                 ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
+%%                 ?assert(meck:validate(nebula2_db)),
+%%                 ?assert(meck:validate(mcd)),
+%%                 ?assert(meck:validate(pooler)),
+%%                 ?assert(meck:validate(uuid))
+%%        end
+%%       },
+%%       {"Test delete/1",
+%%        fun () ->
+%%                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+%%                 EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+%%                                          {<<"auth_as">>, <<"MickeyMouse">>},
+%%                                          {<<"domainURI">>, <<"/new_container/">>},
+%%                                          {<<"object_map">>, TestNewObject}
+%%                                         ]),
+%%                 Pid = self(),
+%%                 State = {Pid, EnvMap},
+%%                 Map = maps:new(),
+%%                 meck:sequence(nebula2_db, delete, 2, [ok, {error, notfound}]),
+%%                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}]),
+%%                 meck:sequence(nebula2_db, update, 3, [{ok, Map}]),
+%%                 ?assertMatch(ok, delete(State)),
+%%                 ?assert(meck:validate(nebula2_db))
+%%        end
+%%       },
+%%       {"Test delete_cache/1",
+%%        fun () ->
+%%                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 meck:sequence(mcd, delete, 2, [{ok, deleted}]),
+%%                 meck:sequence(mcd, get,    2, [{ok, TestNewObject},
+%%                                                {error, notfound}
+%%                                               ]),
+%%                 ?assertMatch({ok, deleted}, delete_cache(?TestOid)),
+%%                 ?assertMatch({error, notfound}, delete_cache(?TestOid)),
+%%                 ?assertException(error, function_clause, delete_cache(not_a_binary)),
+%%                 meck:validate(mcd)
+%%        end
+%%       },
+%%       {"Test delete_child_from_parent/3",
+%%        fun () ->
+%%                 Pid = self(),
+%%                 Child = <<"a_child">>,
+%%                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 ParentId = maps:get(<<"objectID">>, TestNewObject),
+%%                 WithChild = maps:put(<<"children">>, [Child], maps:put(<<"childrenrange">>, <<"0-0">>, TestNewObject)),
+%%                 meck:sequence(nebula2_db, read, 2, [{ok, WithChild},
+%%                                                     {ok, TestNewObject}
+%%                                                    ]),
+%%                 meck:expect(nebula2_db, update, [Pid, ParentId, TestNewObject], {ok, TestNewObject}),
+%%                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
+%%                 ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
+%%                 meck:validate(nebula2_db)
+%%        end
+%%       },
+%%       {"Test extract_parentURI/1",
+%%        fun () ->
+%%                 ?assertMatch("/parent/child/", extract_parentURI(["parent", "child"])),
+%%                 ?assertException(error, function_clause, extract_parentURI(not_a_list))
+%%        end
+%%       },
+%%       {"Test generate_hash/2",
+%%        fun () ->
+%%                 Data = "this is some data",
+%%                 BinaryData = list_to_binary(Data),
+%%                 Algo = "sha256",
+%%                 Hash = "dff90087e2a95f1c093cf40e7be6ef4e998e21b4ea38d0b494ea2fdb2576fcfe",
+%%                 ?assertMatch(Hash, generate_hash(Algo, Data)),
+%%                 ?assertMatch(Hash, generate_hash(Algo, BinaryData))
+%%        end
+%%       },
+%%       {"Test get_cache/1",
+%%        fun () ->
+%%                 KeyList = "a key",
+%%                 KeyBinary = <<"a binary key">>,
+%%                 Data = "test data",
+%%                 meck:sequence(mcd, get, 2, [{ok, Data},
+%%                                             {ok, Data},
+%%                                             {error, notfound}]),
+%%                 ?assertMatch({ok, Data}, get_cache(KeyList)),
+%%                 ?assertMatch({ok, Data}, get_cache(KeyBinary)),
+%%                 ?assertMatch({error, notfound}, get_cache(KeyList)),
+%%                 meck:validate(mcd)
+%%        end
+%%       },
+%%       {"Test get_capability_uri/1",
+%%        fun () ->
+%%                 ?assertMatch(?DOMAIN_SUMMARY_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CAPABILITY)),
+%%                 ?assertMatch(?CONTAINER_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CONTAINER)),
+%%                 ?assertMatch(?DATAOBJECT_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DATAOBJECT)),
+%%                 ?assertMatch(?DOMAIN_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DOMAIN)),
+%%                 ?assertMatch(<<"unknown">>, get_capability_uri(<<"bogus capability">>)),
+%%                 ?assertException(error, function_clause, get_capability_uri(not_a_binary))
+%%        end
+%%       },
+%%             {"Test get_domain_from_path/1",
+%%        fun () ->
+%%                 Path = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
+%%                 ?assertMatch("/cdmi_domains/user_domain/sub_domain/", get_domain_from_path(Path)),
+%%                 ?assertException(error, function_clause, get_domain_from_path(not_a_list))
+%%        end
+%%       },
+%%       {"Test get_domain_hash/1",
+%%        fun () ->
+%%                 ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI)),
+%%                 ?assertException(error, function_clause, get_domain_hash(not_a_list_or_binary))
+%%        end
+%%       },
+%%       {"Test get_object_name/1",
+%%        fun () ->
+%%                 ContainerPath = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
+%%                 ObjectPath = ContainerPath ++ "dataobject",
+%%                 ?assertMatch("daily/", get_object_name(ContainerPath)),
+%%                 ?assertMatch("dataobject", get_object_name(ObjectPath)),
+%%                 ?assertMatch("/", get_object_name("")),
+%%                 ?assertException(error, function_clause, get_object_name(not_a_list))
+%%        end
+%%       },
+%%       {"Test get_object_oid/1",
+%%        fun () ->
+%%                 Path = "/container/object",
+%%                 Capabilities = "/cdmi_capabilities/container/",
+%%                 Pid = self(),
+%%                 EnvMap = maps:from_list([{<<"path">>, Path},
+%%                                          {<<"auth_as">>, <<"MickeyMouse">>},
+%%                                          {<<"domainURI">>, <<"/new_container/">>}]),
+%%                 State = {Pid, EnvMap},
+%%                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+%%                 Oid = maps:get(<<"objectID">>, TestRootMap),
+%%                 meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap}]),
+%%                 ?assertMatch({ok, Oid}, get_object_oid(Path, State)),
+%%                 ?assertMatch({ok, Oid}, get_object_oid(Capabilities, State)),
+%%                 ?assertException(error, function_clause, get_object_oid(not_a_list, State)),
+%%                 ?assertException(error, function_clause, get_object_oid(Path, not_a_tuple))
+%%        end
+%%       },
+%%       {"Test get_parent_uri/1",
+%%        fun () ->
+%%                 RootPath = "/",
+%%                 FirstLevelPath = "/container/",
+%%                 SecondLevelPath = "/container/object",
+%%                 ?assertMatch(<<"">>, get_parent_uri(RootPath)),
+%%                 ?assertMatch(<<"/">>, get_parent_uri(FirstLevelPath)),
+%%                 ?assertMatch(<<"/container/">>, get_parent_uri(SecondLevelPath)),
+%%                 ?assertMatch(<<"">>, get_parent_uri(list_to_binary(RootPath))),
+%%                 ?assertMatch(<<"/">>, get_parent_uri(list_to_binary(FirstLevelPath))),
+%%                 ?assertMatch(<<"/container/">>, get_parent_uri(list_to_binary(SecondLevelPath))),
+%%                 ?assertException(error, function_clause, get_parent_uri(not_a_list_or_binary))
+%%        end
+%%       },
+%%       {"Test get_get_value/2",
+%%        fun () ->
+%%                 TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+%%                                               {<<"sp">>, ?TestCreateContainerSearchPath}
+%%                                              ]),
+%%                 ?assertMatch(<<"Complete">>, get_value(<<"completionStatus">>, TestMap)),
+%%                 ?assertMatch(<<"Complete">>, get_value(<<"completionStatus">>, TestMapCDMI)),
+%%                 ?assertMatch(<<"">>, get_value(<<"missing_key">>, TestMap)),
+%%                 ?assertMatch(<<"">>, get_value(<<"missing_key">>, TestMapCDMI)),
+%%                 ?assertException(error, function_clause, get_value(not_binary, TestMap)),
+%%                 ?assertException(error, function_clause, get_value(<<"key">>, not_a_map))
+%%        end
+%%       },
+%%       {"Test get_get_value/3",
+%%        fun () ->
+%%                 TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+%%                                               {<<"sp">>, ?TestCreateContainerSearchPath}
+%%                                              ]),
+%%                 ?assertMatch(<<"Complete">>, get_value(<<"completionStatus">>, TestMap, <<"default">>)),
+%%                 ?assertMatch(<<"Complete">>, get_value(<<"completionStatus">>, TestMapCDMI, <<"default">>)),
+%%                 ?assertMatch(<<"">>, get_value(<<"missing_key">>, TestMap, <<"default">>)),
+%%                 ?assertMatch(<<"">>, get_value(<<"missing_key">>, TestMapCDMI, <<"default">>)),
+%%                 ?assertException(error, function_clause, get_value(not_binary, TestMap, <<"default">>)),
+%%                 ?assertException(error, function_clause, get_value(<<"key">>, not_a_map, <<"default">>)),
+%%                 ?assertException(error, function_clause, get_value(<<"key">>, TestMap, not_binary))
+%%        end
+%%       },
+%%       {"Test handle_content_type/1",
+%%        fun () ->
+%%                 Path = "/container/object",
+%%                 Pid = self(),
+%%                 EnvMap = maps:from_list([{<<"auth_as">>, <<"MickeyMouse">>},
+%%                                          {<<"domainURI">>, <<"/new_container/">>},
+%%                                          {<<"path">>, list_to_binary(Path)}
+%%                                         ]),
+%%                 State = {Pid, EnvMap},
+%%                 TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 ContentType = maps:get(<<"objectType">>, TestMap),
+%%                 meck:sequence(nebula2_db, search, 2, [{ok, TestMap}]),
+%%                 ?assertMatch(ContentType, handle_content_type(State)),
+%%                 EnvMap2 = maps:put(<<"content-type">>, <<"application/cdmi-container">>, EnvMap),
+%%                 State2 = {Pid, EnvMap2},
+%%                 ?assertMatch(ContentType, handle_content_type(State2)),
+%%                 ?assertException(error, function_clause, handle_content_type(not_a_tuple)),
+%%                 meck:validate(nebula2_db)
+%%        end
+      {"Test handle_delete/5",
        fun () ->
-                Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
-                EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
-                                         {<<"auth_as">>, <<"MickeyMouse">>},
-                                         {<<"domainURI">>, <<"/new_container/">>}]),
-                Pid = self(),
-                State = {Pid, EnvMap},
+                Child = <<"a_child">>,
                 TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
-                                                    {<<"sp">>, ?TestCreateContainerSearchPath}
-                                                   ]),
-                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
-                TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
-                meck:expect(uuid, uuid4, [], ?TestUuid4),
-                meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
-                meck:expect(mcd, set, 4, ['_']),
-                meck:expect(pooler, return_member, ['_', '_'], '_'),
-                meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
-                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
-                                                     ]),
-                meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
-                                                      {ok, TestSystemCapabilities},
-                                                      {error, '_'}
-                                                     ]),
-                meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
-                {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body),
-                NewObject2 = maps:get(<<"cdmi">>, NewObject),
-                SearchPath = maps:get(<<"sp">>, NewObject),
-                Metadata = maps:get(<<"metadata">>, NewObject2),
-                TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
-                                           ]),
-                Metadata2 = maps:merge(Metadata, TestTimes),
-                NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
-                NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
-                                             {<<"sp">>, SearchPath}]),
-                ?assertMatch(TestNewObjectCDMI, NewObject4),
-                ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body)),
-                ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
-                ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
-                ?assert(meck:validate(nebula2_db)),
-                ?assert(meck:validate(mcd)),
-                ?assert(meck:validate(pooler)),
-                ?assert(meck:validate(uuid))
-       end
-      },
-      {"Test create_object/4",
-       fun () ->
-                Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
-                EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
-                                         {<<"auth_as">>, <<"MickeyMouse">>},
-                                         {<<"domainURI">>, <<"/new_container/">>}]),
-                Pid = self(),
-                State = {Pid, EnvMap},
-                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
-                                                    {<<"sp">>, ?TestCreateContainerSearchPath}
-                                                   ]),
-                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
-                TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
-                meck:expect(uuid, uuid4, [], ?TestUuid4),
-                meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
-                meck:expect(mcd, set, 4, ['_']),
-                meck:expect(pooler, return_member, ['_', '_'], '_'),
-                meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
-                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
-                                                     ]),
-                meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
-                                                      {ok, TestSystemCapabilities},
-                                                      {error, '_'}
-                                                     ]),
-                meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
-                {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body),
-                NewObject2 = maps:get(<<"cdmi">>, NewObject),
-                SearchPath = maps:get(<<"sp">>, NewObject),
-                Metadata = maps:get(<<"metadata">>, NewObject2),
-                TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
-                                           ]),
-                Metadata2 = maps:merge(Metadata, TestTimes),
-                NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
-                NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
-                                             {<<"sp">>, SearchPath}]),
-                ?assertMatch(TestNewObjectCDMI, NewObject4),
-                ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body)),
-                ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
-                ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
-                ?assert(meck:validate(nebula2_db)),
-                ?assert(meck:validate(mcd)),
-                ?assert(meck:validate(pooler)),
-                ?assert(meck:validate(uuid))
-       end
-      },
-      {"Test delete/1",
-       fun () ->
-                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                TestContainer = maps:put(<<"children">>, [Child], maps:put(<<"childrenrange">>, <<"0-0">>, TestNewObject)),
+                Path = binary_to_list(maps:get(<<"parentURI">>, TestContainer)) ++ binary_to_list(maps:get(<<"objectName">>, TestContainer)),
                 EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
                                          {<<"auth_as">>, <<"MickeyMouse">>},
                                          {<<"domainURI">>, <<"/new_container/">>},
                                          {<<"object_map">>, TestNewObject}
                                         ]),
+                ChildObject = maps:from_list([{<<"objectName">>, Child},
+                                              {<<"objectID">>, <<"id">>},
+                                              {<<"parentID">>, maps:get(<<"objectID">>, TestNewObject)},
+                                              {<<"parentName">>, list_to_binary(Path)}
+                                             ]),
                 Pid = self(),
                 State = {Pid, EnvMap},
-                Map = maps:new(),
-                meck:sequence(nebula2_db, delete, 2, [ok, {error, notfound}]),
-                meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}]),
-                meck:sequence(nebula2_db, update, 3, [{ok, Map}]),
-                ?assertMatch(ok, delete(State)),
+                TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                ParentId = maps:get(<<"objectID">>, TestNewObject),
+                meck:sequence(nebula2_db, delete, 2, [ok, ok, {error, notfound}]),
+                meck:sequence(nebula2_db, search, 2, [{ok, ChildObject},
+                                                      {ok, TestNewObject}
+                                                     ]),
+                meck:sequence(nebula2_db, read, 2, [{ok, TestContainer},
+                                                    {ok, TestRootMap}
+                                                   ]),
+                meck:sequence(nebula2_db, update, 3, [{ok, TestNewObject}]),
+                ?assertMatch(ok, handle_delete(TestContainer, State, list_to_binary(Path), maps:get(<<"children">>, TestContainer))),
+                ?assertMatch({error, notfound}, handle_delete(TestContainer, State, list_to_binary(Path), maps:get(<<"children">>, TestContainer))),
                 ?assert(meck:validate(nebula2_db))
        end
-      },
-      {"Test delete_cache/1",
-       fun () ->
-                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                meck:sequence(mcd, delete, 2, [{ok, deleted}]),
-                meck:sequence(mcd, get,    2, [{ok, TestNewObject},
-                                               {error, notfound}
-                                              ]),
-                ?assertMatch({ok, deleted}, delete_cache(?TestOid)),
-                ?assertMatch({error, notfound}, delete_cache(?TestOid)),
-                ?assertException(error, function_clause, delete_cache(not_a_binary)),
-                meck:validate(mcd)
-       end
-      },
-      {"Test delete_child_from_parent/3",
-       fun () ->
-                Pid = self(),
-                Child = <<"a_child">>,
-                TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                ParentId = maps:get(<<"objectID">>, TestNewObject),
-                WithChild = maps:put(<<"children">>, [Child], maps:put(<<"childrenrange">>, <<"0-0">>, TestNewObject)),
-                meck:sequence(nebula2_db, read, 2, [{ok, WithChild},
-                                                    {ok, TestNewObject}
-                                                   ]),
-                meck:expect(nebula2_db, update, [Pid, ParentId, TestNewObject], {ok, TestNewObject}),
-                ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
-                ?assertMatch({ok, TestNewObject}, delete_child_from_parent(Pid, ParentId, Child)),
-                meck:validate(nebula2_db)
-       end
-      },
-      {"Test extract_parentURI/1",
-       fun () ->
-                ?assertMatch("/parent/child/", extract_parentURI(["parent", "child"])),
-                ?assertException(error, function_clause, extract_parentURI(not_a_list))
-       end
-      },
-      {"Test generate_hash/2",
-       fun () ->
-                Data = "this is some data",
-                Algo = "sha256",
-                Hash = "dff90087e2a95f1c093cf40e7be6ef4e998e21b4ea38d0b494ea2fdb2576fcfe",
-                ?assertMatch(Hash, generate_hash(Algo, Data))
-       end
-      },
-      {"Test get_cache/1",
-       fun () ->
-                KeyList = "a key",
-                KeyBinary = <<"a binary key">>,
-                Data = "test data",
-                meck:sequence(mcd, get, 2, [{ok, Data},
-                                            {ok, Data},
-                                            {error, notfound}]),
-                ?assertMatch({ok, Data}, get_cache(KeyList)),
-                ?assertMatch({ok, Data}, get_cache(KeyBinary)),
-                ?assertMatch({error, notfound}, get_cache(KeyList)),
-                meck:validate(mcd)
-       end
-      },
-      {"Test get_capability_uri/1",
-       fun () ->
-                ?assertMatch(?DOMAIN_SUMMARY_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CAPABILITY)),
-                ?assertMatch(?CONTAINER_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CONTAINER)),
-                ?assertMatch(?DATAOBJECT_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DATAOBJECT)),
-                ?assertMatch(?DOMAIN_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DOMAIN)),
-                ?assertMatch(<<"unknown">>, get_capability_uri(<<"bogus capability">>)),
-                ?assertException(error, function_clause, get_capability_uri(not_a_binary))
-       end
-      },
-            {"Test get_domain_from_path/1",
-       fun () ->
-                Path = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
-                ?assertMatch("/cdmi_domains/user_domain/sub_domain/", get_domain_from_path(Path)),
-                ?assertException(error, function_clause, get_domain_from_path(not_a_list))
-       end
-      },
-      {"Test get_domain_hash/1",
-       fun () ->
-                ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI)),
-                ?assertException(error, function_clause, get_domain_hash(not_a_list_or_binary))
-       end
-      },
-      {"Test get_object_name/1",
-       fun () ->
-                Path = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
-                ?assertMatch("daily/", get_object_name(Path)),
-                ?assertException(error, function_clause, get_object_name(not_a_list))
-       end
-      },
-      {"Test make_key/0",
-       fun () ->
-                meck:expect(uuid, uuid4, [], ?TestUuid4),
-                meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
-                ?assertMatch(?TestUid, make_key()),
-                ?assert(meck:validate(uuid))
-       end
+%%       },
+%%       {"Test make_key/0",
+%%        fun () ->
+%%                 meck:expect(uuid, uuid4, [], ?TestUuid4),
+%%                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+%%                 ?assertMatch(?TestUid, make_key()),
+%%                 ?assert(meck:validate(uuid))
+%%        end
       }
      ]
     }.
