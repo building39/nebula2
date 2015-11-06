@@ -58,8 +58,7 @@ rest_init(Req, _State) ->
     Path       = string:sub_string(Url_S, string:len(HostUrl_S)+1+string:len(lists:nth(1, P))+1),
     Path2      = lists:nth(1, string:tokens(Path, "?")),
     ParentURI  = nebula2_utils:get_parent_uri(Path),
-    Parts      = string:tokens(Path, "/"),
-    ObjectName = nebula2_utils:get_object_name(Parts, Path),
+    ObjectName = nebula2_utils:get_object_name(Path),
     SysDomainHash = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
     Map   = maps:new(),
     Map2 = case nebula2_db:search(SysDomainHash ++ ?SYSTEM_DOMAIN_URI, {PoolMember, Map}) of

@@ -25,7 +25,7 @@
          generate_hash/2,
          get_cache/1,
          get_domain_hash/1,
-         get_object_name/2,
+         get_object_name/1,
          get_object_oid/1,
          get_object_oid/2,
          get_parent_uri/1,
@@ -72,7 +72,7 @@ check_base64(Data) when is_map(Data) ->
 -spec create_object(cdmi_state(), object_type(), map()) ->
           {boolean(), map()} | false.
 create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Path = get_value(<<"path">>, EnvMap),
     case get_object_oid(get_parent_uri(Path), State) of
@@ -88,7 +88,7 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
 -spec create_object(cdmi_state(), object_type(), list() | binary(), map()) ->
           {boolean(), map()} | false.
 create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), is_binary(DomainName), is_map(Body) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Path = binary_to_list(get_value(<<"path">>, EnvMap)),
     case get_object_oid(get_parent_uri(Path), State) of
@@ -104,7 +104,7 @@ create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), i
 %% @doc Delete an object and all objects underneath it.
 -spec delete(cdmi_state()) -> ok | {error, term()}.
 delete(State) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Data = get_value(<<"object_map">>, EnvMap),
     {Pid, _} = State,
@@ -169,9 +169,10 @@ generate_hash(Method, Data) ->
     string:to_lower(lists:flatten([[integer_to_list(N, 16) || <<N:4>> <= crypto:hash(M, Data)]])).
     
 %% @doc Get the object name.
--spec get_object_name(list(), string()) -> string().
-get_object_name(Parts, Path) ->
-    ?nebMsg("Entry"),
+-spec get_object_name(string()) -> string().
+get_object_name(Path) when is_list(Path) ->
+%    ?nebMsg("Entry"),
+    Parts = string:tokens(Path, "/"),
     case Parts of
         [] ->
             "/";
@@ -520,8 +521,9 @@ extract_parentURI([H|T], Acc) ->
     Acc2 = Acc ++ "/" ++ H,
     extract_parentURI(T, Acc2).
 
-get_capability_uri(ObjectType) ->
-    ?nebMsg("Entry"),
+-spec get_capability_uri(binary()) -> binary().
+get_capability_uri(ObjectType) when is_binary(ObjectType) ->
+%    ?nebMsg("Entry"),
     case ObjectType of
         ?CONTENT_TYPE_CDMI_CAPABILITY ->
             ?DOMAIN_SUMMARY_CAPABILITY_URI;
@@ -532,7 +534,7 @@ get_capability_uri(ObjectType) ->
         ?CONTENT_TYPE_CDMI_DOMAIN ->
             ?DOMAIN_CAPABILITY_URI;
         _Other ->
-            "unknown"
+            <<"unknown">>
     end.
 
 -spec get_cache(binary() | list()) -> {ok, map()} | {error, deleted | notfound}.
@@ -546,13 +548,14 @@ get_cache(Key) when is_binary(Key) ->
             Response
     end.
 
-get_domain_from_path(Path) ->
+-spec get_domain_from_path(list()) -> list().
+get_domain_from_path(Path) when is_list(Path) ->
     ?nebMsg("Entry"),
     Parts = string:tokens(Path, "/"),
     DomainParts = lists:takewhile(fun(X) -> true /= beginswith(X, "cdmi_domain_") end, Parts),
     "/" ++ string:join(DomainParts, "/") ++ "/".
   
--spec get_domain_hash(binary()) -> string().
+-spec get_domain_hash(binary() | list()) -> string().
 get_domain_hash(Domain) when is_list(Domain) ->
     get_domain_hash(list_to_binary(Domain));
 get_domain_hash(Domain) when is_binary(Domain) ->
@@ -562,7 +565,7 @@ get_domain_hash(Domain) when is_binary(Domain) ->
 %% TODO: Make delete asynchronous
 -spec handle_delete(pid(), map(), cdmi_state(), list(), list()) -> ok | {error, term()}.
 handle_delete(Pid, Data, _, _, []) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     Oid = get_value(<<"objectID">>, Data),
     case nebula2_db:delete(Pid, Oid) of
         ok ->
@@ -808,12 +811,28 @@ nebula2_utils_test_() ->
                 ?assertMatch(?CONTAINER_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_CONTAINER)),
                 ?assertMatch(?DATAOBJECT_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DATAOBJECT)),
                 ?assertMatch(?DOMAIN_CAPABILITY_URI, get_capability_uri(?CONTENT_TYPE_CDMI_DOMAIN)),
-                ?assertMatch("unknown", get_capability_uri("bogus capability"))
+                ?assertMatch(<<"unknown">>, get_capability_uri(<<"bogus capability">>)),
+                ?assertException(error, function_clause, get_capability_uri(not_a_binary))
+       end
+      },
+            {"Test get_domain_from_path/1",
+       fun () ->
+                Path = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
+                ?assertMatch("/cdmi_domains/user_domain/sub_domain/", get_domain_from_path(Path)),
+                ?assertException(error, function_clause, get_domain_from_path(not_a_list))
        end
       },
       {"Test get_domain_hash/1",
        fun () ->
-                ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI))
+                ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI)),
+                ?assertException(error, function_clause, get_domain_hash(not_a_list_or_binary))
+       end
+      },
+      {"Test get_object_name/1",
+       fun () ->
+                Path = "/cdmi_domains/user_domain/sub_domain/cdmi_domain_summary/daily/",
+                ?assertMatch("daily/", get_object_name(Path)),
+                ?assertException(error, function_clause, get_object_name(not_a_list))
        end
       },
       {"Test make_key/0",
