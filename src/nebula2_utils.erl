@@ -578,9 +578,9 @@ handle_delete(Data, State, Path, [Child | Tail]) ->
     handle_delete(ChildData, State, list_to_binary(ChildPath), GrandChildren),
     handle_delete(Data, State, Path, Tail).
 
-sanitize_body([], Body) ->
+sanitize_body([], Body) when is_map(Body) ->
     Body;
-sanitize_body([H|T], Body) ->
+sanitize_body([H|T], Body) when is_map(Body)->
     sanitize_body(T, maps:remove(H, Body)).
 
 %% ====================================================================
@@ -985,20 +985,37 @@ nebula2_utils_test_() ->
 %%                 ?assertException(error, function_clause, make_search_key(not_a_tuple))
 %%        end
 %%       },
-      {"Test put_value/3",
+%%       {"Test put_value/3",
+%%        fun () ->
+%%                 TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
+%%                 TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+%%                                               {<<"sp">>, ?TestCreateContainerSearchPath}
+%%                                              ]),
+%%                 TestCDMI = put_value(<<"new key">>, <<"new value">>, TestMapCDMI),
+%%                 ?assert(maps:is_key(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
+%%                 ?assertMatch(<<"new value">>, maps:get(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
+%%                 TestNonCDMI = put_value(<<"new key">>, <<"new value">>, TestMap),
+%%                 ?assert(maps:is_key(<<"new key">>, TestNonCDMI)),
+%%                 ?assertMatch(<<"new value">>, maps:get(<<"new key">>, TestNonCDMI)),
+%%                 ?assertException(error, function_clause, put_value(not_a_binary, <<"">>, TestMap)),
+%%                 ?assertException(error, function_clause, put_value(<<"">>, <<"">>, not_a_map))
+%%        end
+%%       },
+       {"Test sanitize_body/2",
        fun () ->
-                TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
-                TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
-                                              {<<"sp">>, ?TestCreateContainerSearchPath}
-                                             ]),
-                TestCDMI = put_value(<<"new key">>, <<"new value">>, TestMapCDMI),
-                ?assert(maps:is_key(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
-                ?assertMatch(<<"new value">>, maps:get(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
-                TestNonCDMI = put_value(<<"new key">>, <<"new value">>, TestMap),
-                ?assert(maps:is_key(<<"new key">>, TestNonCDMI)),
-                ?assertMatch(<<"new value">>, maps:get(<<"new key">>, TestNonCDMI)),
-                ?assertException(error, function_clause, put_value(not_a_binary, <<"">>, TestMap)),
-                ?assertException(error, function_clause, put_value(<<"">>, <<"">>, not_a_map))
+                Body = maps:from_list([{<<"objectID">>, <<"val1">>},
+                                       {<<"parentID">>, <<"val2">>},
+                                       {<<"parentURI">>, <<"val3">>},
+                                       {<<"completionStatus">>, <<"val4">>}
+                                      ]),
+                Data = sanitize_body([<<"objectID">>,
+                          <<"objectName">>,
+                          <<"parentID">>,
+                          <<"parentURI">>,
+                          <<"completionStatus">>],
+                         Body),
+                ?assertMatch(0, maps:size(Data)),
+                ?assertException(error, function_clause, sanitize_body([], not_a_map))
        end
       }
      ]
