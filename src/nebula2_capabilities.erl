@@ -67,33 +67,35 @@ new_capability(Req, State) ->
                     U  -> 
                         "/" ++ build_path(U)
                  end,
-    {ok, B, Req2} = cowboy_req:body(Req),
-    Body = nebula2_db:marshall(B),
-    Body2 = try jsx:decode(Body, [return_maps]) of
-                NewBody -> NewBody
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Data = try jsx:decode(Body, [return_maps]) of
+                NewBody ->
+                    NewBody
+                    %nebula2_db:marshall(NewBody)
             catch
                 error:badarg ->
                     throw(badjson)
             end,
-    Data = jsx:decode(Body2, [return_maps]),
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
     case nebula2_utils:get_value(<<"parentURI">>, EnvMap, undefined) of
         undefined ->
             pooler:return_member(riak_pool, Pid),
             {false, Req2, State};
         ParentUri ->
-            ParentId = nebula2_utils:get_object_oid(State),
+            ?nebFmt("path: ~p", [ParentUri]),
+            {ok, ParentId} = nebula2_utils:get_object_oid(ParentUri, State),
             Data2 = maps:from_list([{<<"capabilities">>, Data},
                      {<<"objectType">>, ObjectType},
                      {<<"objectID">>, Oid},
-                     {<<"objectName">>, ObjectName},
+                     {<<"objectName">>, list_to_binary(ObjectName)},
                      {<<"parentID">>, ParentId},
                      {<<"parentURI">>, ParentUri}
                     ]),
+            ?nebFmt("Data2: ~p", [Data2]),
             {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
-            ok = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
+            {ok, _} = nebula2_utils:update_parent(ParentId, ObjectName, ObjectType, Pid),
             pooler:return_member(riak_pool, Pid),
-            Req3 = cowboy_req:set_resp_body(list_to_binary(maps:to_list(Data2)), Req2),
+            Req3 = cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2),
             {true, Req3, State}
     end.
 
