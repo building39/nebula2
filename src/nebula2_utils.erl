@@ -298,7 +298,7 @@ make_search_key(State) when is_tuple(State) ->
 
 %% @doc Put a value to the data map.
 -spec put_value(binary(), term(), map()) -> map().
-put_value(Key, Value, Map) ->
+put_value(Key, Value, Map) when is_binary(Key), is_map(Map) ->
     ?nebMsg("Entry"),
     case maps:is_key(<<"cdmi">>, Map) of
         true ->
@@ -950,38 +950,55 @@ nebula2_utils_test_() ->
 %%                 ?assert(meck:validate(uuid))
 %%        end
 %%       },
-      {"Test make_search_key/1",
+%%       {"Test make_search_key/1",
+%%        fun () ->
+%%                 Pid = self(),
+%%                 Map = maps:from_list([{<<"path">>, <<"/">>},
+%%                                       {<<"objectName">>, <<"/">>},
+%%                                       {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
+%%                                       ]),
+%%                 State = {Pid, Map},
+%%                 SearchKey = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/",
+%%                 ?assertMatch(SearchKey, make_search_key(State)),
+%%                 Map2a = maps:put(<<"objectName">>, <<"/cdmi_domains/">>, Map),
+%%                 Map2b = maps:put(<<"path">>, <<"/cdmi_domains/">>, Map2a),
+%%                 State2 = {Pid, Map2b},
+%%                 SearchKey2 = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/cdmi_domains/",
+%%                 ?assertMatch(SearchKey2, make_search_key(State2)),
+%%                 Map3a = maps:put(<<"objectName">>, <<"/cdmi_domains/system_domain/">>, Map),
+%%                 Map3b = maps:put(<<"path">>, <<"/cdmi_domains/system_domain/">>, Map3a),
+%%                 State3 = {Pid, Map3b},
+%%                 SearchKey3 = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/cdmi_domains/system_domain/",
+%%                 ?assertMatch(SearchKey3, make_search_key(State3)),
+%%                 Map4a = maps:put(<<"objectName">>, <<"/cdmi_domains/Fuzzcat/">>, Map),
+%%                 Map4b = maps:put(<<"path">>, <<"/cdmi_domains/Fuzzcat/">>, Map4a),
+%%                 Map4c = maps:put(<<"domainURI">>, <<"/cdmi_domains/Fuzzcat/">>, Map4b),
+%%                 State4 = {Pid, Map4c},
+%%                 SearchKey4 = "e2f450d94cb7f21e3596f8b953b3ec2791343482/cdmi_domains/Fuzzcat/",
+%%                 ?assertMatch(SearchKey4, make_search_key(State4)),
+%%                 Map5a = maps:put(<<"objectName">>, <<"/cdmi_capabilities/">>, Map),
+%%                 Map5b = maps:put(<<"path">>, <<"/cdmi_capabilities/">>, Map5a),
+%%                 Map5c = maps:put(<<"domainURI">>, <<"/cdmi_capabilities/">>, Map5b),
+%%                 State5 = {Pid, Map5c},
+%%                 SearchKey5 = "e1c36ee8b6b76553d8977eb4737df5b996b418bd/cdmi_capabilities/",
+%%                 ?assertMatch(SearchKey5, make_search_key(State5)),
+%%                 ?assertException(error, function_clause, make_search_key(not_a_tuple))
+%%        end
+%%       },
+      {"Test put_value/3",
        fun () ->
-                Pid = self(),
-                Map = maps:from_list([{<<"path">>, <<"/">>},
-                                      {<<"objectName">>, <<"/">>},
-                                      {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
-                                      ]),
-                State = {Pid, Map},
-                SearchKey = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/",
-                ?assertMatch(SearchKey, make_search_key(State)),
-                Map2a = maps:put(<<"objectName">>, <<"/cdmi_domains/">>, Map),
-                Map2b = maps:put(<<"path">>, <<"/cdmi_domains/">>, Map2a),
-                State2 = {Pid, Map2b},
-                SearchKey2 = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/cdmi_domains/",
-                ?assertMatch(SearchKey2, make_search_key(State2)),
-                Map3a = maps:put(<<"objectName">>, <<"/cdmi_domains/system_domain/">>, Map),
-                Map3b = maps:put(<<"path">>, <<"/cdmi_domains/system_domain/">>, Map3a),
-                State3 = {Pid, Map3b},
-                SearchKey3 = "c8c17baf9a68a8dbc75b818b24269ebca06b0f31/cdmi_domains/system_domain/",
-                ?assertMatch(SearchKey3, make_search_key(State3)),
-                Map4a = maps:put(<<"objectName">>, <<"/cdmi_domains/Fuzzcat/">>, Map),
-                Map4b = maps:put(<<"path">>, <<"/cdmi_domains/Fuzzcat/">>, Map4a),
-                Map4c = maps:put(<<"domainURI">>, <<"/cdmi_domains/Fuzzcat/">>, Map4b),
-                State4 = {Pid, Map4c},
-                SearchKey4 = "e2f450d94cb7f21e3596f8b953b3ec2791343482/cdmi_domains/Fuzzcat/",
-                ?assertMatch(SearchKey4, make_search_key(State4)),
-                Map5a = maps:put(<<"objectName">>, <<"/cdmi_capabilities/">>, Map),
-                Map5b = maps:put(<<"path">>, <<"/cdmi_capabilities/">>, Map5a),
-                Map5c = maps:put(<<"domainURI">>, <<"/cdmi_capabilities/">>, Map5b),
-                State5 = {Pid, Map5c},
-                SearchKey5 = "e1c36ee8b6b76553d8977eb4737df5b996b418bd/cdmi_capabilities/",
-                ?assertMatch(SearchKey5, make_search_key(State5))
+                TestMap = jsx:decode(?TestCreateContainer, [return_maps]),
+                TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+                                              {<<"sp">>, ?TestCreateContainerSearchPath}
+                                             ]),
+                TestCDMI = put_value(<<"new key">>, <<"new value">>, TestMapCDMI),
+                ?assert(maps:is_key(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
+                ?assertMatch(<<"new value">>, maps:get(<<"new key">>, maps:get(<<"cdmi">>, TestCDMI))),
+                TestNonCDMI = put_value(<<"new key">>, <<"new value">>, TestMap),
+                ?assert(maps:is_key(<<"new key">>, TestNonCDMI)),
+                ?assertMatch(<<"new value">>, maps:get(<<"new key">>, TestNonCDMI)),
+                ?assertException(error, function_clause, put_value(not_a_binary, <<"">>, TestMap)),
+                ?assertException(error, function_clause, put_value(<<"">>, <<"">>, not_a_map))
        end
       }
      ]
