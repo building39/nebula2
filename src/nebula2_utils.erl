@@ -789,6 +789,14 @@ nebula2_utils_test_() ->
                 ?assertException(error, function_clause, extract_parentURI(not_a_list))
        end
       },
+      {"Test generate_hash/2",
+       fun () ->
+                Data = "this is some data",
+                Algo = "sha256",
+                Hash = "dff90087e2a95f1c093cf40e7be6ef4e998e21b4ea38d0b494ea2fdb2576fcfe",
+                ?assertMatch(Hash, generate_hash(Algo, Data))
+       end
+      },
       {"Test get_domain_hash/1",
        fun () ->
                 ?assertMatch(?TestSystemDomainHash, get_domain_hash(?SYSTEM_DOMAIN_URI))
