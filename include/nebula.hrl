@@ -15,7 +15,8 @@
 -type headers()          :: list().
 -type method()           :: string().
 -type object_name()      :: nonempty_string().
--type object_oid()       :: nonempty_string().
+-type object_path()      :: nonempty_string().
+-type object_oid()       :: binary().
 -type object_type()      :: content_type().
 -type object_uri()       :: path()|nil().
 -type parent_uri()       :: path().
@@ -34,7 +35,7 @@
 
 %% Memcached parameters
 -define(MEMCACHE, nebula_memcache).
--define(MEMCACHE_EXPIRY, 600).   %% Expire after 60 seconds.
+-define(MEMCACHE_EXPIRY, 60).   %% Expire after 60 seconds.
 
 %% Header macros.
 -define(ACCEPT_HEADER, "accept").

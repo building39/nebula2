@@ -13,7 +13,7 @@
 %% API functions
 %% ====================================================================
 -export([
-            delete_domain/2,
+            delete_domain/1,
             new_domain/2,
             update_domain/3
         ]).
@@ -22,50 +22,87 @@
 %% TODO: Enforce CDMI domain deletion rules - i.e. move populated domains to metadata: cdmi_domain_delete_reassign
 %%       if the domain contains objects and then delete the domain, or fail with 400 if the domain contains objects
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
--spec nebula2_domains:delete_domain(cowboy_req:req(), cdmi_state()) -> ok | {error, term()}.
-delete_domain(Req, State) ->
-    %% lager:debug("Entry"),
+-spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, term()}.
+delete_domain(State) ->
+    lager:debug("Entry"),
     {Pid, EnvMap} = State,
-    Path = binary_to_list(maps:get(<<"path">>, EnvMap)),
-    Data = nebula2_db:search(Path, State),
-    Oid = maps:get(<<"objectID">>, Data),
-    Metadata = maps:get(<<"metadata">>, Data),
-    ReassignTo = maps:get(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
-    case maps:get(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
-        nil ->
-            case maps:get(<<"children">>, Data, []) of
-                [] ->
-                    handle_delete(nebula2_db:delete(Pid, Oid), Req, State);
-                _ ->
-                    {error, 400}
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    case binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)) == "system_domain/" of
+        false ->
+            Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+            EnvMap2 = nebula2_utils:put_value(<<"domainURI">>, Path, EnvMap),
+            State2 = {Pid, EnvMap2},    %% Domain URI is the path for new domains.
+            SearchKey = nebula2_utils:get_domain_hash(Path) ++ Path,
+            {ok, Data} = nebula2_db:search(SearchKey, State2),
+            Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
+            ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
+            case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
+                nil ->
+                    %% TODO: check for existence of child domains and domain members before deleting.
+                    SChildren = lists:filtermap(fun(X) -> {true, binary_to_list(X)} end,
+                                                nebula2_utils:get_value(<<"children">>, Data, [])),
+                    Children = lists:filter(fun(X) -> true /= nebula2_utils:beginswith(X, "cdmi_domain_") end, SChildren),
+                    case Children of
+                        [] ->
+                            ok = nebula2_utils:delete_child_from_parent(Pid,
+                                                                        nebula2_utils:get_value(<<"parentID">>, Data),
+                                                                        nebula2_utils:get_value(<<"objectName">>, Data)),
+                            nebula2_utils:delete(State2);
+                        _ ->
+                            lager:error("Cannot delete non-empty domain ~p", [Path]),
+                            {error, 400}
+                    end;
+                ReassignTo ->
+                    %% TODO: Implement cdmi_domain_delete_reassign.
+                    {error, 501}
             end;
-        ReassignTo ->
-            {error, 501}
+        true ->
+            lager:error("Cannot delete system domain!"),
+            throw(forbidden)
     end.
 
 %% @doc Create a new CDMI domain
 -spec nebula2_domains:new_domain(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_domain(Req, State) ->
-    %% lager:debug("Entry"),
-    {_Pid, EnvMap} = State,
-    DomainName = binary_to_list(maps:get(<<"parentURI">>, EnvMap)) ++ binary_to_list(maps:get(<<"objectName">>, EnvMap)),
+    lager:debug("Entry"),
+    {Pid, EnvMap} = State,
+    lager:debug("EnvMap: ~p", [EnvMap]),
+    DomainName = maps:get(<<"path">>, EnvMap),  %% A domain always belongs to itself.
+    SearchKey = nebula2_utils:get_domain_hash(DomainName) ++ binary_to_list(DomainName),
+    EM2 = maps:put(<<"domainURI">>, DomainName, EnvMap),
+    EM3 = maps:put(<<"searchKey">>, SearchKey, EM2),
+    State2 = {Pid, EM3},
     lager:debug("Domain name: ~p", [DomainName]),
     ObjectType = ?CONTENT_TYPE_CDMI_DOMAIN,
-    {ok, ReqBody, Req2} = cowboy_req:body(Req),
-    Body2 = try jsx:decode(ReqBody, [return_maps]) of
-                NewBody -> NewBody
+    {ok, Body, Req2} = cowboy_req:body(Req),
+    Body2 = try jsx:decode(Body, [return_maps]) of
+                NewBody ->
+                     NewBody
             catch
                 error:badarg ->
                     throw(badjson)
             end,
-    Response = case nebula2_utils:create_object(Req2, State, ObjectType, DomainName, Body2) of
-                   {true, Req3, Data} ->
-                       {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data)), Req3), State};
-                   false ->
-                       {false, Req2, State}
-               end,
-    Response.
-    
+    lager:debug("Body2: ~p", [Body2]),
+    case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of
+        {true, Data} ->
+            Containers = [<<"cdmi_domain_members/">>,
+                          <<"cdmi_domain_summary/">>
+                         ],
+            case new_domain_root(State, DomainName) of
+                ok ->
+                    case new_member_and_summary_containers(State, SearchKey, Containers) of
+                        true ->
+                            Data2 = nebula2_db:unmarshall(Data),
+                            {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State2};
+                        false ->
+                            {false, Req2, State2}
+                    end;
+                _ ->
+                    {false, Req2, State2}
+            end;
+        false ->
+            {false, Req2, State2}
+    end.
 
 %% @doc Update a CDMI domain
 -spec nebula2_domains:update_domain(pid(), object_oid(), map()) -> {ok, json_value()}.
@@ -77,12 +114,80 @@ update_domain(_Pid, _ObjectId, Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-handle_delete(ok, Req, State) ->
-    %% lager:debug("Entry"),
-    {true, Req, State};
-handle_delete({error, _Error}, Req, State) ->
-    %% lager:debug("Entry"),
-    {false, Req, State}.
+
+-spec new_member_and_summary_containers(cdmi_state(), string(), list()) -> boolean().
+new_member_and_summary_containers(State, SearchKey, Containers) ->
+    lager:debug("Entry"),
+    lager:debug("Search Key: ~p", [SearchKey]),
+    {ok, Parent} = nebula2_db:search(SearchKey, State),
+    case new_containers(State, SearchKey, Parent, Containers, {}) of
+        true ->
+            Containers2 = [<<"daily/">>, <<"weekly/">>, <<"monthly/">>, <<"yearly/">>],
+            SearchKey2 = SearchKey ++ "cdmi_domain_summary/",
+            {ok, Parent2} = nebula2_db:search(SearchKey2, State),
+            new_containers(State, SearchKey, Parent2, Containers2, {});
+        false ->
+            false
+    end.
+
+-spec new_containers(cdmi_state(), binary(), map(), list(), boolean()) -> boolean().
+new_containers(_State, _SearchKey, _Parent, [], Response) ->
+    Response;
+new_containers(State, SearchKey, Parent, [ObjectName|T], _Response) ->
+    lager:debug("Entry"),
+    PUri = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, Parent)),
+    ParentUri = PUri ++ binary_to_list(nebula2_utils:get_value(<<"objectName">>, Parent)),
+    Oid = nebula2_utils:make_key(),
+    ParentId  = nebula2_utils:get_value(<<"objectID">>, Parent),
+    Data = maps:from_list([
+                          {<<"objectName">>, ObjectName},
+                          {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                          {<<"objectID">>, Oid},
+                          {<<"parentID">>, ParentId},
+                          {<<"parentURI">>, list_to_binary(ParentUri)},
+                          {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
+                          {<<"domainURI">>, nebula2_utils:get_value(<<"domainURI">>, Parent)},
+                          {<<"completionStatus">>, <<"Complete">>},
+                          {<<"metadata">>, nebula2_utils:get_value(<<"metadata">>, Parent)}
+                         ]),
+    Data2 = nebula2_db:marshall(Data),
+    {Pid, _} = State,
+    case nebula2_db:create(Pid, nebula2_utils:get_value(<<"objectID">>, Data2), Data2) of
+        {ok, _} ->
+            ok = nebula2_utils:update_parent(nebula2_utils:get_value(<<"objectID">>, Parent),
+                                             ParentUri ++ binary_to_list(ObjectName),
+                                             ?CONTENT_TYPE_CDMI_CONTAINER,
+                                             Pid),
+            new_containers(State, SearchKey, Parent, T, true);
+        _Other ->
+            lager:error("new container create failed: ~p", [_Other]),
+            new_containers(State, SearchKey, Parent, [], false)
+    end.
+
+-spec new_domain_root(cdmi_state(), binary()) -> ok | {error, string()}.
+new_domain_root(State, DomainUri) ->
+    {Pid, EnvMap} = State,
+    {ok, SystemRoot} = nebula2_db:read(Pid, nebula2_utils:get_value(<<"root_oid">>, EnvMap)),
+    Metadata = nebula2_utils:get_value(<<"metadata">>, SystemRoot),
+    Oid = nebula2_utils:make_key(),
+    Map = nebula2_db:marshall(maps:from_list([
+                                                {<<"metadata">>, Metadata},
+                                                {<<"objectName">>, <<"/">>},
+                                                {<<"objectType">>, <<?CONTENT_TYPE_CDMI_CONTAINER>>},
+                                                {<<"objectID">>, Oid},
+                                                {<<"capabilitiesURI">>, <<?CONTAINER_CAPABILITY_URI>>},
+                                                {<<"completionStatus">>, <<"Complete">>},
+                                                {<<"domainURI">>, DomainUri}
+                                              ])),
+    case nebula2_db:create(Pid, Oid, Map) of
+        {ok, _} ->
+            ok;
+        Reason ->
+            lager:error("Creation of root container for the new domain ~p failed: ~p", [DomainUri, Reason]),
+            Reason
+    end.
+    
+        
 
 %% ====================================================================
 %% eunit tests

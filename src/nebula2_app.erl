@@ -13,6 +13,9 @@
 ]).
 
 start(_Type, _Args) ->
+    lager:debug("Starting folsom..."),
+    application:start(folsom),
+    lager:debug("folsom allegedly started."),
     Dispatch = cowboy_router:compile([
         {'_', [{"/cdmi/[...]", cdmi_handler, []},
                {"/bootstrap/[...]", bootstrap_handler, []}]}
@@ -20,9 +23,7 @@ start(_Type, _Args) ->
     cowboy:start_http(my_http_listener, 1000, [{port, 8080}],
         [{env, [{dispatch, Dispatch}]}]
     ),
-    io:format("About to start lager..."),
     lager:start(),
-    io:format("lager started."),
     application:start(pooler),
     mcd:start_link(?MEMCACHE, ["localhost", 11211]),
     nebula2_sup:start_link().
