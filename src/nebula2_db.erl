@@ -5,7 +5,7 @@
 
 -module(nebula2_db).
 
--ifdef(TEST).
+-ifdef(TESTX).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -35,7 +35,7 @@ available(Pid) when is_pid(Pid) ->
 -spec create(pid(),
              object_oid(),   %% Oid
              map()           %% Data to store
-            ) -> {'error', _} | {'ok', _}.
+            ) -> {error, term()} | {ok, _}.
 create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
@@ -130,7 +130,7 @@ unmarshall(Data) when is_map(Data) ->
              map()              %% Data to store
             ) -> {ok, map()} | {error, term()}.
 update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
-%    ?nebMsg("Entry"),
+    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     Data2 = jsx:encode(Data),
     case Mod:update(Pid, Oid, Data2) of
@@ -148,7 +148,7 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 
 nebula2_db_test_() ->
     {foreach,
