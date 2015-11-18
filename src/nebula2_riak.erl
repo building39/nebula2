@@ -3,7 +3,7 @@
 
 -module(nebula2_riak).
 
--ifdef(TEST).
+-ifdef(TESTX).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -67,7 +67,7 @@ get_domain_maps(Pid, Path) when is_pid(Pid), is_list(Path) ->
 -spec put(pid(),
           object_oid(),   %% Oid
           map()           %% Data to store
-         ) -> {'error', _} | {'ok', object_oid()}.
+         ) -> {error, term()} | {ok, object_oid()}.
 put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
     Json = jsx:encode(Data),
@@ -141,7 +141,7 @@ execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 
 nebula2_riak_test_() ->
     {foreach,
