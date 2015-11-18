@@ -1,7 +1,7 @@
 -module(nebula2_app).
 -behaviour(application).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 -include("nebula.hrl").
@@ -42,7 +42,7 @@ handle_app_env(undefined, Default) -> Default.
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
+-ifdef(EUNIT).
 %% @doc Test the app_config/2 function.
 %%      This test expects cdmi_location to be set to "US-TX" in rel/sys.config
 app_config1_test() ->

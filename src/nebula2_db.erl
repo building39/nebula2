@@ -5,7 +5,7 @@
 
 -module(nebula2_db).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -148,7 +148,7 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
+-ifdef(EUNIT).
 
 nebula2_db_test_() ->
     {foreach,

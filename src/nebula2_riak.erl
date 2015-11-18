@@ -3,7 +3,7 @@
 
 -module(nebula2_riak).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -141,7 +141,7 @@ execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
+-ifdef(EUNIT).
 
 nebula2_riak_test_() ->
     {foreach,

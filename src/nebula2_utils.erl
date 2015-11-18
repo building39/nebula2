@@ -3,7 +3,7 @@
 
 -module(nebula2_utils).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -584,7 +584,7 @@ sanitize_body([H|T], Body) when is_map(Body)->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
+-ifdef(EUNIT).
 %% @doc Test the beginswith/2 function.
 
 nebula2_utils_test_() ->
