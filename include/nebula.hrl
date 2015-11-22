@@ -26,11 +26,15 @@
 
 %% Debug logging
 -ifdef(EUNIT).
--define(nebMsg(X), ?debugMsg(X)).
+-define(nebErrFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebErrMsg(X), ?debugMsg(X)).
 -define(nebFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebMsg(X), ?debugMsg(X)).
 -else.
--define(nebMsg(X), lager:debug(X)).
+-define(nebErrFmt(X, Y), lager:error(X, Y)).
+-define(nebErrMsg(X), lager:error(X)).
 -define(nebFmt(X, Y), lager:debug(X, Y)).
+-define(nebMsg(X), lager:debug(X)).
 -define(GET_ENV(X, Y), application:get_env(X, Y)). %% see nebula2_test.hrl for unit testing version of this macro.
 -endif.
 
