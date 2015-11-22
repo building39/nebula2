@@ -200,7 +200,8 @@
         \"cdmi_serialize_dataobject_to_ID\": \"false\",
         \"cdmi_serialize_domain_to_ID\": \"false\",
         \"cdmi_serialize_queue_to_ID\": \"false\",
-        \"cdmi_snapshots\": \"false\"
+        \"cdmi_snapshots\": \"false\",
+        \"unknown_handler\": \"true\"
     },
     \"children\": [
         \"container/\",
