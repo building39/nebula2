@@ -3,7 +3,7 @@
 
 -module(nebula2_dataobjects).
 
--ifdef(TEST).
+-ifdef(TESTX).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -45,9 +45,9 @@ new_dataobject(Req, State, Body) when is_tuple(State), is_map(Body) ->
 
 %% @doc Update a CDMI dataobject
 -spec nebula2_dataobjects:update_dataobject(cowboy_req:req(),
-											cdmi_state(),
-											object_oid(),
-											map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
+                                            cdmi_state(),
+                                            object_oid(),
+                                            map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid), is_map(NewData) ->
     ?nebMsg("Entry"),
     {Pid, _EnvMap} = State,
@@ -72,10 +72,10 @@ update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid)
     Data3 = nebula2_utils:update_data_system_metadata(CList, Data2, State),
     Data4 = nebula2_db:marshall(Data3),
     case nebula2_db:update(Pid, Oid, Data4) of
-		{ok, _Updated} ->
-			{true, Req, State};
-		_  ->
-			{false, Req, State}
+        {ok, _Updated} ->
+            {true, Req, State};
+        _  ->
+            {false, Req, State}
     end.
 
 %% ====================================================================
@@ -85,7 +85,7 @@ update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid)
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 nebula2_dataobjects_test_() ->
     {foreach,
      fun() ->
