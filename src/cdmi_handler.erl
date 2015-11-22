@@ -1,6 +1,6 @@
 -module(cdmi_handler).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -791,7 +791,7 @@ req_domain([H|T], HostUrl) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
+-ifdef(EUNIT).
 
 cdmi_handler_test_() ->
     {foreach,

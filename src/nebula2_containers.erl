@@ -41,7 +41,7 @@ new_container(Req, State) when is_tuple(State) ->
 
 %% @doc Update a CDMI container
 -spec update_container(cowboy_req:req(), map(), object_oid()) -> {ok, json_value()}.
-update_container(Req, State, Oid) when is_tuple(State), is_binary(Oid)->
+update_container(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     {Pid, _} = State,
     {ok, Body, Req2} = cowboy_req:body(Req),

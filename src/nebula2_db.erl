@@ -35,7 +35,7 @@ available(Pid) when is_pid(Pid) ->
 -spec create(pid(),
              object_oid(),   %% Oid
              map()           %% Data to store
-            ) -> {error, term()} | {ok, _}.
+            ) -> {error, term()} | {ok, binary()}.
 create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),

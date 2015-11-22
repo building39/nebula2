@@ -76,7 +76,7 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
     Path = get_value(<<"path">>, EnvMap),
     case get_object_oid(get_parent_uri(Path), State) of
         {ok, ParentId} ->
-            {ok, Parent} = nebula2_db:read(Pid, ParentId),
+            {true, Parent} = nebula2_db:read(Pid, ParentId),
             DomainName = get_value(<<"domainURI">>, Parent, ""),
             create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->

@@ -169,6 +169,7 @@
         \"cdmi_export_occi_iscsi\": \"false\",
         \"cdmi_export_webdav\": \"false\",
         \"cdmi_logging\": \"false\",
+        \"cdmi_mcount\": \"true\",
         \"cdmi_metadata_maxitems\": 1024,
         \"cdmi_metadata_maxsize\": 8192,
         \"cdmi_metadata_maxtotalsize\": 8388608,
