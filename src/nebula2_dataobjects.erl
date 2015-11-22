@@ -3,7 +3,7 @@
 
 -module(nebula2_dataobjects).
 
--ifdef(TEST).
+-ifdef(TESTX).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -28,8 +28,8 @@ get_dataobject(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 
 %% @doc Create a new CDMI dataobject
 -spec nebula2_dataobjects:new_dataobject(cowboy_req:req(),
-										 cdmi_state(),
-										 map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
+                                         cdmi_state(),
+                                         map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_dataobject(Req, State, Body) when is_tuple(State), is_map(Body) ->
     ?nebMsg("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
@@ -85,7 +85,7 @@ update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid)
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 nebula2_containers_test_() ->
     {foreach,
      fun() ->
@@ -99,72 +99,72 @@ nebula2_containers_test_() ->
              meck:unload(nebula2_utils)
      end,
      [
-	  {"get_dataobject/2",
+      {"get_dataobject/2",
        fun() ->
-			   Pid = self(),
-			   TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
-			   Oid = maps:get(<<"objectID">>, TestMap),
-			   TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+               Pid = self(),
+               TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
+               Oid = maps:get(<<"objectID">>, TestMap),
+               TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
                                               {<<"sp">>, ?TestCreateContainerSearchPath}
                                              ]),
-			   meck:loop(nebula2_db, read, 2, [{ok, TestMapCDMI}]),
-			   ?assertMatch(TestMapCDMI, get_dataobject(Pid, Oid)),
-			   ?assertException(error, function_clause, get_dataobject(not_a_pid, Oid)),
-			   ?assertException(error, function_clause, get_dataobject(Pid, not_a_binary))
-	   end
+               meck:loop(nebula2_db, read, 2, [{ok, TestMapCDMI}]),
+               ?assertMatch(TestMapCDMI, get_dataobject(Pid, Oid)),
+               ?assertException(error, function_clause, get_dataobject(not_a_pid, Oid)),
+               ?assertException(error, function_clause, get_dataobject(Pid, not_a_binary))
+       end
       },
-	  {"new_dataobject/2",
+      {"new_dataobject/2",
        fun() ->
-			   Body = maps:from_list([{<<"value">>, <<"new data">>}]),
-			   EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+               Body = maps:from_list([{<<"value">>, <<"new data">>}]),
+               EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
                                      {<<"auth_as">>, <<"MickeyMouse">>},
                                      {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
                                     ]),
-			   Pid = self(),
-			   Req = "",
-			   State = {Pid, EnvMap},
-			   TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
-			   TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+               Pid = self(),
+               Req = "",
+               State = {Pid, EnvMap},
+               TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
+               TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
                                               {<<"sp">>, ?TestCreateContainerSearchPath}
                                              ]),
-			   meck:loop(cowboy_req, set_resp_body, 2, [Req]),
-			   meck:sequence(nebula2_utils, create_object, 3, [{true, TestMapCDMI}, false]),
-			   ?assertMatch({true, Req, State}, new_dataobject(Req, State, Body)),
-			   ?assertMatch({false, Req, State}, new_dataobject(Req, State, Body)),
-			   ?assertException(error, function_clause, new_dataobject(Req, not_a_tuple, Body)),
-			   ?assertException(error, function_clause, new_dataobject(Req, State, not_a_map))
-	   end
+               meck:loop(cowboy_req, set_resp_body, 2, [Req]),
+               meck:sequence(nebula2_utils, create_object, 3, [{true, TestMapCDMI}, false]),
+               ?assertMatch({true, Req, State}, new_dataobject(Req, State, Body)),
+               ?assertMatch({false, Req, State}, new_dataobject(Req, State, Body)),
+               ?assertException(error, function_clause, new_dataobject(Req, not_a_tuple, Body)),
+               ?assertException(error, function_clause, new_dataobject(Req, State, not_a_map))
+       end
       },
-	  {"update_dataobject/2",
+      {"update_dataobject/2",
        fun() ->
-			   EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+               EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
                                      {<<"auth_as">>, <<"MickeyMouse">>},
                                      {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
                                     ]),
-			   Pid = self(),
-			   Req = "",
-			   State = {Pid, EnvMap},
-			   TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
-			   Data = maps:from_list([{<<"value">>, <<"new data">>}]),
-			   Data2 = maps:from_list([{<<"metadata">>, maps:from_list([{<<"new_metadata">>, <<"data">>}])}]),
-			   Oid = maps:get(<<"objectID">>, TestMap),
-			   TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
+               Pid = self(),
+               Req = "",
+               State = {Pid, EnvMap},
+               TestMap = jsx:decode(?TestSystemConfiguration, [return_maps]),
+               Data = maps:from_list([{<<"value">>, <<"new data">>}]),
+               Data2 = maps:from_list([{<<"metadata">>, maps:from_list([{<<"new_metadata">>, <<"data">>}])}]),
+               Oid = maps:get(<<"objectID">>, TestMap),
+               TestMapCDMI = maps:from_list([{<<"cdmi">>, TestMap},
                                               {<<"sp">>, ?TestCreateContainerSearchPath}
                                              ]),
-			   MetaData = maps:get(<<"metadata">>, maps:get(<<"cdmi">>, TestMapCDMI)),
-	   		   meck:loop(nebula2_db, read, 2, [{ok, TestMapCDMI}]),
-			   meck:sequence(nebula2_db, update, 3, [{ok, TestMapCDMI},
-													 {ok, TestMapCDMI},
-													 {error, notfound}]),
-			   meck:loop(nebula2_utils, update_data_system_metadata, 3, [MetaData]),
-			   ?assertMatch({true, Req, State }, update_dataobject(Req, State, Oid, Data)),
-			   ?assertMatch({true, Req, State }, update_dataobject(Req, State, Oid, Data2)),
-			   ?assertMatch({false, Req, State }, update_dataobject(Req, State, Oid, Data2)),
-			   ?assertException(error, function_clause, update_dataobject(Req, not_a_tuple, Oid, Data)),
-			   ?assertException(error, function_clause, update_dataobject(Req, State, not_a_binary, Data)),
-			   ?assertException(error, function_clause, update_dataobject(Req, State, Oid, not_a_map))
-	   end
-	  }
-	 ]
+               MetaData = maps:get(<<"metadata">>, maps:get(<<"cdmi">>, TestMapCDMI)),
+               meck:loop(nebula2_db, read, 2, [{ok, TestMapCDMI}]),
+               meck:sequence(nebula2_db, update, 3, [{ok, TestMapCDMI},
+                                                     {ok, TestMapCDMI},
+                                                     {error, notfound}]),
+               meck:loop(nebula2_utils, update_data_system_metadata, 3, [MetaData]),
+               ?assertMatch({true, Req, State }, update_dataobject(Req, State, Oid, Data)),
+               ?assertMatch({true, Req, State }, update_dataobject(Req, State, Oid, Data2)),
+               ?assertMatch({false, Req, State }, update_dataobject(Req, State, Oid, Data2)),
+               ?assertException(error, function_clause, update_dataobject(Req, not_a_tuple, Oid, Data)),
+               ?assertException(error, function_clause, update_dataobject(Req, State, not_a_binary, Data)),
+               ?assertException(error, function_clause, update_dataobject(Req, State, Oid, not_a_map))
+       end
+      }
+     ]
   }.
 -endif.
