@@ -3,7 +3,7 @@
 
 -module(nebula2_dataobjects).
 
--ifdef(TESTX).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include("nebula2_test.hrl").
 -endif.
@@ -85,8 +85,8 @@ update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid)
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNITX).
-nebula2_containers_test_() ->
+-ifdef(EUNIT).
+nebula2_dataobjects_test_() ->
     {foreach,
      fun() ->
              meck:new(cowboy_req, [non_strict]),
