@@ -30,11 +30,15 @@
 -define(nebErrMsg(X), ?debugMsg(X)).
 -define(nebFmt(X, Y), ?debugFmt(X, Y)).
 -define(nebMsg(X), ?debugMsg(X)).
+-define(nebWarnFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebWarnMsg(X), ?debugMsg(X)).
 -else.
 -define(nebErrFmt(X, Y), lager:error(X, Y)).
 -define(nebErrMsg(X), lager:error(X)).
 -define(nebFmt(X, Y), lager:debug(X, Y)).
 -define(nebMsg(X), lager:debug(X)).
+-define(nebWarnFmt(X, Y), lager:warning(X, Y)).
+-define(nebWarnMsg(X), lager:warning(X)).
 -define(GET_ENV(X, Y), application:get_env(X, Y)). %% see nebula2_test.hrl for unit testing version of this macro.
 -endif.
 
