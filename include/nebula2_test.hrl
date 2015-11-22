@@ -154,6 +154,7 @@
 }">>).
 -define(TestSystemCapabilities, <<"{
     \"capabilities\": {
+        \"cdmi_acount\": \"true\",
         \"cdmi_copy_dataobject_from_queue\": \"false\",
         \"cdmi_copy_queue_by_ID\": \"false\",
         \"cdmi_create_reference_by_ID\": \"false\",
@@ -289,3 +290,50 @@
     \"objectType\": \"application/cdmi-container\"
 }">>).
 -define(TestBinary, <<"{\"capabilitiesURI\":\"/cdmi_capabilities/container/\",\"children\":[\"new_object1.txt\",\"multipart6.txt\",\"multipart7.txt\",\"multipart1.txt\",\"Janice-SchoolPhoto.jpg\"],\"childrenrange\":\"0-4\",\"completionStatus\":\"Complete\",\"domainURI\":\"/cdmi_domains/Fuzzcat/\",\"metadata\":{\"cdmi_acls\":[{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"}],\"cdmi_atime\":\"2015-10-30T20:31:22.000000Z\",\"cdmi_ctime\":\"2015-10-27T19:13:43.000000Z\",\"cdmi_domain_enabled\":\"false\",\"cdmi_mtime\":\"2015-10-27T19:13:43.000000Z\",\"cdmi_owner\":\"administrator\",\"nebula_data_location\":[\"US-TX\"]},\"objectID\":\"b8800cef188d474f801d656995a99945000452410048F52F\",\"objectName\":\"new_container7/\",\"objectType\":\"application/cdmi-container\",\"parentID\":\"0ad1801b18b14eb49708d1f9daa34fcb000452410048D534\",\"parentURI\":\"/\"}">>).
+-define(TestSystemDomain, <<"{
+    \"capabilitiesURI\": \"/cdmi_capabilities/domain/\",
+    \"children\": [
+        \"cdmi_domain_members/\",
+        \"cdmi_domain_summary/\"
+    ],
+    \"childrenrange\": \"0-1\",
+    \"completionStatus\": \"complete\",
+    \"domainURI\": \"/cdmi_domains/system_domain/\",
+    \"metadata\": {
+        \"cdmi_acls\": [
+            {
+                \"aceflags\": \"OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"ALL_PERMS\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"OWNER@\"
+            },
+            {
+                \"aceflags\": \"OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"READ\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"AUTHENTICATED@\"
+            },
+            {
+                \"aceflags\": \"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"ALL_PERMS\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"OWNER@\"
+            },
+            {
+                \"aceflags\": \"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"READ\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"AUTHENTICATED@\"
+            }
+        ],
+        \"cdmi_atime\": \"2015-10-27T19:11:1445994691.000000Z\",
+        \"cdmi_ctime\": \"2015-10-27T19:11:1445994691.000000Z\",
+        \"cdmi_mtime\": \"2015-10-27T19:11:1445994691.000000Z\",
+        \"cdmi_owner\": \"administrator\"
+    },
+    \"objectID\": \"8bd23741efb74fd6af4f2aed27aa9fb900045241004893AB\",
+    \"objectName\": \"system_domain/\",
+    \"objectType\": \"application/cdmi-domain\",
+    \"parentID\": \"bb52a5e1e8b14b55a982c8c763317992000452410048C8B3\",
+    \"parentURI\": \"/cdmi_domains/\"
+}">>).
