@@ -42,7 +42,7 @@ handle_app_env(undefined, Default) -> Default.
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 %% @doc Test the app_config/2 function.
 %%      This test expects cdmi_location to be set to "US-TX" in rel/sys.config
 app_config1_test() ->

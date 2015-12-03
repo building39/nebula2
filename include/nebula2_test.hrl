@@ -84,10 +84,10 @@
                 \"identifier\": \"AUTHENTICATED@\"
             }
         ],
-        \"cdmi_atime\": \"2015-11-02T20:32:56.000000Z\",
-        \"cdmi_ctime\": \"2015-10-27T19:11:1445994706.000000Z\",
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
         \"cdmi_hash\": \"b25b294cb4deb69ea00a4c3cf3113904801b6015e5956bd019a8570b1fe1d6040e944ef3cdee16d0a46503ca6e659a25f21cf9ceddc13f352a3c98138c15d6af\",
-        \"cdmi_mtime\": \"2015-10-27T19:12:14.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
         \"cdmi_owner\": \"administrator\",
         \"cdmi_size\": 1,
         \"cdmi_value_hash\": \"SHA512\"
@@ -141,9 +141,9 @@
                 \"identifier\": \"AUTHENTICATED@\"
             }
         ],
-        \"cdmi_atime\": \"2015-11-03T17:51:30.000000Z\",
-        \"cdmi_ctime\": \"2015-10-27T19:11:1445994702.000000Z\",
-        \"cdmi_mtime\": \"2015-10-27T19:11:1445994702.000000Z\",
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
         \"cdmi_owner\": \"administrator\"
     },
     \"objectID\": \"360d1572eccb4d44b57386d63576dbc400045241004850EF\",
@@ -235,9 +235,9 @@
                 \"identifier\": \"AUTHENTICATED@\"
             },
         ],
-        \"cdmi_atime\": \"1957-10-28T18:10:00.000000Z\",
-        \"cdmi_ctime\": \"1957-10-28T18:10:00.000000Z\",
-        \"cdmi_mtime\": \"1957-10-28T18:10:00.000000Z\",
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
         \"my_metadata\": \"junk\",
         \"cdmi_owner\": \"MickeyMouse\",
         \"nebula_data_location\": [
@@ -282,16 +282,16 @@
                 \"identifier\": \"AUTHENTICATED@\"
             }
         ],
-        \"cdmi_atime\": \"2015-10-27T19:11:1445994687.000000Z\",
-        \"cdmi_ctime\": \"2015-10-27T19:11:1445994687.000000Z\",
-        \"cdmi_mtime\": \"2015-10-27T19:11:1445994687.000000Z\",
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
         \"cdmi_owner\": \"administrator\"
     },
     \"objectID\": \"dd37dd9ad7e341fd852f46f94deae2bf0004524100482095\",
     \"objectName\": \"/\",
     \"objectType\": \"application/cdmi-container\"
 }">>).
--define(TestBinary, <<"{\"capabilitiesURI\":\"/cdmi_capabilities/container/\",\"children\":[\"new_object1.txt\",\"multipart6.txt\",\"multipart7.txt\",\"multipart1.txt\",\"Janice-SchoolPhoto.jpg\"],\"childrenrange\":\"0-4\",\"completionStatus\":\"Complete\",\"domainURI\":\"/cdmi_domains/Fuzzcat/\",\"metadata\":{\"cdmi_acls\":[{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"}],\"cdmi_atime\":\"2015-10-30T20:31:22.000000Z\",\"cdmi_ctime\":\"2015-10-27T19:13:43.000000Z\",\"cdmi_domain_enabled\":\"false\",\"cdmi_mtime\":\"2015-10-27T19:13:43.000000Z\",\"cdmi_owner\":\"administrator\",\"nebula_data_location\":[\"US-TX\"]},\"objectID\":\"b8800cef188d474f801d656995a99945000452410048F52F\",\"objectName\":\"new_container7/\",\"objectType\":\"application/cdmi-container\",\"parentID\":\"0ad1801b18b14eb49708d1f9daa34fcb000452410048D534\",\"parentURI\":\"/\"}">>).
+-define(TestBinary, <<"{\"capabilitiesURI\":\"/cdmi_capabilities/container/\",\"children\":[\"new_object1.txt\",\"multipart6.txt\",\"multipart7.txt\",\"multipart1.txt\",\"Janice-SchoolPhoto.jpg\"],\"childrenrange\":\"0-4\",\"completionStatus\":\"Complete\",\"domainURI\":\"/cdmi_domains/Fuzzcat/\",\"metadata\":{\"cdmi_acls\":[{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"ALL_PERMS\",\"acetype\":\"ALLOW\",\"identifier\":\"OWNER@\"},{\"aceflags\":\"INHERITED, OBJECT_INHERIT, CONTAINER_INHERIT\",\"acemask\":\"READ\",\"acetype\":\"ALLOW\",\"identifier\":\"AUTHENTICATED@\"}],\"cdmi_atime\":\"1970-01-01T00:00:00.000000Z\",\"cdmi_ctime\":\"1970-01-01T00:00:00.000000Z\",\"cdmi_domain_enabled\":\"false\",\"cdmi_mtime\":\"1970-01-01T00:00:00.000000Z\",\"cdmi_owner\":\"administrator\",\"nebula_data_location\":[\"US-TX\"]},\"objectID\":\"b8800cef188d474f801d656995a99945000452410048F52F\",\"objectName\":\"new_container7/\",\"objectType\":\"application/cdmi-container\",\"parentID\":\"0ad1801b18b14eb49708d1f9daa34fcb000452410048D534\",\"parentURI\":\"/\"}">>).
 -define(TestSystemDomain, <<"{
     \"capabilitiesURI\": \"/cdmi_capabilities/domain/\",
     \"children\": [
@@ -328,9 +328,9 @@
                 \"identifier\": \"AUTHENTICATED@\"
             }
         ],
-        \"cdmi_atime\": \"2015-10-27T19:11:1445994691.000000Z\",
-        \"cdmi_ctime\": \"2015-10-27T19:11:1445994691.000000Z\",
-        \"cdmi_mtime\": \"2015-10-27T19:11:1445994691.000000Z\",
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
         \"cdmi_owner\": \"administrator\"
     },
     \"objectID\": \"8bd23741efb74fd6af4f2aed27aa9fb900045241004893AB\",

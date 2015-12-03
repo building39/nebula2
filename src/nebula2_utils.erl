@@ -76,7 +76,7 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
     Path = get_value(<<"path">>, EnvMap),
     case get_object_oid(get_parent_uri(Path), State) of
         {ok, ParentId} ->
-            {true, Parent} = nebula2_db:read(Pid, ParentId),
+            {ok, Parent} = nebula2_db:read(Pid, ParentId),
             DomainName = get_value(<<"domainURI">>, Parent, ""),
             create_object(State, ObjectType, DomainName, Parent, Body);
         {notfound, _} ->
@@ -240,11 +240,16 @@ get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
 
 %% @doc Return current time in ISO 8601:2004 extended representation.
 -spec get_time() -> string().
+-ifdef(TEST).
+get_time() ->
+    "1970-01-01T00:00:00.000000Z".
+-else.
 get_time() ->
 %    ?nebMsg("Entry"),
     {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
+-endif.
 
 %% Get the content type for the request
 -spec handle_content_type(cdmi_state()) -> string().
@@ -634,6 +639,10 @@ nebula2_utils_test_() ->
                                                    ]),
                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
                 TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+                Capabilities = maps:get(<<"capabilities">>, TestSystemCapabilities),
+                Capabilities2 = maps:remove(<<"cdmi_acount">>, Capabilities),
+                Capabilities3 = maps:remove(<<"cdmi_mcount">>, Capabilities2),
+                TestSystemCapabilities2 = maps:from_list([{<<"capabilities">>, Capabilities3}]),
                 meck:expect(uuid, uuid4, [], ?TestUuid4),
                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
                 meck:expect(mcd, set, 4, ['_']),
@@ -642,23 +651,12 @@ nebula2_utils_test_() ->
                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
                                                      ]),
                 meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
-                                                      {ok, TestSystemCapabilities},
+                                                      {ok, TestSystemCapabilities2},
                                                       {error, '_'}
                                                      ]),
                 meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body),
-                NewObject2 = maps:get(<<"cdmi">>, NewObject),
-                SearchPath = maps:get(<<"sp">>, NewObject),
-                Metadata = maps:get(<<"metadata">>, NewObject2),
-                TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
-                                           ]),
-                Metadata2 = maps:merge(Metadata, TestTimes),
-                NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
-                NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
-                                             {<<"sp">>, SearchPath}]),
-                ?assertMatch(TestNewObjectCDMI, NewObject4),
+                ?assertMatch(TestNewObjectCDMI, NewObject),
                 ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, Body)),
                 ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
                 ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),
@@ -682,6 +680,10 @@ nebula2_utils_test_() ->
                                                    ]),
                 TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
                 TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+                                Capabilities = maps:get(<<"capabilities">>, TestSystemCapabilities),
+                Capabilities2 = maps:remove(<<"cdmi_acount">>, Capabilities),
+                Capabilities3 = maps:remove(<<"cdmi_mcount">>, Capabilities2),
+                TestSystemCapabilities2 = maps:from_list([{<<"capabilities">>, Capabilities3}]),
                 meck:expect(uuid, uuid4, [], ?TestUuid4),
                 meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
                 meck:expect(mcd, set, 4, ['_']),
@@ -690,23 +692,12 @@ nebula2_utils_test_() ->
                 meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
                                                      ]),
                 meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
-                                                      {ok, TestSystemCapabilities},
+                                                      {ok, TestSystemCapabilities2},
                                                       {error, '_'}
                                                      ]),
                 meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
                 {true, NewObject} = create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body),
-                NewObject2 = maps:get(<<"cdmi">>, NewObject),
-                SearchPath = maps:get(<<"sp">>, NewObject),
-                Metadata = maps:get(<<"metadata">>, NewObject2),
-                TestTimes = maps:from_list([{<<"cdmi_atime">>, maps:get(<<"cdmi_atime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_ctime">>, maps:get(<<"cdmi_ctime">>, maps:get(<<"metadata">>, TestNewObject))},
-                                            {<<"cdmi_mtime">>, maps:get(<<"cdmi_mtime">>, maps:get(<<"metadata">>, TestNewObject))}
-                                           ]),
-                Metadata2 = maps:merge(Metadata, TestTimes),
-                NewObject3 = maps:put(<<"metadata">>, Metadata2, NewObject2),
-                NewObject4 = maps:from_list([{<<"cdmi">>, NewObject3},
-                                             {<<"sp">>, SearchPath}]),
-                ?assertMatch(TestNewObjectCDMI, NewObject4),
+                ?assertMatch(TestNewObjectCDMI, NewObject),
                 ?assertMatch(false, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, <<"/cdmi_domains/system_domain/">>, Body)),
                 ?assertException(error, function_clause, create_object(State, not_a_binary, Body)),
                 ?assertException(error, function_clause, create_object(State, ?CONTENT_TYPE_CDMI_CONTAINER, not_a_map)),

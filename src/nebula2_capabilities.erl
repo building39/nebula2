@@ -461,11 +461,13 @@ nebula2_capabilities_test_() ->
     {foreach,
         fun() ->
             meck:new(cowboy_req, [non_strict]),
+            meck:new(pooler, [non_strict]),
             meck:new(nebula2_db, [passthrough]),
             meck:new(nebula2_utils, [passthrough])
         end,
         fun(_) ->
             meck:unload(cowboy_req),
+            meck:unload(pooler),
             meck:unload(nebula2_db),
             meck:unload(nebula2_utils)
         end,

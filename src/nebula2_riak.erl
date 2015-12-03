@@ -141,7 +141,7 @@ execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
 %% ====================================================================
 %% eunit tests
 %% ====================================================================
--ifdef(EUNIT).
+-ifdef(EUNITX).
 
 nebula2_riak_test_() ->
     {foreach,
