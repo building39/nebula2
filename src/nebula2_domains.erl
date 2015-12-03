@@ -220,7 +220,9 @@ nebula2_domains_test_() ->
                 EnvMap2 = maps:put(<<"objectName">>, <<"test_domain/">>, EnvMap),
                 State2 = {Pid, EnvMap2},
                 ?assertMatch(ok, delete_domain(State2)),
-                ?assertException(error, function_clause, delete_domain(not_a_tuple))
+                ?assertException(error, function_clause, delete_domain(not_a_tuple)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(nebula2_utils))
             end
         },
         {"delete_domain_no_children/1",
@@ -237,7 +239,9 @@ nebula2_domains_test_() ->
                 meck:sequence(nebula2_db, search, 2, [{ok, Domain2}]),
                 meck:loop(nebula2_utils, delete_child_from_parent, 3, [ok]),
                 meck:loop(nebula2_utils, delete, 1, [ok]),
-                ?assertMatch(ok, delete_domain(State))
+                ?assertMatch(ok, delete_domain(State)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(nebula2_utils))
             end
         },
         {"delete_domain_with_children/1",
@@ -254,7 +258,9 @@ nebula2_domains_test_() ->
                 meck:sequence(nebula2_db, search, 2, [{ok, Domain2}]),
                 meck:loop(nebula2_utils, delete_child_from_parent, 3, [ok]),
                 meck:loop(nebula2_utils, delete, 1, [ok]),
-                ?assertMatch({error, 400}, delete_domain(State))
+                ?assertMatch({error, 400}, delete_domain(State)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(nebula2_utils))
             end
         },
         {"delete_domain_with_reassign/1",
@@ -273,7 +279,9 @@ nebula2_domains_test_() ->
                 meck:sequence(nebula2_db, search, 2, [{ok, Domain3}]),
                 meck:loop(nebula2_utils, delete_child_from_parent, 3, [ok]),
                 meck:loop(nebula2_utils, delete, 1, [ok]),
-                ?assertMatch({error, 501}, delete_domain(State))
+                ?assertMatch({error, 501}, delete_domain(State)),
+                ?assert(meck:validate(nebula2_db)),
+                ?assert(meck:validate(nebula2_utils))
             end
         },
         {"delete_domain_contract/1",
@@ -310,7 +318,10 @@ nebula2_domains_test_() ->
                meck:loop(nebula2_utils, create_object, 4, [{true, TestDomain}]),
                meck:loop(nebula2_utils, get_domain_hash, 1, [DomainHash]),
                meck:loop(nebula2_utils, update_parent, 4, [{ok, TestDomain}]),
-               ?assertMatch({true, Req, ReturnedState}, new_domain(Req, State))
+               ?assertMatch({true, Req, ReturnedState}, new_domain(Req, State)),
+               ?assert(meck:validate(cowboy_req)),
+               ?assert(meck:validate(nebula2_db)),
+               ?assert(meck:validate(nebula2_utils))
             end
          },
          {"new_domain_domain_root_create_fail/2",
@@ -342,7 +353,10 @@ nebula2_domains_test_() ->
                meck:loop(nebula2_utils, create_object, 4, [{true, TestDomain}]),
                meck:loop(nebula2_utils, get_domain_hash, 1, [DomainHash]),
                meck:loop(nebula2_utils, update_parent, 4, [{ok, TestDomain}]),
-               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State))
+               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State)),
+               ?assert(meck:validate(cowboy_req)),
+               ?assert(meck:validate(nebula2_db)),
+               ?assert(meck:validate(nebula2_utils))
             end
          },
          {"new_domain_create_fail/2",
@@ -374,7 +388,10 @@ nebula2_domains_test_() ->
                meck:loop(nebula2_utils, create_object, 4, [false]),
                meck:loop(nebula2_utils, get_domain_hash, 1, [DomainHash]),
                meck:loop(nebula2_utils, update_parent, 4, [{ok, TestDomain}]),
-               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State))
+               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State)),
+               ?assert(meck:validate(cowboy_req)),
+               ?assert(meck:validate(nebula2_db)),
+               ?assert(meck:validate(nebula2_utils))
             end
          },
          {"new_domain_child_create_fail/2",
@@ -406,7 +423,10 @@ nebula2_domains_test_() ->
                meck:loop(nebula2_utils, create_object, 4, [{true, TestDomain}]),
                meck:loop(nebula2_utils, get_domain_hash, 1, [DomainHash]),
                meck:loop(nebula2_utils, update_parent, 4, [{ok, TestDomain}]),
-               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State))
+               ?assertMatch({false, Req, ReturnedState}, new_domain(Req, State)),
+               ?assert(meck:validate(cowboy_req)),
+               ?assert(meck:validate(nebula2_db)),
+               ?assert(meck:validate(nebula2_utils))
             end
          },
          {"new_domain_badjson/2",
@@ -421,7 +441,8 @@ nebula2_domains_test_() ->
                                         ]),
                State = {Pid, EnvMap},
                meck:loop(cowboy_req, body, 1, [{ok, Body, Req}]),
-               ?assertException(throw, badjson, new_domain(Req, State))
+               ?assertException(throw, badjson, new_domain(Req, State)),
+               ?assert(meck:validate(cowboy_req))
             end
          },
          {"new_domain_contract/2",

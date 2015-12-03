@@ -483,7 +483,8 @@ nebula2_capabilities_test_() ->
                     OriginalData = maps:put(<<"metadata">>, maps:from_list([{<<"cdmi_acount">>, 0}]), NewData),
                     UpdatedData = maps:put(<<"metadata">>, maps:from_list([{<<"cdmi_acount">>, 1}]), NewData),
                     meck:sequence(nebula2_db, read, 2, [{ok, TestCapabilities}]),
-                    ?assertMatch(UpdatedData, apply_metadata_capabilities(CList, OriginalData))
+                    ?assertMatch(UpdatedData, apply_metadata_capabilities(CList, OriginalData)),
+                    ?assert(meck:validate(nebula2_db))
                 end
             },
             {
@@ -496,7 +497,8 @@ nebula2_capabilities_test_() ->
                     NewData = maps:remove(<<"metadata">>, TestCreateContainer),
                     OriginalData = maps:put(<<"metadata">>, maps:from_list([{<<"cdmi_acount">>, 0}]), NewData),
                     meck:sequence(nebula2_db, read, 2, [{ok, TestCapabilities}]),
-                    ?assertMatch(OriginalData, apply_metadata_capabilities(CList, OriginalData))
+                    ?assertMatch(OriginalData, apply_metadata_capabilities(CList, OriginalData)),
+                    ?assert(meck:validate(nebula2_db))
                 end
             },
             {
@@ -556,7 +558,8 @@ nebula2_capabilities_test_() ->
                     ReturnedData = maps:from_list([{<<"metadata">>, Time1}]),
                     meck:sequence(nebula2_utils, get_time, 0, [binary_to_list(New_time)]),
                     ?assertMatch(ReturnedData, cdmi_atime(true, Map)),
-                    ?assertMatch(MapNone, cdmi_atime(false, Map))
+                    ?assertMatch(MapNone, cdmi_atime(false, Map)),
+                    ?assert(meck:validate(nebula2_utils))
                 end
             },
             {
@@ -579,7 +582,8 @@ nebula2_capabilities_test_() ->
                     ReturnedData = maps:from_list([{<<"metadata">>, Time1}]),
                     meck:sequence(nebula2_utils, get_time, 0, [binary_to_list(New_time)]),
                     ?assertMatch(ReturnedData, cdmi_ctime(true, Map)),
-                    ?assertMatch(MapNone, cdmi_ctime(false, Map))
+                    ?assertMatch(MapNone, cdmi_ctime(false, Map)),
+                    ?assert(meck:validate(nebula2_utils))
                 end
             },
             {
@@ -792,7 +796,8 @@ nebula2_capabilities_test_() ->
                     ReturnedData = maps:from_list([{<<"metadata">>, Time1}]),
                     meck:sequence(nebula2_utils, get_time, 0, [binary_to_list(New_time)]),
                     ?assertMatch(ReturnedData, cdmi_mtime(true, Map)),
-                    ?assertMatch(MapNone, cdmi_mtime(false, Map))
+                    ?assertMatch(MapNone, cdmi_mtime(false, Map)),
+                    ?assert(meck:validate(nebula2_utils))
                 end
             },
             {
@@ -953,7 +958,8 @@ nebula2_capabilities_test_() ->
                     TestCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
                     Oid = maps:get(<<"objectID">>, TestCapabilities),
                     meck:sequence(nebula2_db, read, 2, [{ok, TestCapabilities}]),
-                    ?assertMatch(TestCapabilities, get_capability(Pid, Oid))
+                    ?assertMatch(TestCapabilities, get_capability(Pid, Oid)),
+                    ?assert(meck:validate(nebula2_db))
                 end
             },
             {
@@ -992,7 +998,11 @@ nebula2_capabilities_test_() ->
                     meck:sequence(nebula2_utils, make_key, 0, [NewOid]),
                     meck:sequence(nebula2_utils, update_parent, 4, [{ok, Oid}]),
                     meck:sequence(pooler, return_member, 2, []),
-                    ?assertMatch({true, Req, State}, new_capability(Req, State))
+                    ?assertMatch({true, Req, State}, new_capability(Req, State)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(nebula2_utils)),
+                    ?assert(meck:validate(pooler))
                 end
             },
             {
@@ -1021,7 +1031,12 @@ nebula2_capabilities_test_() ->
                     meck:sequence(nebula2_utils, make_key, 0, [NewOid]),
                     meck:sequence(nebula2_utils, update_parent, 4, [{ok, Oid}]),
                     meck:sequence(pooler, return_member, 2, []),
-                    ?assertMatch({true, Req, State}, new_capability(Req, State))
+                    ?assertMatch({true, Req, State}, new_capability(Req, State)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(nebula2_utils)),
+                    ?assert(meck:validate(pooler))
+                    
                 end
             },
             {
@@ -1043,7 +1058,10 @@ nebula2_capabilities_test_() ->
                     meck:loop(cowboy_req, path_info, 1, [{[Path], Req}]),
                     meck:sequence(nebula2_utils, make_key, 0, [NewOid]),
                     meck:sequence(pooler, return_member, 2, []),
-                    ?assertMatch({false, Req, State}, new_capability(Req, State))
+                    ?assertMatch({false, Req, State}, new_capability(Req, State)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_utils)),
+                    ?assert(meck:validate(pooler))
                 end
             },
             {
@@ -1063,7 +1081,10 @@ nebula2_capabilities_test_() ->
                     meck:loop(cowboy_req, path_info, 1, [{[Path], Req}]),
                     meck:sequence(nebula2_utils, make_key, 0, [NewOid]),
                     meck:sequence(pooler, return_member, 2, []),
-                    ?assertException(throw, badjson, new_capability(Req, State))
+                    ?assertException(throw, badjson, new_capability(Req, State)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_utils)),
+                    ?assert(meck:validate(pooler))
                 end
             },
             {
@@ -1094,7 +1115,10 @@ nebula2_capabilities_test_() ->
                     meck:sequence(nebula2_db, read, 2, [{ok, TestCapabilities}]),
                     meck:sequence(nebula2_utils, get_object_oid, 2, [{ok, Oid}]),
                     meck:sequence(nebula2_db, update, 3, [{ok, TestCapabilities}]),
-                    ?assertMatch({true, Req, State}, update_capability(Req, State, Oid))
+                    ?assertMatch({true, Req, State}, update_capability(Req, State, Oid)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(nebula2_utils))
                 end
             },
             {
@@ -1119,7 +1143,10 @@ nebula2_capabilities_test_() ->
                     meck:sequence(nebula2_db, read, 2, [{ok, TestCapabilities}]),
                     meck:sequence(nebula2_utils, get_object_oid, 2, [{ok, Oid}]),
                     meck:sequence(nebula2_db, update, 3, [{error, notfound}]),
-                    ?assertMatch({false, Req, State}, update_capability(Req, State, Oid))
+                    ?assertMatch({false, Req, State}, update_capability(Req, State, Oid)),
+                    ?assert(meck:validate(cowboy_req)),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(nebula2_utils))
                 end
             },
             {
@@ -1138,7 +1165,8 @@ nebula2_capabilities_test_() ->
                     Body = "junk",
                     Oid = maps:get(<<"objectID">>, TestCapabilities),
                     meck:loop(cowboy_req, body, 1, [{ok, Body, Req}]),
-                    ?assertException(throw, badjson, update_capability(Req, State, Oid))
+                    ?assertException(throw, badjson, update_capability(Req, State, Oid)),
+                    ?assert(meck:validate(cowboy_req))
                 end
             },
             {

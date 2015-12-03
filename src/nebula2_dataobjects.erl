@@ -110,7 +110,8 @@ nebula2_dataobjects_test_() ->
                meck:loop(nebula2_db, read, 2, [{ok, TestMapCDMI}]),
                ?assertMatch(TestMapCDMI, get_dataobject(Pid, Oid)),
                ?assertException(error, function_clause, get_dataobject(not_a_pid, Oid)),
-               ?assertException(error, function_clause, get_dataobject(Pid, not_a_binary))
+               ?assertException(error, function_clause, get_dataobject(Pid, not_a_binary)),
+               ?assert(meck:validate(nebula2_db))
        end
       },
       {"new_dataobject/2",
@@ -132,7 +133,9 @@ nebula2_dataobjects_test_() ->
                ?assertMatch({true, Req, State}, new_dataobject(Req, State, Body)),
                ?assertMatch({false, Req, State}, new_dataobject(Req, State, Body)),
                ?assertException(error, function_clause, new_dataobject(Req, not_a_tuple, Body)),
-               ?assertException(error, function_clause, new_dataobject(Req, State, not_a_map))
+               ?assertException(error, function_clause, new_dataobject(Req, State, not_a_map)),
+               ?assert(meck:validate(cowboy_req)),
+               ?assert(meck:validate(nebula2_utils))
        end
       },
       {"update_dataobject/2",
@@ -162,7 +165,9 @@ nebula2_dataobjects_test_() ->
                ?assertMatch({false, Req, State }, update_dataobject(Req, State, Oid, Data2)),
                ?assertException(error, function_clause, update_dataobject(Req, not_a_tuple, Oid, Data)),
                ?assertException(error, function_clause, update_dataobject(Req, State, not_a_binary, Data)),
-               ?assertException(error, function_clause, update_dataobject(Req, State, Oid, not_a_map))
+               ?assertException(error, function_clause, update_dataobject(Req, State, Oid, not_a_map)),
+               ?assert(meck:validate(nebula2_db)),
+               ?assert(meck:validate(nebula2_utils))
        end
       }
      ]
