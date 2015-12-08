@@ -84,7 +84,7 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
             false
     end.
 
--spec create_object(cdmi_state(), object_type(), list() | binary(), map()) ->
+-spec create_object(cdmi_state(), object_type(), binary(), map()) ->
           {boolean(), map()} | false.
 create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), is_binary(DomainName), is_map(Body) ->
 %    ?nebMsg("Entry"),
@@ -359,13 +359,22 @@ update_data_system_metadata(CList, Data, State) when is_list(CList), is_map(Data
     CapabilitiesURI = get_value(<<"capabilitiesURI">>, Data, []),
     update_data_system_metadata(CList, Data, CapabilitiesURI, State).
 
--spec update_data_system_metadata(list(),map(), binary() | string(), cdmi_state()) -> map().
-update_data_system_metadata(_, Data, [], _) when is_map(Data)->
+-spec update_data_system_metadata(list(), map(), binary() | string(), cdmi_state()) -> map().
+update_data_system_metadata(_CList, Data, CapabilitiesURI, _State) when is_list(_CList), 
+                                                                        is_map(Data),
+                                                                        CapabilitiesURI=="",
+                                                                        is_tuple(_State) ->
 %    ?nebMsg("Entry"),
     Data;
-update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_binary(CapabilitiesURI) ->
+update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_list(CList), 
+                                                                        is_map(Data),
+                                                                        is_binary(CapabilitiesURI),
+                                                                        is_tuple(State) ->
     update_data_system_metadata(CList, Data, binary_to_list(CapabilitiesURI), State);
-update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
+update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_list(CList), 
+                                                                        is_map(Data),
+                                                                        is_list(CapabilitiesURI),
+                                                                        is_tuple(State)->
 %    ?nebMsg("Entry"),
     Domain = get_domain_hash(<<"">>),
     {ok, C1} = nebula2_db:search(Domain ++ CapabilitiesURI, State),
@@ -375,18 +384,13 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) ->
 
 %% @doc Update a parent object with a new child
 -spec update_parent(object_oid(), string(), object_type(), pid()) -> {ok, map()} | {error, term()}.
-update_parent(Root, _, _, _) when Root == ""; Root == <<"">> ->
+update_parent(ParentOid, _, _, _) when ParentOid == <<"">> ->
 %    ?nebMsg("Entry"),
     %% Must be the root, since there is no parent.
     {ok, <<"">>};
-update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_list(Path), is_binary(ObjectType), is_pid(Pid) ->
+update_parent(ParentOid, Path, ObjectType, Pid) when is_binary(ParentOid), is_list(Path), is_binary(ObjectType), is_pid(Pid) ->
 %    ?nebMsg("Entry"),
-    N = case length(string:tokens(Path, "/")) of
-            0 ->
-                "";
-            _Other ->
-                lists:last(string:tokens(Path, "/"))
-        end,
+    N = lists:last(string:tokens(Path, "/")),
     Name = case ObjectType of
                ?CONTENT_TYPE_CDMI_CAPABILITY ->
                    N ++ "/";
@@ -397,7 +401,7 @@ update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_list
                _ -> 
                    N
            end,
-    {ok, Parent} = nebula2_db:read(Pid, ParentId),
+    {ok, Parent} = nebula2_db:read(Pid, ParentOid),
     Children = case get_value(<<"children">>, Parent) of
                      <<"">> ->
                          [list_to_binary(Name)];
@@ -413,7 +417,7 @@ update_parent(ParentId, Path, ObjectType, Pid) when is_binary(ParentId), is_list
                  end,
     NewParent1 = put_value(<<"children">>, Children, Parent),
     NewParent2 = put_value(<<"childrenrange">>, list_to_binary(ChildrenRange), NewParent1),
-    nebula2_db:update(Pid, ParentId, NewParent2).
+    nebula2_db:update(Pid, ParentOid, NewParent2).
 
 %% ====================================================================
 %% Internal functions
@@ -505,9 +509,9 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(Domain
 -spec extract_parentURI(list(), list()) -> list().
 extract_parentURI([], Acc) ->
     Acc;
-extract_parentURI([H|T], Acc) when is_binary(H) ->
-    Acc2 = Acc ++ "/" ++ binary_to_list(H),
-    extract_parentURI(T, Acc2);
+%% extract_parentURI([H|T], Acc) when is_binary(H) ->
+%%     Acc2 = Acc ++ "/" ++ binary_to_list(H),
+%%     extract_parentURI(T, Acc2);
 extract_parentURI([H|T], Acc) ->
     Acc2 = Acc ++ "/" ++ H,
     extract_parentURI(T, Acc2).
@@ -702,6 +706,7 @@ nebula2_utils_test_() ->
                                                       <<"/cdmi_domains/system_domain/">>,
                                                       Body),
                     ?assertMatch(TestNewObjectCDMI, NewObject),
+                    ?assertMatch(TestNewObjectCDMI, NewObject),
                     ?assertMatch(false, create_object(State,
                                                       ?CONTENT_TYPE_CDMI_CONTAINER,
                                                       <<"/cdmi_domains/system_domain/">>,
@@ -859,6 +864,11 @@ nebula2_utils_test_() ->
                     ?assertMatch(<<"/">>, get_parent_uri(list_to_binary(FirstLevelPath))),
                     ?assertMatch(<<"/container/">>, get_parent_uri(list_to_binary(SecondLevelPath))),
                     ?assertException(error, function_clause, get_parent_uri(not_a_list_or_binary))
+                end
+            },
+            {"Test get_time/0",
+                fun () ->
+                    ?assertMatch("1970-01-01T00:00:00.000000Z", get_time())
                 end
             },
             {"Test get_value/2",
@@ -1034,6 +1044,27 @@ nebula2_utils_test_() ->
                     ?assertMatch(<<"list">>, type_of([])),
                     ?assertMatch(<<"pid">>, type_of(self())),
                     ?assertMatch(<<"tuple">>, type_of({tuple}))
+                end
+            },
+            {"Test update_data_system_metadata/4 when no data to update",
+                fun () ->
+                    Data = maps:from_list([{<<"key">>, <<"value">>}]),
+                    ?assertMatch(Data, update_data_system_metadata([], Data, [], {}))
+                end
+            },
+            {"Test update_data_system_metadata/4 contract",
+                fun () ->
+                    Map = maps:new(),
+                    ?assertException(error, function_clause, update_data_system_metadata(notalist, Map, "", {})),
+                    ?assertException(error, function_clause, update_data_system_metadata([], notamap, <<"">>, {})),
+                    ?assertException(error, function_clause, update_data_system_metadata([], Map, notalistorbinary, {})),
+                    ?assertException(error, function_clause, update_data_system_metadata([], Map, "", notatuple))
+                end
+            },
+            {"Test update_parent/4 when object is root",
+                fun () ->
+                    Pid = self(),
+                    ?assertMatch({ok, <<"">>}, update_parent(<<"">>, "/path", ?CONTENT_TYPE_CDMI_CONTAINER, Pid))
                 end
             },
             {"Test update_parent/4",
