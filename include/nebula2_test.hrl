@@ -220,6 +220,7 @@
     \"parentID\": \"dd37dd9ad7e341fd852f46f94deae2bf0004524100482095\",
     \"parentURI\": \"/\"}">>).
 -define(TestCreateContainerSearchPath, <<"c8c17baf9a68a8dbc75b818b24269ebca06b0f31/new_container/">>).
+-define(TestCreateObjectSearchPath, <<"c8c17baf9a68a8dbc75b818b24269ebca06b0f31/new_object">>).
 -define(TestCreateContainer, <<"{
     \"capabilitiesURI\": \"/cdmi_capabilities/container/\",
     \"completionStatus\": \"Complete\",
@@ -253,6 +254,43 @@
     \"objectType\": \"application/cdmi-container\",
     \"parentID\": \"dd37dd9ad7e341fd852f46f94deae2bf0004524100482095\",
     \"parentURI\": \"/\"
+}">>).
+-define(TestCreateObject, <<"{
+    \"capabilitiesURI\": \"/cdmi_capabilities/dataobject/\",
+    \"completionStatus\": \"Complete\",
+    \"domainURI\": \"/cdmi_domains/system_domain/\",
+    \"metadata\": {
+        \"cdmi_acls\": [
+            {
+                \"aceflags\": \"OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"ALL_PERMS\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"OWNER@\"
+            },
+            {
+                \"aceflags\": \"OBJECT_INHERIT, CONTAINER_INHERIT\",
+                \"acemask\": \"READ\",
+                \"acetype\": \"ALLOW\",
+                \"identifier\": \"AUTHENTICATED@\"
+            },
+        ],
+        \"cdmi_atime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_ctime\": \"1970-01-01T00:00:00.000000Z\",
+        \"cdmi_mtime\": \"1970-01-01T00:00:00.000000Z\",
+        \"my_metadata\": \"junk\",
+        \"cdmi_owner\": \"MickeyMouse\",
+        \"cdmi_size\": 7,
+        \"nebula_data_location\": [
+            \"US-TX\"
+        ]
+    },
+    \"objectID\": \"c969e39e9ccb43c6b38943e8ad4468af00045241004880ea\",
+    \"objectName\": \"new_object\",
+    \"objectType\": \"application/cdmi-object\",
+    \"parentID\": \"dd37dd9ad7e341fd852f46f94deae2bf0004524100482095\",
+    \"parentURI\": \"/\",
+    \"value\": \"my data\",
+    \"valuetransferencoding\": \"utf-8\"
 }">>).
 -define(TestRootObject, <<"{
     \"capabilitiesURI\": \"/cdmi_capabilities/\",

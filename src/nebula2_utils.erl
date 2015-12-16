@@ -54,6 +54,7 @@ beginswith(Str, Substr) ->
 %% Check base64 encoding
 -spec check_base64(map()) -> boolean().
 check_base64(Data) when is_map(Data) ->
+%    ?nebMsg("Entry"),
     case maps:get(<<"valuetransferencoding">>, Data, <<"">>) of
         <<"base64">> ->
             try base64:decode(binary_to_list(get_value(<<"value">>, Data))) of
@@ -197,7 +198,7 @@ get_object_oid(Path, State) when is_list(Path), is_tuple(State) ->
                        get_domain_hash(get_value(<<"domainURI">>, EnvMap, <<"">>)) ++ Path
                end,
     case nebula2_db:search(RealPath, State) of
-        {error,_} ->
+        {error, _} ->
             {notfound, ""};
         {ok, Data} ->
             {ok, get_value(<<"objectID">>, Data)}
@@ -675,7 +676,7 @@ nebula2_utils_test_() ->
                     ?assert(meck:validate(uuid))
                 end
             },
-            {"Test create_object/4",
+            {"Test create_object/4 - new container",
                 fun () ->
                     Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
                     EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
@@ -683,8 +684,8 @@ nebula2_utils_test_() ->
                                             {<<"domainURI">>, <<"/new_container/">>}]),
                     Pid = self(),
                     State = {Pid, EnvMap},
-                    TestNewObject  = jsx:decode(?TestCreateContainer, [return_maps]),
-                    TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
+                    TestNewContainer  = jsx:decode(?TestCreateContainer, [return_maps]),
+                    TestNewContainerCDMI = maps:from_list([{<<"cdmi">>, TestNewContainer},
                                                         {<<"sp">>, ?TestCreateContainerSearchPath}
                                                         ]),
                     TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
@@ -701,29 +702,162 @@ nebula2_utils_test_() ->
                     meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
                                                          ]),
                     meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
-                                                          {ok, TestSystemCapabilities2},
-                                                          {error, '_'}
+                                                          {ok, TestSystemCapabilities2}
                                                          ]),
                     meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
-                    {true, NewObject} = create_object(State,
-                                                      ?CONTENT_TYPE_CDMI_CONTAINER,
-                                                      <<"/cdmi_domains/system_domain/">>,
-                                                      Body),
-                    ?assertMatch(TestNewObjectCDMI, NewObject),
+                    {true, NewContainer} = create_object(State,
+                                                         ?CONTENT_TYPE_CDMI_CONTAINER,
+                                                         <<"/cdmi_domains/system_domain/">>,
+                                                         Body),
+                    ?assertMatch(TestNewContainerCDMI, NewContainer),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(mcd)),
+                    ?assert(meck:validate(pooler)),
+                    ?assert(meck:validate(uuid))
+                end
+            },
+            {"Test create_object/4 - new container create fail",
+                fun () ->
+                    Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>, [return_maps]),
+                    EnvMap = maps:from_list([{<<"path">>, <<"/new_container/">>},
+                                            {<<"auth_as">>, <<"MickeyMouse">>},
+                                            {<<"domainURI">>, <<"/new_container/">>}]),
+                    Pid = self(),
+                    State = {Pid, EnvMap},
+                    TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                    meck:expect(uuid, uuid4, [], ?TestUuid4),
+                    meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+                    meck:expect(mcd, set, 4, ['_']),
+                    meck:expect(pooler, return_member, ['_', '_'], '_'),
+                    meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+                    meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+                                                         ]),
+                    meck:sequence(nebula2_db, search, 2, [{error, notfound}]),
+                    meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
                     ?assertMatch(false, create_object(State,
                                                       ?CONTENT_TYPE_CDMI_CONTAINER,
                                                       <<"/cdmi_domains/system_domain/">>,
                                                       Body)),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(mcd)),
+                    ?assert(meck:validate(pooler)),
+                    ?assert(meck:validate(uuid))
+                end
+            },
+            {"Test create_object/4 - contract",
+                 fun() ->
+                    Body = maps:new(),
+                    State = {self(), maps:new()},
                     ?assertException(error, function_clause, create_object(State,
                                                                            not_a_binary,
                                                                            Body)),
                     ?assertException(error, function_clause, create_object(State,
                                                                            ?CONTENT_TYPE_CDMI_CONTAINER,
-                                                                           not_a_map)),
+                                                                           not_a_map))
+                end
+            },
+            {"Test create_object/4 - new object utf-8",
+                fun () ->
+                    Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"},\"value\": \"my data\"}">>,
+                                      [return_maps]),
+                    EnvMap = maps:from_list([{<<"path">>, <<"/new_object">>},
+                                            {<<"auth_as">>, <<"MickeyMouse">>},
+                                            {<<"domainURI">>, <<"/new_container/">>}]),
+                    Pid = self(),
+                    State = {Pid, EnvMap},
+                    TestNewObject  = jsx:decode(?TestCreateObject, [return_maps]),
+                    TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject},
+                                                        {<<"sp">>, ?TestCreateObjectSearchPath}
+                                                        ]),
+                    TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                    TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+                    Capabilities = maps:get(<<"capabilities">>, TestSystemCapabilities),
+                    Capabilities2 = maps:remove(<<"cdmi_acount">>, Capabilities),
+                    Capabilities3 = maps:remove(<<"cdmi_mcount">>, Capabilities2),
+                    TestSystemCapabilities2 = maps:from_list([{<<"capabilities">>, Capabilities3}]),
+                    meck:expect(uuid, uuid4, [], ?TestUuid4),
+                    meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+                    meck:expect(mcd, set, 4, ['_']),
+                    meck:expect(pooler, return_member, ['_', '_'], '_'),
+                    meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+                    meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+                                                         ]),
+                    meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
+                                                          {ok, TestSystemCapabilities2}
+                                                         ]),
+                    meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
+                    {true, NewObject} = create_object(State,
+                                                     ?CONTENT_TYPE_CDMI_DATAOBJECT,
+                                                     <<"/cdmi_domains/system_domain/">>,
+                                                     Body),
+                    ?assertMatch(TestNewObjectCDMI, NewObject),
                     ?assert(meck:validate(nebula2_db)),
                     ?assert(meck:validate(mcd)),
                     ?assert(meck:validate(pooler)),
                     ?assert(meck:validate(uuid))
+                end
+            },
+            {"Test create_object/4 - new object base64",
+                fun () ->
+                    Body = jsx:decode(<<"{\"metadata\": {\"my_metadata\": \"junk\"}}">>,
+                                      [return_maps]),
+                    Body1 = maps:put(<<"valuetransferencoding">>, <<"base64">>, Body),
+                    MyData = base64:encode("my data"),
+                    Body2 = maps:put(<<"value">>, MyData, Body1),
+                    EnvMap = maps:from_list([{<<"path">>, <<"/new_object">>},
+                                            {<<"auth_as">>, <<"MickeyMouse">>},
+                                            {<<"domainURI">>, <<"/new_container/">>}]),
+                    Pid = self(),
+                    State = {Pid, EnvMap},
+                    TestNewObject  = jsx:decode(?TestCreateObject, [return_maps]),
+                    TestNewObject1 = maps:put(<<"valuetransferencoding">>, <<"base64">>, TestNewObject),
+                    TestNewObject2 = maps:put(<<"value">>, MyData, TestNewObject1),
+                    Metadata = maps:get(<<"metadata">>, TestNewObject2),
+                    Metadata2 = maps:put(<<"cdmi_size">>, string:len(binary_to_list(MyData)), Metadata),
+                    TestNewObject3 = maps:put(<<"metadata">>, Metadata2, TestNewObject2),
+                    TestNewObjectCDMI = maps:from_list([{<<"cdmi">>, TestNewObject3},
+                                                        {<<"sp">>, ?TestCreateObjectSearchPath}
+                                                        ]),
+                    TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                    TestSystemCapabilities = jsx:decode(?TestSystemCapabilities, [return_maps]),
+                    Capabilities = maps:get(<<"capabilities">>, TestSystemCapabilities),
+                    Capabilities2 = maps:remove(<<"cdmi_acount">>, Capabilities),
+                    Capabilities3 = maps:remove(<<"cdmi_mcount">>, Capabilities2),
+                    TestSystemCapabilities2 = maps:from_list([{<<"capabilities">>, Capabilities3}]),
+                    meck:expect(uuid, uuid4, [], ?TestUuid4),
+                    meck:expect(uuid, to_string, [?TestUuid4], ?TestUidString),
+                    meck:expect(mcd, set, 4, ['_']),
+                    meck:expect(pooler, return_member, ['_', '_'], '_'),
+                    meck:sequence(nebula2_db, create, 3, [{ok, ?TestUid}]),
+                    meck:sequence(nebula2_db, read,   2, [{ok, TestRootMap}
+                                                         ]),
+                    meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap},
+                                                          {ok, TestSystemCapabilities2}
+                                                         ]),
+                    meck:sequence(nebula2_db, update, 3, [{ok, TestRootMap}]),
+                    {true, NewObject} = create_object(State,
+                                                     ?CONTENT_TYPE_CDMI_DATAOBJECT,
+                                                     <<"/cdmi_domains/system_domain/">>,
+                                                     Body2),
+                    ?assertMatch(TestNewObjectCDMI, NewObject),
+                    ?assert(meck:validate(nebula2_db)),
+                    ?assert(meck:validate(mcd)),
+                    ?assert(meck:validate(pooler)),
+                    ?assert(meck:validate(uuid))
+                end
+            },
+            {"Test create_object/5 badencoding",
+                fun () ->
+                    Body = maps:from_list([{<<"valuetransferencoding">>, <<"base64">>},
+                                           {<<"value">>, <<"unencoded data">>}]),
+                    Parent = maps:new(),
+                    Pid = self(),
+                    State = {Pid, maps:new()},
+                    ?assertException(throw, badencoding, create_object(State,
+                                                                       ?CONTENT_TYPE_CDMI_CONTAINER,
+                                                                       <<"/cdmi_domains/system_domain/">>,
+                                                                       Parent,
+                                                                       Body))
                 end
             },
             {"Test delete/1",
