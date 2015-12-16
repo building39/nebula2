@@ -5,16 +5,14 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-include("nebula2_test.hrl").
 -endif.
 
 -include_lib("riakc/include/riakc.hrl").
 -include("nebula.hrl").
 
 %% riak parameters
--define(BUCKET_TYPE, "cdmi").
--define(BUCKET_NAME, "cdmi").
--define(CDMI_INDEX, "cdmi_idx").
--define(NAME_PREFIX, "cdmi").
+-include("nebula2_riak.hrl").
 %% Domain Maps Query
 
 %% ====================================================================
@@ -29,9 +27,9 @@
          update/3]).
 
 %% @doc Ping the riak cluster.
--spec nebula2_riak:available(pid()) -> boolean().
-available(Pid) ->
-    lager:debug("Entry"),
+-spec available(pid()) -> boolean().
+available(Pid) when is_pid(Pid) ->
+%    ?nebMsg("Entry"),
     case riakc_pb_socket:ping(Pid) of
         pong ->
                 true;
@@ -40,25 +38,18 @@ available(Pid) ->
     end.
 
 %% @doc Delete an object from riak by bucket type, bucket and key.
--spec nebula2_riak:delete(pid(), object_oid()) -> ok | {error, term()}.
-delete(Pid, Oid) when is_binary(Oid) ->
-    delete(Pid, binary_to_list(Oid));
-delete(Pid, Oid) ->
-    lager:debug("Entry"),
+-spec delete(pid(), object_oid()) -> ok | {error, term()}.
+delete(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
+%    ?nebMsg("Entry"),
     riakc_pb_socket:delete(Pid,
-                           {list_to_binary(?BUCKET_TYPE),
-                            list_to_binary(?BUCKET_NAME)},
+                           ?RIAK_TYPE_AND_BUCKET,
                            Oid).
 
 %% @doc Get a value from riak by bucket type, bucket and key. Return string.
--spec nebula2_riak:get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
-get(Pid, Oid) when is_binary(Oid) ->
-    get(Pid, binary_to_list(Oid));
-get(Pid, Oid) ->
-    lager:debug("Entry"),
-    case riakc_pb_socket:get(Pid, {list_to_binary(?BUCKET_TYPE),
-                                   list_to_binary(?BUCKET_NAME)},
-                                   list_to_binary(Oid)) of
+-spec get(pid(), object_oid()) -> {ok, map()}|{error, term()}.
+get(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
+%    ?nebMsg("Entry"),
+    case riakc_pb_socket:get(Pid, ?RIAK_TYPE_AND_BUCKET, Oid) of
                 {ok, Object} ->
                     Data = jsx:decode(riakc_obj:get_value(Object), [return_maps]),
                     {ok, Data};
@@ -67,29 +58,23 @@ get(Pid, Oid) ->
     end.
 
 %% @doc Get the domain maps.
--spec nebula2_riak:get_domain_maps(pid(), object_path()) -> binary().
-get_domain_maps(Pid, Path) ->
-    lager:debug("Entry"),
+-spec get_domain_maps(pid(), object_path()) -> binary().
+get_domain_maps(Pid, Path) when is_pid(Pid), is_list(Path) ->
+%    ?nebMsg("Entry"),
     execute_search(Pid, "sp:\\" ++ Path).
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
--spec nebula2_riak:put(pid(),
-                       object_oid(),   %% Oid
-                       map()           %% Data to store
-                      ) -> {'error', _} | {'ok', _}.
-put(Pid, Oid, Data) ->
-    lager:debug("Entry"),
-    do_put(Pid, Oid, Data).
-
--spec nebula2_riak:do_put(pid(), object_oid(), map()) -> {ok|error, object_oid()|term()}.
-do_put(Pid, Oid, Data) ->
-    lager:debug("Entry"),
+-spec put(pid(),
+          object_oid(),   %% Oid
+          map()           %% Data to store
+         ) -> {error, term()} | {ok, object_oid()}.
+put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
+%    ?nebMsg("Entry"),
     Json = jsx:encode(Data),
-    Object = riakc_obj:new({list_to_binary(?BUCKET_TYPE),
-                            list_to_binary(?BUCKET_NAME)},
+    Object = riakc_obj:new(?RIAK_TYPE_AND_BUCKET,
                             Oid,
                             Json,
-                            list_to_binary("application/json")),
+                            ?CONTENT_TYPE_JSON),
     case riakc_pb_socket:put(Pid, Object) of
         ok ->
             {ok, Oid};
@@ -98,35 +83,30 @@ do_put(Pid, Oid, Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec nebula2_riak:search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
-search(Path, State) when is_binary(Path)->
-    Path2 = binary_to_list(Path),
-    search(Path2, State);
-search(Path, State) ->
-    lager:debug("Entry"),
+-spec search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
+search(Path, State) when is_list(Path), is_tuple(State) ->
+%    ?nebMsg("Entry"),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
     Result =  execute_search(Pid, Query),
     Result.
 
 %% @doc Update an existing key/value pair.
--spec nebula2_riak:update(pid(),
-                          object_oid(),      %% Oid
-                          map()              %% Data to store
-                         ) -> ok | {error, term()}.
-update(Pid, Oid, Data) when is_binary(Oid) ->
-    update(Pid, binary_to_list(Oid), Data);
-update(Pid, Oid, Data) ->
-    lager:debug("Entry"),
+-spec update(pid(),
+             object_oid(),      %% Oid
+             binary()           %% Data to store
+            ) -> ok | {error, term()}.
+
+update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
+%    ?nebMsg("Entry"),
     case get(Pid, Oid) of
-        {error, E} ->
-            {error, E};
-        {ok, _} ->
+        {error, Term} ->
+            {error, Term};
+        {ok, _O} ->
             {ok, Obj} = riakc_pb_socket:get(Pid, 
-                                            {list_to_binary(?BUCKET_TYPE),
-                                             list_to_binary(?BUCKET_NAME)},
+                                            ?RIAK_TYPE_AND_BUCKET,
                                             Oid),
-            NewObj = riakc_obj:update_value(Obj, Data),
+            NewObj = riakc_obj:update_value(Obj, jsx:encode(Data)),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
@@ -135,39 +115,27 @@ update(Pid, Oid, Data) ->
 %% ====================================================================
 
 %% @doc Execute a search.
--spec nebula2_riak:execute_search(pid(),              %% Riak client pid.
-                                  search_predicate()  %% URI.
-                                 ) -> {error, 404|500} |{ok, map()}.
-execute_search(Pid, Query) ->
-    lager:debug("Entry"),
-    Index = list_to_binary(?CDMI_INDEX),
-    lager:debug("Query: ~p", [Query]),
+-spec execute_search(pid(),              %% Riak client pid.
+                     search_predicate()  %% URI.
+                    ) -> {error, 404|500} |{ok, map()}.
+execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
+%    ?nebMsg("Entry"),
+    Index = ?CDMI_INDEX,
     Response = case riakc_pb_socket:search(Pid, Index, Query) of
                    {ok, Results} ->
                        case Results#search_results.num_found of
                            0 ->
-                               lager:debug("Not Found"),
                                {error, 404}; %% Return 404
                            1 ->
                                [{_, Doc}] = Results#search_results.docs,
-                               lager:debug("Doc: ~p", [Doc]),
-                               fetch(Pid, Doc);
+                               Oid = proplists:get_value(<<"_yz_rk">>, Doc),
+                               get(Pid, Oid);
                            _N ->
-                               lager:debug("Something funky"),
                                {error, 500} %% Something's funky - return 500
                        end;
                    _ ->
-                       lager:debug("WTF?"),
                        {error, 404}
                end,
-    Response.
-
-%% @doc Fetch document.
--spec nebula2_riak:fetch(pid(), list()) -> {ok, map()}.
-fetch(Pid, Data) ->
-    lager:debug("Entry"),
-    Oid = binary_to_list(proplists:get_value(<<"_yz_rk">>, Data)),
-    Response = nebula2_riak:get(Pid, Oid),
     Response.
 
 %% ====================================================================
@@ -175,42 +143,114 @@ fetch(Pid, Data) ->
 %% ====================================================================
 -ifdef(EUNIT).
 
-create_query_test() ->
-    Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWlubXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
+nebula2_riak_test_() ->
+    {foreach,
+     fun() ->
+             meck:new(riakc_pb_socket, [non_strict]),
+             meck:new(riakc_obj, [non_strict])
+     end,
+     fun(_) ->
+             meck:unload(riakc_pb_socket),
+             meck:unload(riakc_obj)
+     end,
+     [{"Test available/1",
+       fun() ->
+              Pid = self(),
+              meck:expect(riakc_pb_socket, ping, [Pid], pong),
+              ?assertMatch(true, available(Pid)),
+              meck:expect(riakc_pb_socket, ping, [Pid], pang),
+              ?assertMatch(false, available(Pid)),
+              ?assert(meck:validate(riakc_pb_socket))
+       end
+      },
+      {"Test delete/2",
+       fun() ->
+              Pid = self(),
+              Return1 = ok,
+              meck:expect(riakc_pb_socket, delete, [Pid, {<<"cdmi">>, <<"cdmi">>}, ?TestOid], Return1),
+              ?assertMatch(Return1, delete(Pid, ?TestOid)),
+              Return2 = {error, not_found},
+              meck:expect(riakc_pb_socket, delete, [Pid, {<<"cdmi">>, <<"cdmi">>}, ?TestOid], Return2),
+              ?assertMatch(Return2, delete(Pid, ?TestOid)),
+              ?assertException(error, function_clause, delete(not_a_pid, ?TestOid)),
+              ?assertException(error, function_clause, delete(Pid, not_a_list)),
+              ?assert(meck:validate(riakc_pb_socket))
+       end
+      },
+      {"Test get/2",
+       fun() ->
+            Pid = self(),
+            TestMap = jsx:decode(?TestBinary, [return_maps]),
+            meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, ?TestOid], {ok, ?TestRiakObject}),
+            meck:expect(riakc_obj, get_value, [?TestRiakObject], ?TestBinary),
+            ?assertMatch(?TestBinary, riakc_obj:get_value(?TestRiakObject)),
+            ?assertMatch({ok, TestMap}, get(Pid, ?TestOid)),
+            ?assert(meck:validate(riakc_pb_socket)),
+            ?assert(meck:validate(riakc_obj))
+       end
+      },
+      {"Test put/3",
+       fun() ->
+            Pid = self(),
+            TestMap = jsx:decode(?TestBinary, [return_maps]),
+            meck:expect(riakc_obj, new, [?RIAK_TYPE_AND_BUCKET, ?TestOid, ?TestBinary, ?CONTENT_TYPE_JSON], ?TestRiakObject),
+            meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], ok),
+            ?assertMatch({ok, ?TestOid}, put(Pid, ?TestOid, TestMap)),
+            meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], {error, ioerror}),
+            ?assertMatch({error,ioerror}, put(Pid, ?TestOid, TestMap)),
+            ?assertException(error, function_clause, put(not_a_pid, ?TestOid, TestMap)),
+            ?assertException(error, function_clause, put(Pid, not_an_oid, TestMap)),
+            ?assertException(error, function_clause, put(Pid, ?TestOid, not_a_map)),
+            ?assert(meck:validate(riakc_pb_socket)),
+            ?assert(meck:validate(riakc_obj))
+       end
+      },
+      {"test search/2",
+       fun() ->
+              Pid = self(),
+              Path = ?TestSystemDomainHash ++ "/system_configuration/"++ "domain_maps",
+              TestMap = jsx:decode(?TestBinary, [return_maps]),
+              meck:expect(riakc_pb_socket, get, [Pid, {<<"cdmi">>, <<"cdmi">>}, ?TestOid], {ok, ?TestRiakObject}),
+              meck:expect(riakc_obj, get_value, [?TestRiakObject], ?TestBinary),
+              meck:sequence(riakc_pb_socket, search, 3, [{ok, ?TestSearchResults_1_Result},
+                                                         {ok, ?TestSearchResults_1_Result},
+                                                         {ok, ?TestSearchResults_1_Result},
+                                                         {ok, ?TestSearchResults_0_Result},
+                                                         {ok, ?TestSearchResults_2_Result},
+                                                         {error, not_found}
+                                                        ]),
+              ?assertMatch({ok, TestMap}, execute_search(Pid, ?TestQuery)),
+              ?assertMatch({ok, TestMap}, search(Path, {Pid, maps:new()})),
+              ?assertMatch({ok, TestMap}, get_domain_maps(Pid, Path)),
+              ?assertMatch({error, 404}, execute_search(Pid, ?TestQuery)),
+              ?assertMatch({error, 500}, execute_search(Pid, ?TestQuery)),
+              ?assertMatch({error, 404}, execute_search(Pid, ?TestQuery)),
+              ?assertException(error, function_clause, execute_search(not_a_pid, ?TestQuery)),
+              ?assertException(error, function_clause, execute_search(Pid, not_a_list)),
+              ?assert(meck:validate(riakc_pb_socket)),
+              ?assert(meck:validate(riakc_obj))
+       end
+      },
+      {"test update/3",
+       fun() ->
+            Pid = self(),
+            Return1 = {ok, ?TestRiakObject},
+            TestMap = jsx:decode(?TestBinary, [return_maps]),
+            meck:expect(riakc_pb_socket, get, [Pid, ?RIAK_TYPE_AND_BUCKET, ?TestOid], Return1),
+            meck:expect(riakc_obj, get_value, [?TestRiakObject], ?TestBinary),
+            meck:expect(riakc_obj, update_value, [?TestRiakObject, ?TestBinary], ?TestRiakObject),
+            meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], ok),
+            ?assertMatch(ok, update(Pid, ?TestOid, TestMap)),
+            Return2 = {error, not_found},
+            meck:expect(riakc_pb_socket, get, [Pid, ?RIAK_TYPE_AND_BUCKET, ?TestOid], Return2),
+            ?assertMatch(Return2, update(Pid, ?TestOid, TestMap)),
+            ?assertException(error, function_clause, update(not_a_pid, ?TestOid, ?TestBinary)),
+            ?assertException(error, function_clause, update(Pid, not_an_oid, ?TestBinary)),
+            ?assert(meck:validate(riakc_pb_socket)),
+            ?assert(meck:validate(riakc_obj))
+       end
+      }
+     ]
+    }.
 
-%% Test with no {metadata: {cdmi_owner: ""}}
-create_query2_test() ->
-    Data = "{\"domainURI\": \"/cdmi_domains/some_domain\",\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3NvbWVfZG9tYWluYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
-
-%% Test with no {domainURI: }
-create_query3_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {\"cdmi_owner\": \"my_id\"}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vbXlfaWQvbXkvcGFyZW50QW5PYmplY3ROYW1l">> == SearchKey).
-
-%% Test with no {domainURI: } AND no {metadata: {cdmi_owner}}
-create_query4_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\",\"metadata\": {}}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
-
-%% Test with no {domainURI: } AND no {metadata: }
-create_query5_test() ->
-    Data = "{\"parentURI\": \"/my/parent\",\"objectName\": \"AnObjectName\"}",
-    Data2 = create_query(jsx:decode(list_to_binary(Data), [return_maps])),
-    Metadata = nebula2_utils:get_value(<<"metadata">>, Data2),
-    SearchKey = nebula2_utils:get_value(<<"nebula_sk">>, Metadata),
-    ?assert(<<"c2svY2RtaV9kb21haW5zL3N5c3RlbV9kb21haW4vYWRtaW5pc3RyYXRvci9teS9wYXJlbnRBbk9iamVjdE5hbWU=">> == SearchKey).
 -endif.

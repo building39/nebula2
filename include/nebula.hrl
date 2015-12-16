@@ -8,7 +8,7 @@
 -import(cowboy_req, [req/0]).
 -type path()             :: string().
 
--type content_type()     :: string().
+-type content_type()     :: binary().
 -type yz_index()         :: string().
 -type info()             :: term().
 -type json_value()       :: list().
@@ -23,6 +23,24 @@
 -type response()         :: {term()|integer(), headers(), string()}.
 -type search_predicate() :: nonempty_string().
 -type cdmi_state()       :: {pid(), map()}.
+
+%% Debug logging
+-ifdef(EUNIT).
+-define(nebErrFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebErrMsg(X), ?debugMsg(X)).
+-define(nebFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebMsg(X), ?debugMsg(X)).
+-define(nebWarnFmt(X, Y), ?debugFmt(X, Y)).
+-define(nebWarnMsg(X), ?debugMsg(X)).
+-else.
+-define(nebErrFmt(X, Y), lager:error(X, Y)).
+-define(nebErrMsg(X), lager:error(X)).
+-define(nebFmt(X, Y), lager:debug(X, Y)).
+-define(nebMsg(X), lager:debug(X)).
+-define(nebWarnFmt(X, Y), lager:warning(X, Y)).
+-define(nebWarnMsg(X), lager:warning(X)).
+-define(GET_ENV(X, Y), application:get_env(X, Y)). %% see nebula2_test.hrl for unit testing version of this macro.
+-endif.
 
 %% Miscellaneous macros
 -define(DEFAULT_ADMINISTRATOR, "administrator").
@@ -43,21 +61,22 @@
 -define(VERSION_HEADER, "x-cdmi-specification-version").
 
 %% Content types
--define(CONTENT_TYPE_CDMI_CAPABILITY,      "application/cdmi-capability").
--define(CONTENT_TYPE_CDMI_CONTAINER,       "application/cdmi-container").
--define(CONTENT_TYPE_CDMI_DATAOBJECT,      "application/cdmi-object").
--define(CONTENT_TYPE_CDMI_DOMAIN,          "application/cdmi-domain").
--define(CONTENT_TYPE_CDMI_CAPABILITY_JSON, "application/cdmi-capability+json").
--define(CONTENT_TYPE_CDMI_CONTAINER_JSON,  "application/cdmi-container+json").
--define(CONTENT_TYPE_CDMI_DATAOBJECT_JSON, "application/cdmi-dataobject+json").
--define(CONTENT_TYPE_CDMI_DOMAIN_JSON,     "application/cdmi-domain+json").
+-define(CONTENT_TYPE_CDMI_CAPABILITY,      <<"application/cdmi-capability">>).
+-define(CONTENT_TYPE_CDMI_CONTAINER,       <<"application/cdmi-container">>).
+-define(CONTENT_TYPE_CDMI_DATAOBJECT,      <<"application/cdmi-object">>).
+-define(CONTENT_TYPE_CDMI_DOMAIN,          <<"application/cdmi-domain">>).
+-define(CONTENT_TYPE_CDMI_CAPABILITY_JSON, <<"application/cdmi-capability+json">>).
+-define(CONTENT_TYPE_CDMI_CONTAINER_JSON,  <<"application/cdmi-container+json">>).
+-define(CONTENT_TYPE_CDMI_DATAOBJECT_JSON, <<"application/cdmi-dataobject+json>>").
+-define(CONTENT_TYPE_CDMI_DOMAIN_JSON,     <<"application/cdmi-domain+json>>").
+-define(CONTENT_TYPE_JSON,                 <<"application/json">>).
 
 %% Capability URIs
--define(CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/").
--define(DATAOBJECT_CAPABILITY_URI, "/cdmi_capabilities/dataobject/").
--define(DOMAIN_CAPABILITY_URI, "/cdmi_capabilities/domain/").
--define(DOMAIN_SUMMARY_CAPABILITY_URI, "/cdmi_capabilities/domain/summary").
--define(PERMANENT_CONTAINER_CAPABILITY_URI, "/cdmi_capabilities/container/permanent").
+-define(CONTAINER_CAPABILITY_URI,           <<"/cdmi_capabilities/container/">>).
+-define(DATAOBJECT_CAPABILITY_URI,          <<"/cdmi_capabilities/dataobject/">>).
+-define(DOMAIN_CAPABILITY_URI,              <<"/cdmi_capabilities/domain/">>).
+-define(DOMAIN_SUMMARY_CAPABILITY_URI,      <<"/cdmi_capabilities/domain/summary">>).
+-define(PERMANENT_CONTAINER_CAPABILITY_URI, <<"/cdmi_capabilities/container/permanent">>).
 
 %% System domain URI
 -define(SYSTEM_DOMAIN_URI, "/cdmi_domains/system_domain/").

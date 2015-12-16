@@ -1,0 +1,5 @@
+-define(BUCKET_TYPE, <<"cdmi">>).
+-define(BUCKET_NAME, <<"cdmi">>).
+-define(CDMI_INDEX, <<"cdmi_idx">>).
+-define(NAME_PREFIX, "cdmi").
+-define(RIAK_TYPE_AND_BUCKET, {?BUCKET_TYPE, ?BUCKET_NAME}).
