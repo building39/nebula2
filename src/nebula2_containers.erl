@@ -35,7 +35,7 @@ new_container(Req, State) when is_tuple(State) ->
         {true, Data} ->
             Data2 = nebula2_db:unmarshall(Data),
             {true, cowboy_req:set_resp_body(jsx:encode(maps:to_list(Data2)), Req2), State};
-        {false, _} ->
+        false ->
             {false, Req2, State}
     end.
 
