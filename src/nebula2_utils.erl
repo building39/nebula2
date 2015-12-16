@@ -247,7 +247,7 @@ get_time() ->
 -else.
 get_time() ->
 %    ?nebMsg("Entry"),
-    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(erlang:now()),
+    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(os:timestamp()),
     binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
                   [Year, Month, Day, Hour, Minute, Second]))).
 -endif.
