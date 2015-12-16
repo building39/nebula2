@@ -71,13 +71,13 @@ from_cdmi_object(Req, State) ->
     ParentID = nebula2_utils:get_value(<<"parentID">>, Data2),
     % lager:debug("bootstrap: parentID: ~p", [ParentID]),
     {Path, Req3} = cowboy_req:path(Req2),
-    lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
+    % lager:debug("bootstrap: from_cdmi_object: Path: ~p", [Path]),
     ObjectType = nebula2_utils:get_value(<<"objectType">>, Data2),
     % lager:debug("Data2: ~p", [Data2]),
     {ok, Oid} = nebula2_db:create(Pid, Oid, Data2),
     nebula2_utils:update_parent(ParentID,
                                 binary_to_list(Path),
-                                binary_to_list(ObjectType),
+                                ObjectType,
                                 Pid),
     pooler:return_member(riak_pool, Pid),
     ResponseBody = nebula2_db:unmarshall(Data2),
@@ -97,7 +97,7 @@ resource_exists(Req, State) ->
     lager:debug("Entry"),
     % lager:debug("bootstrap: resource_exists:"),
     {Pid, EnvMap} = State,
-    Path = nebula2_utils:get_value(<<"path">>, EnvMap),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     Response = case nebula2_db:search(Path, State) of
                    {error, _Status} ->
                        false;

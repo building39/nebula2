@@ -97,7 +97,7 @@ search(Path, State) when is_list(Path), is_tuple(State) ->
              binary()           %% Data to store
             ) -> ok | {error, term()}.
 
-update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_binary(Data) ->
+update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
     case get(Pid, Oid) of
         {error, Term} ->
@@ -106,7 +106,7 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_binary(Data) ->
             {ok, Obj} = riakc_pb_socket:get(Pid, 
                                             ?RIAK_TYPE_AND_BUCKET,
                                             Oid),
-            NewObj = riakc_obj:update_value(Obj, Data),
+            NewObj = riakc_obj:update_value(Obj, jsx:encode(Data)),
             riakc_pb_socket:put(Pid, NewObj)
     end.
 
@@ -235,14 +235,15 @@ nebula2_riak_test_() ->
        fun() ->
             Pid = self(),
             Return1 = {ok, ?TestRiakObject},
+            TestMap = jsx:decode(?TestBinary, [return_maps]),
             meck:expect(riakc_pb_socket, get, [Pid, ?RIAK_TYPE_AND_BUCKET, ?TestOid], Return1),
             meck:expect(riakc_obj, get_value, [?TestRiakObject], ?TestBinary),
             meck:expect(riakc_obj, update_value, [?TestRiakObject, ?TestBinary], ?TestRiakObject),
             meck:expect(riakc_pb_socket, put, [Pid, ?TestRiakObject], ok),
-            ?assertMatch(ok, update(Pid, ?TestOid, ?TestBinary)),
+            ?assertMatch(ok, update(Pid, ?TestOid, TestMap)),
             Return2 = {error, not_found},
             meck:expect(riakc_pb_socket, get, [Pid, ?RIAK_TYPE_AND_BUCKET, ?TestOid], Return2),
-            ?assertMatch(Return2, update(Pid, ?TestOid, ?TestBinary)),
+            ?assertMatch(Return2, update(Pid, ?TestOid, TestMap)),
             ?assertException(error, function_clause, update(not_a_pid, ?TestOid, ?TestBinary)),
             ?assertException(error, function_clause, update(Pid, not_an_oid, ?TestBinary)),
             ?assert(meck:validate(riakc_pb_socket)),

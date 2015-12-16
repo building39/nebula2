@@ -155,10 +155,12 @@
 -define(TestSystemCapabilities, <<"{
     \"capabilities\": {
         \"cdmi_acount\": \"true\",
+        \"cdmi_atime\": \"true\",
         \"cdmi_copy_dataobject_from_queue\": \"false\",
         \"cdmi_copy_queue_by_ID\": \"false\",
         \"cdmi_create_reference_by_ID\": \"false\",
         \"cdmi_create_value_range_by_ID\": \"false\",
+        \"cdmi_ctime\": \"true\",
         \"cdmi_dataobjects\": \"true\",
         \"cdmi_deserialize_dataobject_by_ID\": \"false\",
         \"cdmi_deserialize_queue_by_ID\": \"false\",
@@ -173,6 +175,7 @@
         \"cdmi_metadata_maxitems\": 1024,
         \"cdmi_metadata_maxsize\": 8192,
         \"cdmi_metadata_maxtotalsize\": 8388608,
+        \"cdmi_mtime\": \"true\",
         \"cdmi_multipart_mime\": \"true\",
         \"cdmi_notification\": \"false\",
         \"cdmi_object_access_by_ID\": \"true\",
@@ -201,6 +204,7 @@
         \"cdmi_serialize_dataobject_to_ID\": \"false\",
         \"cdmi_serialize_domain_to_ID\": \"false\",
         \"cdmi_serialize_queue_to_ID\": \"false\",
+        \"cdmi_size\": \"true\",
         \"cdmi_snapshots\": \"false\",
         \"unknown_handler\": \"true\"
     },

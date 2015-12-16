@@ -130,7 +130,7 @@ unmarshall(Data) when is_map(Data) ->
              map()              %% Data to store
             ) -> {ok, map()} | {error, term()}.
 update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     case Mod:update(Pid, Oid, Data) of
         ok ->

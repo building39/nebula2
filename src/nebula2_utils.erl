@@ -370,6 +370,7 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_list(CL
                                                                         is_map(Data),
                                                                         is_binary(CapabilitiesURI),
                                                                         is_tuple(State) ->
+%    ?nebMsg("Entry"),
     update_data_system_metadata(CList, Data, binary_to_list(CapabilitiesURI), State);
 update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_list(CList), 
                                                                         is_map(Data),
@@ -408,8 +409,8 @@ update_parent(ParentOid, Path, ObjectType, Pid) when is_binary(ParentOid), is_li
                      Ch ->
                          lists:append(Ch, [list_to_binary(Name)])
                  end,
-    ChildrenRange = case get_value(<<"childrenrange">>, Parent, "") of
-                     "" ->
+    ChildrenRange = case get_value(<<"childrenrange">>, Parent, <<"">>) of
+                     <<"">> ->
                          "0-0";
                      Cr ->
                          {Num, []} = string:to_integer(lists:last(string:tokens(binary_to_list(Cr), "-"))),
@@ -423,12 +424,13 @@ update_parent(ParentOid, Path, ObjectType, Pid) when is_binary(ParentOid), is_li
 %% Internal functions
 %% ====================================================================
 
--spec create_object({pid(), map()}, object_type(), list() | binary(), string(), binary()) ->
+-spec create_object(cdmi_state(), object_type(), binary(), map(), map()) ->
           {boolean(), map()}.
-create_object(State, ObjectType, DomainName, Parent, Body) when is_list(DomainName)->
-    D = list_to_binary(DomainName),
-    create_object(State, ObjectType, D, Parent, Body);
-create_object(State, ObjectType, DomainName, Parent, Body) when is_binary(DomainName)->
+create_object(State, ObjectType, DomainName, Parent, Body) when is_tuple(State),
+                                                                is_binary(ObjectType),
+                                                                is_binary(DomainName),
+                                                                is_map(Parent),
+                                                                is_map(Body) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     case check_base64(Body) of
@@ -570,7 +572,7 @@ handle_delete(Data, State, _, []) ->
             delete_child_from_parent(Pid, ParentId, ObjectName),
             ok;
         Other ->
-%            ?nebFmt("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
+            ?nebFmt("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
             Other
     end;
 handle_delete(Data, State, Path, [Child | Tail]) ->
@@ -599,12 +601,14 @@ sanitize_body([H|T], Body) when is_map(Body)->
 nebula2_utils_test_() ->
     {foreach,
         fun() ->
+            meck:new(nebula2_capabilities, [passthrough]),
             meck:new(nebula2_db, [non_strict]),
             meck:new(pooler, [non_strict]),
             meck:new(mcd, [non_strict]),
             meck:new(uuid)
         end,
         fun(_) ->
+            meck:unload(nebula2_capabilities),
             meck:unload(nebula2_db),
             meck:unload(pooler),
             meck:unload(mcd),
@@ -705,7 +709,6 @@ nebula2_utils_test_() ->
                                                       ?CONTENT_TYPE_CDMI_CONTAINER,
                                                       <<"/cdmi_domains/system_domain/">>,
                                                       Body),
-                    ?assertMatch(TestNewObjectCDMI, NewObject),
                     ?assertMatch(TestNewObjectCDMI, NewObject),
                     ?assertMatch(false, create_object(State,
                                                       ?CONTENT_TYPE_CDMI_CONTAINER,
@@ -1046,6 +1049,23 @@ nebula2_utils_test_() ->
                     ?assertMatch(<<"tuple">>, type_of({tuple}))
                 end
             },
+            {"Test update_data_system_metadata/3",
+                fun () ->
+                     Pid = self(),
+                     State = {Pid, maps:new()},
+                     Data = maps:from_list([{<<"metadata">>, []}]),
+                     CList = [<<"cdmi_atime">>,
+                              <<"cdmi_mtime">>,
+                              <<"cdmi_acount">>,
+                              <<"cdmi_mcount">>],
+                     TestRootMap = jsx:decode(?TestRootObject, [return_maps]),
+                     meck:sequence(nebula2_db, search, 2, [{ok, TestRootMap}]),
+                     meck:sequence(nebula2_capabilities, apply_metadata_capabilities, 2, [Data]),
+                     ?assertMatch(Data, update_data_system_metadata(CList, Data, State)),
+                     meck:validate(nebula2_db),
+                    meck:validate(nebula2_capabilities)
+                end
+            },
             {"Test update_data_system_metadata/4 when no data to update",
                 fun () ->
                     Data = maps:from_list([{<<"key">>, <<"value">>}]),
@@ -1079,20 +1099,53 @@ nebula2_utils_test_() ->
                                             {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
                                             ])),
                     Path = "/achild",
-                    ParentId = maps:get(<<"parentID">>, Data),
                     Children = maps:get(<<"children">>, Parent),
                     NewChildren = lists:append([maps:get(<<"objectName">>, Data)], Children),
                     UpdatedParent = maps:put(<<"children">>, NewChildren, Parent),
                     UpdatedParent2 = maps:put(<<"childrenrange">>, <<"0-10">>, UpdatedParent),
                     ObjectType = maps:get(<<"objectType">>, Data),
                     Oid = maps:get(<<"objectID">>, Data),
-                    meck:expect(nebula2_db, read, [Pid, ParentId], {ok, Parent}),
+                    meck:sequence(nebula2_db, read, 2, [{ok, Parent}]),
                     meck:sequence(nebula2_db, update, 3, [{ok, UpdatedParent2}]),
-                    ?assertException(error, function_clause, update_parent(not_a_binary, Path, ObjectType, Pid)),
-                    ?assertException(error, function_clause, update_parent(Oid, not_a_list, ObjectType, Pid)),
-                    ?assertException(error, function_clause, update_parent(Oid, Path, not_a_binary, Pid)),
-                    ?assertException(error, function_clause, update_parent(Oid, Path, ObjectType, not_a_pid)),
+                    ?assertMatch({ok, UpdatedParent2}, update_parent(Oid, Path, ObjectType, Pid)),
+                    ?assertMatch({ok, UpdatedParent2}, update_parent(Oid, Path, ?CONTENT_TYPE_CDMI_CAPABILITY, Pid)),
+                    ?assertMatch({ok, UpdatedParent2}, update_parent(Oid, Path, ?CONTENT_TYPE_CDMI_DOMAIN, Pid)),
                     meck:validate(nebula2_db)
+                end
+            },
+            {"Test update_parent/4 no existing children",
+                fun () ->
+                    Pid = self(),
+                    Parent = jsx:decode(?TestRootObject, [return_maps]),
+                    Data = maps:from_list(([{<<"objectName">>, <<"achild">>},
+                                            {<<"objectID">>, <<"oid">>},
+                                            {<<"objectType">>, ?CONTENT_TYPE_CDMI_DATAOBJECT},
+                                            {<<"parentID">>, maps:get(<<"objectID">>, Parent)},
+                                            {<<"parentURI">>, <<"/">>},
+                                            {<<"domainURI">>, <<"/cdmi_domains/system_domain/">>}
+                                            ])),
+                    Path = "/achild",
+                    NewChildren = lists:append([maps:get(<<"objectName">>, Data)], <<"">>),
+                    Parent2 = maps:put(<<"children">>, <<"">>, Parent),
+                    Parent3 = maps:put(<<"childrenrange">>, <<"">>, Parent2),
+                    UpdatedParent = maps:put(<<"children">>, NewChildren, Parent3),
+                    UpdatedParent2 = maps:put(<<"childrenrange">>, <<"0-10">>, UpdatedParent),
+                    ObjectType = maps:get(<<"objectType">>, Data),
+                    Oid = maps:get(<<"objectID">>, Data),
+                    meck:sequence(nebula2_db, read, 2, [{ok, Parent3}]),
+                    meck:sequence(nebula2_db, update, 3, [{ok, UpdatedParent2}]),
+                    ?assertMatch({ok, UpdatedParent2}, update_parent(Oid, Path, ObjectType, Pid)),
+                    meck:validate(nebula2_db)
+                end
+            },
+            {"Test update_parent/4 contract",
+                fun () ->
+                    Path = "/achild",
+                    Oid = <<"an oid">>,
+                    ?assertException(error, function_clause, update_parent(not_a_binary, Path, ?CONTENT_TYPE_CDMI_DATAOBJECT, self())),
+                    ?assertException(error, function_clause, update_parent(Oid, not_a_list, ?CONTENT_TYPE_CDMI_DATAOBJECT, self())),
+                    ?assertException(error, function_clause, update_parent(Oid, Path, not_a_binary, self())),
+                    ?assertException(error, function_clause, update_parent(Oid, Path, ?CONTENT_TYPE_CDMI_DATAOBJECT, not_a_pid))
                 end
             }
         ]

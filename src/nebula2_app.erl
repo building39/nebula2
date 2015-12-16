@@ -1,7 +1,7 @@
 -module(nebula2_app).
 -behaviour(application).
 
--ifdef(TEST).
+-ifdef(TESTX).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 -include("nebula.hrl").

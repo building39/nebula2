@@ -136,8 +136,10 @@ update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
 %% @doc Apply CDMI capabilities
 -spec nebula2_metadata_capabilities:apply_capabilities(list(), map()) -> map().
 apply_metadata_capabilities([], Data) when is_map(Data) ->
+%    ?nebMsg("Entry"),
     Data;
 apply_metadata_capabilities([H|T], Data) when is_map(Data) ->
+%    ?nebMsg("Entry"),
     {Func, Arg} = H,
     A = list_to_atom(string:to_lower(binary_to_list(Arg))),
     F = list_to_atom(binary_to_list(Func)),
@@ -394,7 +396,7 @@ cdmi_sanitization_method(Methods, Data) when is_list(Methods), is_map(Data) ->
 %% @doc Apply cdmi_size
 -spec cdmi_size(boolean(), map()) -> map().
 cdmi_size(Doit, Data) when is_boolean(Doit), is_map(Data) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     case nebula2_utils:get_value(<<"objectType">>, Data) of
         ?CONTENT_TYPE_CDMI_DATAOBJECT ->
             case Doit of
