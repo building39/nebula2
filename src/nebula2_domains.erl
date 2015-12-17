@@ -23,7 +23,7 @@
 %% TODO: Enforce CDMI domain deletion rules - i.e. move populated domains to metadata: cdmi_domain_delete_reassign
 %%       if the domain contains objects and then delete the domain, or fail with 400 if the domain contains objects
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
--spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, term()}.
+-spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, 400|501}.
 delete_domain(State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -36,17 +36,17 @@ delete_domain(State) when is_tuple(State) ->
             {ok, Data} = nebula2_db:search(SearchKey, State2),
             Metadata = nebula2_utils:get_value(<<"metadata">>, Data),
             ReassignTo = nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil),
-            case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, nil) of
-                nil ->
+            case nebula2_utils:get_value(<<"cdmi_domain_delete_reassign">>, Metadata, <<"nil">>) of
+                <<"nil">> ->
                     %% TODO: check for existence of child domains and domain members before deleting.
                     SChildren = lists:filtermap(fun(X) -> {true, binary_to_list(X)} end,
                                                 nebula2_utils:get_value(<<"children">>, Data, [])),
                     Children = lists:filter(fun(X) -> true /= nebula2_utils:beginswith(X, "cdmi_domain_") end, SChildren),
                     case Children of
                         [] ->
-                            ok = nebula2_utils:delete_child_from_parent(Pid,
-                                                                        nebula2_utils:get_value(<<"parentID">>, Data),
-                                                                        nebula2_utils:get_value(<<"objectName">>, Data)),
+                            {ok, _} = nebula2_utils:delete_child_from_parent(Pid,
+                                                                             nebula2_utils:get_value(<<"parentID">>, Data),
+                                                                             nebula2_utils:get_value(<<"objectName">>, Data)),
                             nebula2_utils:delete(State2);
                         _ ->
                             ?nebErrFmt("Cannot delete non-empty domain ~p", [Path]),

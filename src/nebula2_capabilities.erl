@@ -49,7 +49,7 @@
 ]).
 
 %% @doc Get a CDMI capability
--spec nebula2_capabilities:get_capability(pid(), object_oid()) -> {ok, json_value()}.
+-spec nebula2_capabilities:get_capability(pid(), object_oid()) -> map().
 get_capability(Pid, Oid) ->
     ?nebMsg("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),
@@ -77,8 +77,8 @@ new_capability(Req, State) when is_tuple(State) ->
                     throw(badjson)
             end,
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
-    case nebula2_utils:get_value(<<"parentURI">>, EnvMap, undefined) of
-        undefined ->
+    case nebula2_utils:get_value(<<"parentURI">>, EnvMap, <<"undefined">>) of
+        <<"undefined">> ->
             pooler:return_member(riak_pool, Pid),
             {false, Req2, State};
         ParentUri ->
@@ -98,7 +98,8 @@ new_capability(Req, State) when is_tuple(State) ->
     end.
 
 %% @doc Update a CDMI capability
--spec nebula2_capabilities:update_capability(cowboy_req:req(), pid(), object_oid()) -> {ok, json_value()}.
+-spec nebula2_capabilities:update_capability(cowboy_req:req(), cdmi_state(), object_oid()) ->
+          {true, cowboy_req:req(), cdmi_state()} | {false, cowboy_req:req(), cdmi_state()}.
 update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     {Pid, _} = State,
@@ -134,7 +135,7 @@ update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
     Response.
 
 %% @doc Apply CDMI capabilities
--spec nebula2_metadata_capabilities:apply_capabilities(list(), map()) -> map().
+-spec apply_metadata_capabilities(list(), map()) -> map().
 apply_metadata_capabilities([], Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
     Data;

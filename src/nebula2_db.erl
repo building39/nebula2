@@ -52,7 +52,7 @@ delete(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
     Mod:delete(Pid, Oid).
 
 %% @doc Get the domain maps.
--spec nebula2_db:get_domain_maps(pid()) -> list().
+-spec nebula2_db:get_domain_maps(pid()) -> binary().
 get_domain_maps(Pid) when is_pid(Pid) ->
 %    ?nebMsg("Entry"),
     Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),

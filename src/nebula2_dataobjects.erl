@@ -20,7 +20,7 @@
         ]).
 
 %% @doc Get a CDMI dataobject
--spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> {ok, json_value()}.
+-spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> map().
 get_dataobject(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
     ?nebMsg("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),

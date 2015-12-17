@@ -58,7 +58,7 @@ get(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
     end.
 
 %% @doc Get the domain maps.
--spec get_domain_maps(pid(), object_path()) -> binary().
+-spec get_domain_maps(pid(), object_path()) -> {error, 404|500} |{ok, map()}.
 get_domain_maps(Pid, Path) when is_pid(Pid), is_list(Path) ->
 %    ?nebMsg("Entry"),
     execute_search(Pid, "sp:\\" ++ Path).

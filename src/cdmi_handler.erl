@@ -203,10 +203,11 @@ from_cdmi_capability(Req, State) ->
     {_Pid, EnvMap} = State,
     try
         case nebula2_utils:get_value(<<"exists">>, EnvMap) of
-            true ->
-                ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
+            <<"true">> ->
+                ObjectMap = nebula2_utils:get_value(<<"object_map">>, EnvMap),
+                ObjectId = nebula2_utils:get_value(<<"objectID">>, ObjectMap),
                 nebula2_capabilities:update_capability(Req, State, ObjectId);
-            false ->
+            <<"false">> ->
                 nebula2_capabilities:new_capability(Req, State)
         end
     catch
@@ -225,12 +226,12 @@ from_cdmi_container(Req, State) ->
         case LastChar of
             "/" ->
                 Response = case nebula2_utils:get_value(<<"exists">>, EnvMap) of
-                                true ->
+                                <<"true">> ->
                                     ObjectMap = nebula2_utils:get_value(<<"object_map">>, EnvMap),
                                     ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
                                     ?nebFmt("object id: ~p", [ObjectId]),
                                     nebula2_containers:update_container(Req, State, ObjectId);
-                                false ->
+                                <<"false">> ->
                                     nebula2_containers:new_container(Req, State)
                            end,
                 Response;
@@ -276,10 +277,10 @@ from_cdmi_object(Req, State) ->
                                 throw(badjson)
                         end,
                 case nebula2_utils:get_value(<<"exists">>, EnvMap) of
-                    true ->
+                    <<"true">> ->
                         ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
                         nebula2_dataobjects:update_dataobject(Req2, State, ObjectId, Body2);
-                    false ->
+                    <<"false">> ->
                         nebula2_dataobjects:new_dataobject(Req2, State, Body2)
                 end
         end
@@ -325,10 +326,10 @@ from_multipart_mixed(Req, State, ok) ->
                        end,
                 NewBody2 = nebula2_utils:put_value(<<"value">>, BodyPart2, Body),
                 case nebula2_utils:get_value(<<"exists">>, EnvMap) of
-                    true ->
+                    <<"true">> ->
                         ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
                         nebula2_dataobjects:update_dataobject(Req, State, ObjectId, NewBody2);
-                    false ->
+                    <<"false">> ->
                         
                         nebula2_dataobjects:new_dataobject(Req, State, NewBody2)
             end
@@ -547,7 +548,7 @@ to_cdmi_object(Req, State) ->
     pooler:return_member(riak_pool, Pid),
     Response.
 
--spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), pid()} | {notfound, term(), pid()}.
+-spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), cdmi_state()} | {notfound, term(), cdmi_state()}.
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -679,7 +680,7 @@ get_domain(Maps, HostUrl) ->
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
 
--spec get_parent(binary(), string(), {pid(), map()}) -> {ok | error, map() | term()}.
+-spec get_parent(binary(), string(), cdmi_state()) -> {ok | error, map() | term()}.
 get_parent(ParentUri, Domain, State) ->
     case ParentUri of
         <<>> ->
@@ -688,7 +689,7 @@ get_parent(ParentUri, Domain, State) ->
             nebula2_db:search(Domain ++ Uri, State)
     end.
 
--spec get_pooler() -> pid().
+-spec get_pooler() -> pid() | error_no_members.
 get_pooler() ->
     case pooler:take_member(riak_pool) of
         error_no_members ->
@@ -697,7 +698,9 @@ get_pooler() ->
         Pid ->
             Pid
     end.
-get_pooler_retry(0) ->
+
+-spec get_pooler_retry(integer()) -> pid() | error_no_members.
+get_pooler_retry(Retries) when Retries == 0 ->
 %    ?nebMsg(error, "Out of pool connections."),
     error_no_members;
 get_pooler_retry(Retries) ->
@@ -710,9 +713,7 @@ get_pooler_retry(Retries) ->
     end.
 
 %% @doc Handle query string
--spec handle_query_string(map(), term()) -> map().
-handle_query_string(Data, <<>>) ->
-    Data;
+-spec handle_query_string(map(), string()) -> map().
 handle_query_string(Data, []) ->
     Data;
 handle_query_string(Data, Qs) ->
@@ -752,7 +753,7 @@ map_build_get_data(FieldName, _, Map) ->
 -spec map_domain_uri(pid(), string()) -> string().
 map_domain_uri(Pid, HostUrl) ->
 %    ?nebMsg("Entry"),
-    Maps = nebula2_db:get_domain_maps(Pid),
+    Maps = jsx:decode(nebula2_db:get_domain_maps(Pid)),
     D = get_domain(Maps, HostUrl),
     Domain = case nebula2_utils:beginswith(D, "/cdmi_domains") of
                  true ->
@@ -768,9 +769,7 @@ map_domain_uri(Pid, HostUrl) ->
 %    ?nebFmt("Exit: ~p", [Domain]),
     Domain.
 
-req_domain(<<"[]">>, _) ->
-%    ?nebMsg("Entry"),
-    "/cdmi_domains/system_domain/";
+-spec req_domain(list(), string()) -> string().
 req_domain([], _) ->
 %    ?nebMsg("Entry"),
     "/cdmi_domains/system_domain/";

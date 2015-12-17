@@ -129,9 +129,9 @@ delete_cache(Oid) when is_binary(Oid) ->
 delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(ParentId), is_binary(Name) ->
 %    ?nebMsg("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
-    Children = get_value(<<"children">>, Parent, ""),
+    Children = get_value(<<"children">>, Parent, <<"">>),
     NewParent1 = case Children of
-                     [] ->
+                     <<"">> ->
                          maps:remove(<<"children">>, Parent);
                      _Children  ->
                          NewChildren = lists:delete(Name, Children),
@@ -142,8 +142,8 @@ delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(Parent
                                  put_value(<<"children">>, NewChildren, Parent)
                          end
                  end,
-    NewParent2 = case get_value(<<"childrenrange">>, NewParent1, "") of
-                     "" ->
+    NewParent2 = case get_value(<<"childrenrange">>, NewParent1, <<"">>) of
+                     <<"">> ->
                          NewParent1;
                     <<"0-0">> ->
                         maps:remove(<<"childrenrange">>, NewParent1);
@@ -223,13 +223,13 @@ get_parent_uri(Path) when is_binary(Path) ->
     list_to_binary(ParentUri).
 
 %% @doc Get a value from the data map.
--spec get_value(binary(), map()) -> binary().
+-spec get_value(binary(), map()) -> term().
 get_value(Key, Map) when is_binary(Key), is_map(Map) ->
 %    ?nebMsg("Entry"),
     get_value(Key, Map, <<"">>).
 
 %% @doc Get a value from the data map.
--spec get_value(binary(), map(), term()) -> binary().
+-spec get_value(binary(), map(), term()) -> term().
 get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
 %    ?nebMsg("Entry"),
     case maps:is_key(<<"cdmi">>, Map) of
@@ -253,7 +253,7 @@ get_time() ->
 -endif.
 
 %% Get the content type for the request
--spec handle_content_type(cdmi_state()) -> string().
+-spec handle_content_type(cdmi_state()) -> binary().
 handle_content_type(State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
@@ -275,7 +275,7 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     list_to_binary(string:to_lower(Uid ++ ?OID_SUFFIX ++ Crc)).
 
--spec make_search_key(cdmi_state()) -> list().
+-spec make_search_key(map()) -> string().
 make_search_key(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
     ObjectName = binary_to_list(get_value(<<"objectName">>, Data)),
@@ -320,7 +320,7 @@ set_cache(Data) when is_map(Data) ->
     mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
     mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
--spec type_of(term()) -> boolean().
+-spec type_of(term()) -> binary().
 type_of(X) ->
     if
         is_boolean(X) ->        %% This test must come before is_atom/1
@@ -460,8 +460,8 @@ create_object(State, ObjectType, DomainName, Parent, Body) when is_tuple(State),
     Oid = make_key(),
     Location = list_to_binary(application:get_env(nebula2, cdmi_location, ?DEFAULT_LOCATION)),
     Owner = get_value(<<"auth_as">>, EnvMap, ""),
-    CapabilitiesURI = case get_value(<<"capabilitiesURI">>, Body, none) of
-                        none ->   get_capability_uri(ObjectType);
+    CapabilitiesURI = case get_value(<<"capabilitiesURI">>, Body, <<"none">>) of
+                        <<"none">> ->   get_capability_uri(ObjectType);
                         Curi ->   Curi
                       end,
     NewMetadata = maps:from_list([
