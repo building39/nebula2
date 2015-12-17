@@ -214,12 +214,17 @@ nebula2_domains_test_() ->
                 meck:sequence(nebula2_db, search, 2, [{ok, Domain},
                                                       {ok, Domain},
                                                       {ok, Domain2}]),
-                meck:loop(nebula2_utils, delete_child_from_parent, 3, [ok]),
-                meck:loop(nebula2_utils, delete, 1, [ok]),
+                meck:sequence(nebula2_utils, delete_child_from_parent, 3, [{ok, Domain},
+                                                                           {ok, Domain},
+                                                                           {ok, Domain2}
+                                                                           ]),
+                meck:sequence(nebula2_utils, delete, 1, [{ok, Domain},
+                                                         {ok, Domain},
+                                                         {ok, Domain2}]),
                 ?assertException(throw, forbidden, delete_domain(State)),
                 EnvMap2 = maps:put(<<"objectName">>, <<"test_domain/">>, EnvMap),
                 State2 = {Pid, EnvMap2},
-                ?assertMatch(ok, delete_domain(State2)),
+                ?assertMatch({ok, _}, delete_domain(State2)),
                 ?assertException(error, function_clause, delete_domain(not_a_tuple)),
                 ?assert(meck:validate(nebula2_db)),
                 ?assert(meck:validate(nebula2_utils))
@@ -237,9 +242,9 @@ nebula2_domains_test_() ->
                 Pid = self(),
                 State = {Pid, EnvMap},
                 meck:sequence(nebula2_db, search, 2, [{ok, Domain2}]),
-                meck:loop(nebula2_utils, delete_child_from_parent, 3, [ok]),
-                meck:loop(nebula2_utils, delete, 1, [ok]),
-                ?assertMatch(ok, delete_domain(State)),
+                meck:loop(nebula2_utils, delete_child_from_parent, 3, [{ok, Domain2}]),
+                meck:loop(nebula2_utils, delete, 1, [{ok, Domain2}]),
+                ?assertMatch({ok, _}, delete_domain(State)),
                 ?assert(meck:validate(nebula2_db)),
                 ?assert(meck:validate(nebula2_utils))
             end

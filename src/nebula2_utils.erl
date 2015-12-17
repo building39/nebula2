@@ -578,10 +578,10 @@ handle_delete(Data, State, _, []) ->
     end;
 handle_delete(Data, State, Path, [Child | Tail]) ->
 %    ?nebMsg("Entry"),
-    ChildPath = Path ++ Child,
+    ChildPath = Path ++ binary_to_list(Child),
     KeyMap = maps:from_list([{<<"objectName">>, Child},
                              {<<"path">>, list_to_binary(ChildPath)},
-                             {<<"parentURI">>, Path}]),
+                             {<<"parentURI">>, list_to_binary(Path)}]),
     NewPath = make_search_key(KeyMap),
     {ok, ChildData} = nebula2_db:search(NewPath, State),
     GrandChildren = get_value(<<"children">>, ChildData, []),
@@ -1083,8 +1083,13 @@ nebula2_utils_test_() ->
                                                         {ok, TestRootMap}
                                                     ]),
                     meck:sequence(nebula2_db, update, 3, [{ok, TestNewObject}]),
-                    ?assertMatch(ok, handle_delete(TestContainer, State, list_to_binary(Path), maps:get(<<"children">>, TestContainer))),
-                    ?assertMatch({error, notfound}, handle_delete(TestContainer, State, list_to_binary(Path), maps:get(<<"children">>, TestContainer))),
+                    Children = maps:get(<<"children">>, TestContainer),
+                    ?nebFmt("Children: ~p", [Children]),
+                    ?assertMatch(ok, handle_delete(TestContainer,
+                                                   State,
+                                                   Path,
+                                                   Children)),
+                    ?assertMatch({error, notfound}, handle_delete(TestContainer, State, Path, Children)),
                     ?assert(meck:validate(nebula2_db))
                 end
             },

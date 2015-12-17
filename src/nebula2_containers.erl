@@ -108,7 +108,7 @@ nebula2_containers_test_() ->
             State = {Pid, EnvMap},
             meck:loop(cowboy_req, body, 1, [{ok, <<"{}">>, Req}, {ok, "bad json", Req}]),
             meck:sequence(cowboy_req, set_resp_body, 2, [Req]),
-            meck:sequence(nebula2_utils, create_object, 3, [{true, TestMapCDMI}, {false, notfound}]),
+            meck:sequence(nebula2_utils, create_object, 3, [{true, TestMapCDMI}, false]),
             ?assertMatch({true, Req, State}, new_container(Req, State)),
             ?assertException(throw, badjson, new_container(Req, State)),
             ?assertMatch({false, Req, State}, new_container(Req, State)),
