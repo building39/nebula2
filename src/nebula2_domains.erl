@@ -23,7 +23,7 @@
 %% TODO: Enforce CDMI domain deletion rules - i.e. move populated domains to metadata: cdmi_domain_delete_reassign
 %%       if the domain contains objects and then delete the domain, or fail with 400 if the domain contains objects
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
--spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, 400|501}.
+-spec nebula2_domains:delete_domain(cdmi_state()) -> ok | {error, term()}.
 delete_domain(State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -112,7 +112,7 @@ update_domain(_Pid, _ObjectId, Data) when is_pid(_Pid), is_binary(_ObjectId), is
 %% Internal functions
 %% ====================================================================
 
--spec new_member_and_summary_containers(cdmi_state(), binary(), list()) -> boolean().
+-spec new_member_and_summary_containers(cdmi_state(), list(), list()) -> boolean().
 new_member_and_summary_containers(State, SearchKey, Containers) when is_tuple(State), is_list(SearchKey), is_list(Containers) ->
 %    ?nebMsg("Entry"),
     {ok, Parent} = nebula2_db:search(SearchKey, State),
@@ -126,7 +126,7 @@ new_member_and_summary_containers(State, SearchKey, Containers) when is_tuple(St
             false
     end.
 
--spec new_containers(cdmi_state(), map(), list(), boolean()) -> boolean().
+-spec new_containers(cdmi_state(), map(), list(), boolean() | {}) -> boolean().
 new_containers(_State, _Parent, [], Response) ->
     Response;
 new_containers(State, Parent, [ObjectName|T], _Response) ->

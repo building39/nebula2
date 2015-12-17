@@ -111,7 +111,7 @@ rest_init(Req, _State) ->
                         if 
                             KeyExists == true ->
                                 ParentCapabilitiesURI = nebula2_utils:get_value(<<"capabilitiesURI">>, FData),
-                                ParentCapabilities    = nebula2_db:search(list_to_binary(NoDomain ++ ParentCapabilitiesURI),
+                                ParentCapabilities    = nebula2_db:search(NoDomain ++ ParentCapabilitiesURI,
                                                                           {PoolMember, Map14}),
                                 case ParentCapabilities of
                                     {ok, CapData} ->
@@ -485,7 +485,7 @@ resource_exists(Req, State) ->
 resource_exists_handler("/cdmi_objectid/", Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-    Oid = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
+    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
     case nebula2_db:read(Pid, Oid) of
         {error, _Status} ->
             {false, Req, State};
@@ -552,7 +552,7 @@ to_cdmi_object(Req, State) ->
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-    Oid = binary_to_list(nebula2_utils:get_value(<<"objectName">>, EnvMap)),
+    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
     case nebula2_db:read(Pid, Oid) of
         {ok, Data} ->
             nebula2_utils:set_cache(Data),
@@ -680,10 +680,12 @@ get_domain(Maps, HostUrl) ->
     Url = element(3, UrlParts),
     req_domain(Maps, Url).
 
--spec get_parent(binary(), string(), cdmi_state()) -> {ok | error, map() | term()}.
-get_parent(ParentUri, Domain, State) ->
+-spec get_parent(binary() | string(), string(), cdmi_state()) -> {ok, map()} | {error, term()}.
+get_parent(ParentUri, Domain, State) when is_binary(ParentUri), is_list(Domain), is_tuple(State) ->
+    get_parent(binary_to_list(ParentUri), Domain, State);
+get_parent(ParentUri, Domain, State) when is_list(ParentUri), is_list(Domain), is_tuple(State) ->
     case ParentUri of
-        <<>> ->
+        "" ->
             {error, notfound};
         Uri ->
             nebula2_db:search(Domain ++ Uri, State)
@@ -759,7 +761,7 @@ map_domain_uri(Pid, HostUrl) ->
                  true ->
                      D;
                  false ->
-                     case lists:nth(1, D) == "/" of
+                     case string:substr(D, 1, 1) == "/" of
                          true ->
                              "/cdmi_domains" ++ D;
                          false ->

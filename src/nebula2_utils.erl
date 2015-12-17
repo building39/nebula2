@@ -110,7 +110,7 @@ delete(State) ->
     {Pid, _} = State,
     Children = get_value(<<"children">>, Data, []),
     Path = binary_to_list(get_value(<<"parentURI">>, Data)) ++ binary_to_list(get_value(<<"objectName">>, Data)),
-    handle_delete(Data, State, list_to_binary(Path), Children).
+    handle_delete(Data, State, Path, Children).
 
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) when is_binary(Oid) ->
@@ -125,7 +125,7 @@ delete_cache(Oid) when is_binary(Oid) ->
     end.
 
 %% @doc Delete a child from its parent
--spec delete_child_from_parent(pid(), object_oid(), string()) -> {ok, map()}  | {error, term()}.
+-spec delete_child_from_parent(pid(), object_oid(), binary()) -> {ok, map()} | {error, term()}.
 delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(ParentId), is_binary(Name) ->
 %    ?nebMsg("Entry"),
     {ok, Parent} = nebula2_db:read(Pid, ParentId),
@@ -578,14 +578,14 @@ handle_delete(Data, State, _, []) ->
     end;
 handle_delete(Data, State, Path, [Child | Tail]) ->
 %    ?nebMsg("Entry"),
-    ChildPath = binary_to_list(Path) ++ binary_to_list(Child),
+    ChildPath = Path ++ Child,
     KeyMap = maps:from_list([{<<"objectName">>, Child},
                              {<<"path">>, list_to_binary(ChildPath)},
                              {<<"parentURI">>, Path}]),
     NewPath = make_search_key(KeyMap),
     {ok, ChildData} = nebula2_db:search(NewPath, State),
     GrandChildren = get_value(<<"children">>, ChildData, []),
-    handle_delete(ChildData, State, list_to_binary(ChildPath), GrandChildren),
+    handle_delete(ChildData, State, ChildPath, GrandChildren),
     handle_delete(Data, State, Path, Tail).
 
 sanitize_body([], Body) when is_map(Body) ->

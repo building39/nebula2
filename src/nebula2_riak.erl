@@ -83,7 +83,7 @@ put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
     end.
 
 %% @doc Search an index for objects.
--spec search(string(), cdmi_state()) -> {error, 404|500}|{ok, map()}.
+-spec search(string(), cdmi_state()) -> {error, term()}|{ok, map()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {Pid, _} = State,
@@ -117,7 +117,7 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% @doc Execute a search.
 -spec execute_search(pid(),              %% Riak client pid.
                      search_predicate()  %% URI.
-                    ) -> {error, 404|500} |{ok, map()}.
+                    ) -> {error, term()} |{ok, map()}.
 execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
 %    ?nebMsg("Entry"),
     Index = ?CDMI_INDEX,
