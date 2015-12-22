@@ -30,9 +30,9 @@
          get_object_name/1,
          get_object_oid/2,
          get_parent_uri/1,
+         get_time/0,
          get_value/2,
          get_value/3,
-         get_time/0,
          handle_content_type/1,
          make_key/0,
          make_search_key/1,
@@ -44,7 +44,9 @@
          update_parent/4
         ]).
 
-%% @doc Check if a string begins with a certain substring.
+%% @doc
+%% Check if a string begins with a certain substring.
+%% @end
 -spec beginswith(string(), string()) -> boolean().
 beginswith(Str, Substr) ->
 %    ?nebMsg("Entry"),
@@ -53,7 +55,9 @@ beginswith(Str, Substr) ->
         _ -> false
     end.
 
-%% Check base64 encoding
+%% @doc
+%% Check base64 encoding.
+%% @end
 -spec check_base64(map()) -> boolean().
 check_base64(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
@@ -70,7 +74,9 @@ check_base64(Data) when is_map(Data) ->
             true
     end.
 
-%% @doc Create a CDMI object
+%% @doc
+%% Create a CDMI object.
+%% @end
 -spec create_object(cdmi_state(), object_type(), map()) ->
           {boolean(), map()} | false.
 create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) ->
@@ -87,6 +93,9 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
             false
     end.
 
+%% @doc
+%% Create a CDMI object.
+%% @end
 -spec create_object(cdmi_state(), object_type(), binary(), map()) ->
           {boolean(), map()} | false.
 create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), is_binary(DomainName), is_map(Body) ->
@@ -103,7 +112,9 @@ create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), i
             false
     end.
 
-%% @doc Delete an object and all objects underneath it.
+%% @doc
+%% Delete an object and all objects underneath it.
+%% @end
 -spec delete(cdmi_state()) -> ok | {error, term()}.
 delete(State) ->
 %    ?nebMsg("Entry"),
@@ -114,6 +125,9 @@ delete(State) ->
     Path = binary_to_list(get_value(<<"parentURI">>, Data)) ++ binary_to_list(get_value(<<"objectName">>, Data)),
     handle_delete(Data, State, Path, Children).
 
+%% @doc
+%% Delete an object from cache.
+%% @end
 -spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
 delete_cache(Oid) when is_binary(Oid) ->
 %    ?nebMsg("Entry"),
@@ -126,7 +140,9 @@ delete_cache(Oid) when is_binary(Oid) ->
             {error, notfound}
     end.
 
-%% @doc Delete a child from its parent
+%% @doc
+%% Delete a child from its parent
+%% @end
 -spec delete_child_from_parent(pid(), object_oid(), binary()) -> {ok, map()} | {error, term()}.
 delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(ParentId), is_binary(Name) ->
 %    ?nebMsg("Entry"),
@@ -155,13 +171,17 @@ delete_child_from_parent(Pid, ParentId, Name) when is_pid(Pid), is_binary(Parent
                  end,
     nebula2_db:update(Pid, ParentId, NewParent2).
 
-%% @doc Extract the Parent URI from the path.
+%% @doc
+%% Extract the Parent URI from the path.
+%% @end
 -spec extract_parentURI(list()) -> list().
 extract_parentURI(Path) ->
 %    ?nebMsg("Entry"),
     extract_parentURI(Path, "") ++ "/".
 
-%% @doc Generate hash.
+%% @doc
+%% Generate hash.
+%% @end
 -spec generate_hash(string(), string()) -> string().
 generate_hash(Method, Data) when is_binary(Data)->
     Data2 = binary_to_list(Data),
@@ -169,8 +189,34 @@ generate_hash(Method, Data) when is_binary(Data)->
 generate_hash(Method, Data) ->
     M = list_to_atom(Method),
     string:to_lower(lists:flatten([[integer_to_list(N, 16) || <<N:4>> <= crypto:hash(M, Data)]])).
-    
-%% @doc Get the object name.
+
+%% @doc
+%% Get an object from cache, if it is cached.
+%% @end
+-spec get_cache(binary() | list()) -> {ok, map()} | {error, deleted | notfound}.
+get_cache(Key) when is_list(Key) ->
+    get_cache(list_to_binary(Key));
+get_cache(Key) when is_binary(Key) ->
+    case mcd:get(?MEMCACHE, Key) of
+        {ok, Data} ->
+            {ok, Data};
+        Response ->
+            Response
+    end.
+
+%% @doc
+%% Generate a hash for the domain.
+%% @end
+-spec get_domain_hash(binary() | list()) -> string().
+get_domain_hash(Domain) when is_list(Domain) ->
+    get_domain_hash(list_to_binary(Domain));
+get_domain_hash(Domain) when is_binary(Domain) ->
+    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, Domain),
+    lists:flatten(io_lib:format("~40.16.0b", [Mac])).
+
+%% @doc
+%% Get the object name.
+%% @end
 -spec get_object_name(string()) -> string().
 get_object_name(Path) when is_list(Path) ->
 %    ?nebMsg("Entry"),
@@ -186,7 +232,9 @@ get_object_name(Path) when is_list(Path) ->
              end
     end.
 
-%% @doc Get the object's oid.
+%% @doc
+%% Get the object's oid.
+%% @end
 -spec get_object_oid(string() | binary(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
 get_object_oid(Path, State) when is_binary(Path), is_tuple(State) ->
     get_object_oid(binary_to_list(Path), State);
@@ -206,7 +254,9 @@ get_object_oid(Path, State) when is_list(Path), is_tuple(State) ->
             {ok, get_value(<<"objectID">>, Data)}
     end.
 
-%% @doc Construct the object's parent URI.
+%% @doc
+%% Construct the object's parent URI.
+%% @end
 -spec get_parent_uri(list() | binary()) -> binary().
 get_parent_uri(Path) when is_list(Path) ->
     get_parent_uri(list_to_binary(Path));
@@ -224,13 +274,35 @@ get_parent_uri(Path) when is_binary(Path) ->
                 end,
     list_to_binary(ParentUri).
 
-%% @doc Get a value from the data map.
+-ifndef(TEST).
+%% @doc
+%% Return current time in ISO 8601:2004 extended representation.
+%% @end
+-spec get_time() -> string().
+get_time() ->
+%    ?nebMsg("Entry"),
+    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(os:timestamp()),
+    binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
+                  [Year, Month, Day, Hour, Minute, Second]))).
+-else.
+%% @doc
+%% Return static time for unit tests.
+%% @end
+get_time() ->
+    "1970-01-01T00:00:00.000000Z".
+-endif.
+
+%% @doc
+%% Get a value from the data map.
+%% @end
 -spec get_value(binary(), map()) -> term().
 get_value(Key, Map) when is_binary(Key), is_map(Map) ->
 %    ?nebMsg("Entry"),
     get_value(Key, Map, <<"">>).
 
-%% @doc Get a value from the data map.
+%% @doc
+%% Get a value from the data map.
+%% @end
 -spec get_value(binary(), map(), term()) -> term().
 get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
 %    ?nebMsg("Entry"),
@@ -241,20 +313,9 @@ get_value(Key, Map, Default) when is_binary(Key), is_map(Map) ->
             maps:get(Key, Map, Default)
     end.
 
-%% @doc Return current time in ISO 8601:2004 extended representation.
--spec get_time() -> string().
--ifdef(TEST).
-get_time() ->
-    "1970-01-01T00:00:00.000000Z".
--else.
-get_time() ->
-%    ?nebMsg("Entry"),
-    {{Year, Month, Day},{Hour, Minute, Second}} = calendar:now_to_universal_time(os:timestamp()),
-    binary_to_list(iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0wT~2..0w:~2..0w:~2..0w.000000Z",
-                  [Year, Month, Day, Hour, Minute, Second]))).
--endif.
-
-%% Get the content type for the request
+%% @doc
+%% Get the content type for the request.
+%% @end
 -spec handle_content_type(cdmi_state()) -> binary().
 handle_content_type(State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
@@ -268,7 +329,9 @@ handle_content_type(State) when is_tuple(State) ->
             CT
     end.
 
+%%
 %% @doc Make a primary key for storing a new object.
+%% @end
 -spec make_key() -> object_oid().
 make_key() ->
 %    ?nebMsg("Entry"),
@@ -277,6 +340,9 @@ make_key() ->
     Crc = integer_to_list(crc16:crc16(Temp), 16),
     list_to_binary(string:to_lower(Uid ++ ?OID_SUFFIX ++ Crc)).
 
+%% @doc
+%% Build a search key.
+%% @end
 -spec make_search_key(map()) -> string().
 make_search_key(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
@@ -302,7 +368,9 @@ make_search_key(Data) when is_map(Data) ->
     DomainHash = get_domain_hash(DomainUri),
     DomainHash ++ ParentUri ++ ObjectName.
 
-%% @doc Put a value to the data map.
+%% @doc
+%% Put a value to the data map.
+%% @end
 -spec put_value(binary(), term(), map()) -> map().
 put_value(Key, Value, Map) when is_binary(Key), is_map(Map) ->
 %    ?nebMsg("Entry"),
@@ -314,6 +382,10 @@ put_value(Key, Value, Map) when is_binary(Key), is_map(Map) ->
         false ->
             maps:put(Key, Value, Map)
     end.
+
+%% @doc
+%% Cache an object.
+%% @end
 -spec set_cache(map()) -> {ok, map()}.
 set_cache(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
@@ -322,6 +394,9 @@ set_cache(Data) when is_map(Data) ->
     mcd:set(?MEMCACHE, ObjectId, Data, ?MEMCACHE_EXPIRY),
     mcd:set(?MEMCACHE, SearchKey, Data, ?MEMCACHE_EXPIRY).
 
+%% @doc
+%% Check the type of a term.
+%% @end
 -spec type_of(term()) -> binary().
 type_of(X) ->
     if
@@ -355,13 +430,18 @@ type_of(X) ->
             <<"I have no idea what it is">>
     end.
 
-%% Update Metadata
+%% @doc
+%% Update Metadata.
+%% @end
 -spec update_data_system_metadata(list(), map(), cdmi_state()) -> map().
 update_data_system_metadata(CList, Data, State) when is_list(CList), is_map(Data), is_tuple(State) ->
 %    ?nebMsg("Entry"),
     CapabilitiesURI = get_value(<<"capabilitiesURI">>, Data, []),
     update_data_system_metadata(CList, Data, CapabilitiesURI, State).
 
+%% @doc
+%% Update Metadata.
+%% @end
 -spec update_data_system_metadata(list(), map(), binary() | string(), cdmi_state()) -> map().
 update_data_system_metadata(_CList, Data, CapabilitiesURI, _State) when is_list(_CList), 
                                                                         is_map(Data),
@@ -386,7 +466,9 @@ update_data_system_metadata(CList, Data, CapabilitiesURI, State) when is_list(CL
     CList2 = maps:to_list(maps:with(CList, Capabilities)),
     nebula2_capabilities:apply_metadata_capabilities(CList2, Data).
 
-%% @doc Update a parent object with a new child
+%% @doc
+%%  Update a parent object with a new child.
+%% @end
 -spec update_parent(object_oid(), string(), object_type(), pid()) -> {ok, map()} | {error, term()}.
 update_parent(ParentOid, _, _, _) when ParentOid == <<"">> ->
 %    ?nebMsg("Entry"),
@@ -537,30 +619,12 @@ get_capability_uri(ObjectType) when is_binary(ObjectType) ->
             <<"unknown">>
     end.
 
--spec get_cache(binary() | list()) -> {ok, map()} | {error, deleted | notfound}.
-get_cache(Key) when is_list(Key) ->
-    get_cache(list_to_binary(Key));
-get_cache(Key) when is_binary(Key) ->
-    case mcd:get(?MEMCACHE, Key) of
-        {ok, Data} ->
-            {ok, Data};
-        Response ->
-            Response
-    end.
-
 -spec get_domain_from_path(list()) -> list().
 get_domain_from_path(Path) when is_list(Path) ->
 %    ?nebMsg("Entry"),
     Parts = string:tokens(Path, "/"),
     DomainParts = lists:takewhile(fun(X) -> true /= beginswith(X, "cdmi_domain_") end, Parts),
     "/" ++ string:join(DomainParts, "/") ++ "/".
-  
--spec get_domain_hash(binary() | list()) -> string().
-get_domain_hash(Domain) when is_list(Domain) ->
-    get_domain_hash(list_to_binary(Domain));
-get_domain_hash(Domain) when is_binary(Domain) ->
-    <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, Domain),
-    lists:flatten(io_lib:format("~40.16.0b", [Mac])).
 
 %% TODO: Make delete asynchronous
 -spec handle_delete(map(), cdmi_state(), list(), list()) -> ok | {error, term()}.

@@ -74,12 +74,18 @@ get_domain_maps(Pid) when is_pid(Pid) ->
             end
     end.
 
+%% @doc
+%% Marshall the metadata into a form suitable for storage and indexing.
+%% @end
 -spec marshall(map()) -> map().
 marshall(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
     SearchKey = nebula2_utils:make_search_key(Data),
     marshall(Data, SearchKey).
 
+%% @doc
+%% Marshall the metadata into a form suitable for storage and indexing.
+%% @end
 -spec marshall(map(), list()) -> map().
 marshall(Data, SearchKey) when is_map(Data), is_list(SearchKey) ->
 %    ?nebMsg("Entry"),
@@ -121,6 +127,9 @@ search(Path, State) when is_list(Path), is_tuple(State) ->
             end
     end.
 
+%% @doc
+%% Unarshall metadata from the backend for user consumption.
+%% @end
 -spec unmarshall(map()) -> map().
 unmarshall(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),

@@ -16,6 +16,8 @@
 -export([app_config/2
 ]).
 
+%% @doc Start Nebula.
+
 start(_Type, _Args) ->
     lager:debug("Starting folsom..."),
     application:start(folsom),
@@ -32,6 +34,7 @@ start(_Type, _Args) ->
     mcd:start_link(?MEMCACHE, ["localhost", 11211]),
     nebula2_sup:start_link().
 
+%% @doc Stop Nebula.
 stop(_State) ->
     ok.
 
