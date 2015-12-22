@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc Various useful functions.
+%% @doc
+%% Various useful functions used throughout the application.
+%% @end
 
 -module(nebula2_utils).
 

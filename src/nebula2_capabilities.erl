@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc Handle CDMI capability objects.
+%% @doc
+%% Handle CDMI capability objects.
+%% @end
 
 -module(nebula2_capabilities).
 

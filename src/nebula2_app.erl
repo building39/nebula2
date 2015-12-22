@@ -1,3 +1,7 @@
+%% @author mmartin
+%% @doc
+%% Application module
+%% @end
 -module(nebula2_app).
 -behaviour(application).
 

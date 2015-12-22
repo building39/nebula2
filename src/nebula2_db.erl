@@ -1,7 +1,9 @@
 %% @author mmartin
-%% @doc Handles all CRUD requests to the CDMI metadata backend.
-%% @doc Initial backend is riak. This module could be replaced to
-%% @doc make use of some other storage backend.
+%% @doc
+%% Handles all CRUD requests to the CDMI metadata backend.
+%% Initial backend is riak. This module could be replaced to
+%% make use of some other storage backend.
+%% @end
 
 -module(nebula2_db).
 

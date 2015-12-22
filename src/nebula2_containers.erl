@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc Handle CDMI container objects.
+%% @doc
+%% Handle CDMI container objects.
+%% @end
 
 -module(nebula2_containers).
 

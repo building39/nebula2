@@ -1,3 +1,8 @@
+%% @author mmartin
+%% @doc
+%% Server callbacks.
+%% @end
+
 -module(cdmi_handler).
 
 -ifdef(TESTX).
