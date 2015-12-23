@@ -3,6 +3,9 @@
 @version 1.0.0
 @title Nebula - A cloud data server based on the Cloud Data Management Interface (CDMI) version 1.1
 @doc
+
+Build date: {@date} {@time}
+
 Nebula is a Cloud Data Server based on the CDMI Version 1.1 specification, published by the Storage Network Industry
 Association ([http://www.snia.org/ SNIA]).
 
