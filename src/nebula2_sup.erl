@@ -1,3 +1,7 @@
+%% @author mmartin
+%% @doc
+%% Top level supervisor.
+%% @end
 -module(nebula2_sup).
 -behaviour(supervisor).
 

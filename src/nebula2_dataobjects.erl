@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc Handle CDMI data objects.
+%% @doc
+%% Handle CDMI data objects.
+%% @end
 
 -module(nebula2_dataobjects).
 

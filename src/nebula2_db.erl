@@ -1,7 +1,9 @@
 %% @author mmartin
-%% @doc Handles all CRUD requests to the CDMI metadata backend.
-%% @doc Initial backend is riak. This module could be replaced to
-%% @doc make use of some other storage backend.
+%% @doc
+%% Handles all CRUD requests to the CDMI metadata backend.
+%% Initial backend is riak. This module could be replaced to
+%% make use of some other storage backend.
+%% @end
 
 -module(nebula2_db).
 
@@ -72,12 +74,18 @@ get_domain_maps(Pid) when is_pid(Pid) ->
             end
     end.
 
+%% @doc
+%% Marshall the metadata into a form suitable for storage and indexing.
+%% @end
 -spec marshall(map()) -> map().
 marshall(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),
     SearchKey = nebula2_utils:make_search_key(Data),
     marshall(Data, SearchKey).
 
+%% @doc
+%% Marshall the metadata into a form suitable for storage and indexing.
+%% @end
 -spec marshall(map(), list()) -> map().
 marshall(Data, SearchKey) when is_map(Data), is_list(SearchKey) ->
 %    ?nebMsg("Entry"),
@@ -102,7 +110,7 @@ read(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
     end.
 
 %% @doc Search an index for objects.
--spec search(string(), cdmi_state()) -> {error, term()} | {ok, map()}.
+-spec search(string(), cdmi_state()) -> {ok, map()} | {error, term()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
@@ -119,6 +127,9 @@ search(Path, State) when is_list(Path), is_tuple(State) ->
             end
     end.
 
+%% @doc
+%% Unarshall metadata from the backend for user consumption.
+%% @end
 -spec unmarshall(map()) -> map().
 unmarshall(Data) when is_map(Data) ->
 %    ?nebMsg("Entry"),

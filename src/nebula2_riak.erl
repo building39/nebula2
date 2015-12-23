@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc @todo Add description to nebula2_riak.
+%% @doc
+%% Backend metadata storage module targeting Riak.
+%% @end
 
 -module(nebula2_riak).
 

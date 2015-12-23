@@ -1,6 +1,7 @@
 %% @author mmartin
-%% @doc @todo Add description to bootstrap_handler.
-
+%% @doc 
+%% Bootstrap the server
+%% @end
 
 -module(bootstrap_handler).
 

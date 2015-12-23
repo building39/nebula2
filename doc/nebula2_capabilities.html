@@ -1,0 +1,185 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module nebula2_capabilities</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module nebula2_capabilities</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  Handle CDMI capability objects.
+
+<p><b>Authors:</b> mmartin.</p>
+
+<h2><a name="description">Description</a></h2>
+  Handle CDMI capability objects.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#apply_metadata_capabilities-2">apply_metadata_capabilities/2</a></td><td>Apply CDMI capabilities.</td></tr>
+<tr><td valign="top"><a href="#cdmi_RPO-2">cdmi_RPO/2</a></td><td>Apply cdmi_RPO.</td></tr>
+<tr><td valign="top"><a href="#cdmi_RTO-2">cdmi_RTO/2</a></td><td>Apply cdmi_RTO.</td></tr>
+<tr><td valign="top"><a href="#cdmi_acount-2">cdmi_acount/2</a></td><td>Apply cdmi_acount.</td></tr>
+<tr><td valign="top"><a href="#cdmi_assignedsize-2">cdmi_assignedsize/2</a></td><td>Apply cdmi_assignedsize.</td></tr>
+<tr><td valign="top"><a href="#cdmi_atime-2">cdmi_atime/2</a></td><td>Apply cdmi_atime.</td></tr>
+<tr><td valign="top"><a href="#cdmi_ctime-2">cdmi_ctime/2</a></td><td>Apply cdmi_ctime.</td></tr>
+<tr><td valign="top"><a href="#cdmi_data_autodelete-2">cdmi_data_autodelete/2</a></td><td>Apply cdmi_data_autodelete.</td></tr>
+<tr><td valign="top"><a href="#cdmi_data_dispersion-2">cdmi_data_dispersion/2</a></td><td>Apply cdmi_data_dispersion.</td></tr>
+<tr><td valign="top"><a href="#cdmi_data_holds-2">cdmi_data_holds/2</a></td><td>Apply cdmi_data_holds.</td></tr>
+<tr><td valign="top"><a href="#cdmi_data_redundancy-2">cdmi_data_redundancy/2</a></td><td>Apply cdmi_data_redundancy.</td></tr>
+<tr><td valign="top"><a href="#cdmi_data_retention-2">cdmi_data_retention/2</a></td><td>Apply cdmi_data_retention.</td></tr>
+<tr><td valign="top"><a href="#cdmi_encryption-2">cdmi_encryption/2</a></td><td>Apply cdmi_encryption.</td></tr>
+<tr><td valign="top"><a href="#cdmi_geographic_placement-2">cdmi_geographic_placement/2</a></td><td>Apply cdmi_geographic_placement.</td></tr>
+<tr><td valign="top"><a href="#cdmi_immediate_redundancy-2">cdmi_immediate_redundancy/2</a></td><td>Apply cdmi_immediate_redundancy.</td></tr>
+<tr><td valign="top"><a href="#cdmi_infrastructure_redundancy-2">cdmi_infrastructure_redundancy/2</a></td><td>Apply cdmi_infrastructure_redundancy.</td></tr>
+<tr><td valign="top"><a href="#cdmi_latency-2">cdmi_latency/2</a></td><td>Apply cdmi_latency.</td></tr>
+<tr><td valign="top"><a href="#cdmi_mcount-2">cdmi_mcount/2</a></td><td>Apply cdmi_mcount.</td></tr>
+<tr><td valign="top"><a href="#cdmi_mtime-2">cdmi_mtime/2</a></td><td>Apply cdmi_mtime.</td></tr>
+<tr><td valign="top"><a href="#cdmi_sanitization_method-2">cdmi_sanitization_method/2</a></td><td>Apply cdmi_sanitization_method.</td></tr>
+<tr><td valign="top"><a href="#cdmi_size-2">cdmi_size/2</a></td><td>Apply cdmi_size.</td></tr>
+<tr><td valign="top"><a href="#cdmi_throughput-2">cdmi_throughput/2</a></td><td>Apply cdmi_throughput.</td></tr>
+<tr><td valign="top"><a href="#cdmi_value_hash-2">cdmi_value_hash/2</a></td><td>Apply cdmi_value_hash.</td></tr>
+<tr><td valign="top"><a href="#get_capability-2">get_capability/2</a></td><td>Get a CDMI capability.</td></tr>
+<tr><td valign="top"><a href="#new_capability-2">new_capability/2</a></td><td>Create a new CDMI capability.</td></tr>
+<tr><td valign="top"><a href="#update_capability-3">update_capability/3</a></td><td>Update a CDMI capability.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="apply_metadata_capabilities-2">apply_metadata_capabilities/2</a></h3>
+<div class="spec">
+<p><tt>apply_metadata_capabilities(T::list(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply CDMI capabilities</p>
+
+<h3 class="function"><a name="cdmi_RPO-2">cdmi_RPO/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_RPO(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_RPO</p>
+
+<h3 class="function"><a name="cdmi_RTO-2">cdmi_RTO/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_RTO(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_RTO</p>
+
+<h3 class="function"><a name="cdmi_acount-2">cdmi_acount/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_acount(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_acount</p>
+
+<h3 class="function"><a name="cdmi_assignedsize-2">cdmi_assignedsize/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_assignedsize(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_assignedsize</p>
+
+<h3 class="function"><a name="cdmi_atime-2">cdmi_atime/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_atime(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_atime</p>
+
+<h3 class="function"><a name="cdmi_ctime-2">cdmi_ctime/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_ctime(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_ctime</p>
+
+<h3 class="function"><a name="cdmi_data_autodelete-2">cdmi_data_autodelete/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_data_autodelete(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_data_autodelete</p>
+
+<h3 class="function"><a name="cdmi_data_dispersion-2">cdmi_data_dispersion/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_data_dispersion(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_data_dispersion</p>
+
+<h3 class="function"><a name="cdmi_data_holds-2">cdmi_data_holds/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_data_holds(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_data_holds</p>
+
+<h3 class="function"><a name="cdmi_data_redundancy-2">cdmi_data_redundancy/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_data_redundancy(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_data_redundancy</p>
+
+<h3 class="function"><a name="cdmi_data_retention-2">cdmi_data_retention/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_data_retention(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_data_retention</p>
+
+<h3 class="function"><a name="cdmi_encryption-2">cdmi_encryption/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_encryption(EncryptionMethods::list(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_encryption</p>
+
+<h3 class="function"><a name="cdmi_geographic_placement-2">cdmi_geographic_placement/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_geographic_placement(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_geographic_placement</p>
+
+<h3 class="function"><a name="cdmi_immediate_redundancy-2">cdmi_immediate_redundancy/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_immediate_redundancy(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_immediate_redundancy</p>
+
+<h3 class="function"><a name="cdmi_infrastructure_redundancy-2">cdmi_infrastructure_redundancy/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_infrastructure_redundancy(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_infrastructure_redundancy</p>
+
+<h3 class="function"><a name="cdmi_latency-2">cdmi_latency/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_latency(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_latency</p>
+
+<h3 class="function"><a name="cdmi_mcount-2">cdmi_mcount/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_mcount(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_mcount</p>
+
+<h3 class="function"><a name="cdmi_mtime-2">cdmi_mtime/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_mtime(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_mtime</p>
+
+<h3 class="function"><a name="cdmi_sanitization_method-2">cdmi_sanitization_method/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_sanitization_method(Methods::list(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_sanitization_method</p>
+
+<h3 class="function"><a name="cdmi_size-2">cdmi_size/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_size(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_size</p>
+
+<h3 class="function"><a name="cdmi_throughput-2">cdmi_throughput/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_throughput(Doit::boolean(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_throughput</p>
+
+<h3 class="function"><a name="cdmi_value_hash-2">cdmi_value_hash/2</a></h3>
+<div class="spec">
+<p><tt>cdmi_value_hash(ValueHash::list(), Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>Apply cdmi_value_hash</p>
+
+<h3 class="function"><a name="get_capability-2">get_capability/2</a></h3>
+<div class="spec">
+<p><tt>nebula2_capabilities:get_capability(Pid::pid(), Oid::<a href="#type-object_oid">object_oid()</a>) -&gt; #{}</tt><br></p>
+</div><p>Get a CDMI capability</p>
+
+<h3 class="function"><a name="new_capability-2">new_capability/2</a></h3>
+<div class="spec">
+<p><tt>nebula2_capabilities:new_capability(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>Create a new CDMI capability</p>
+
+<h3 class="function"><a name="update_capability-3">update_capability/3</a></h3>
+<div class="spec">
+<p><tt>nebula2_capabilities:update_capability(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>, Oid::<a href="#type-object_oid">object_oid()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>Update a CDMI capability</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Dec 23 2015, 11:44:47.</i></p>
+</body>
+</html>

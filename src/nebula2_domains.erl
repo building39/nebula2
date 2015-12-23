@@ -1,5 +1,7 @@
 %% @author mmartin
-%% @doc Handle CDMI domain objects.
+%% @doc
+%% Handle CDMI domain objects.
+%% @end
 
 -module(nebula2_domains).
 

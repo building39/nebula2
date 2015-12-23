@@ -1,0 +1,6 @@
+%% encoding: UTF-8
+{application,nebula2}.
+{packages,[]}.
+{modules,[bootstrap_handler,cdmi_handler,nebula2_app,nebula2_capabilities,
+          nebula2_containers,nebula2_dataobjects,nebula2_db,nebula2_domains,
+          nebula2_riak,nebula2_sup,nebula2_utils]}.
