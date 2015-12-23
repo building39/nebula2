@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module nebula2_db</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module nebula2_db</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  Handles all CRUD requests to the CDMI metadata backend.
+
+<p><b>Authors:</b> mmartin.</p>
+
+<h2><a name="description">Description</a></h2>
+  Handles all CRUD requests to the CDMI metadata backend.
+  Initial backend is riak. This module could be replaced to
+  make use of some other storage backend.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#available-1">available/1</a></td><td>Check for the availability of the metadata backend.</td></tr>
+<tr><td valign="top"><a href="#create-3">create/3</a></td><td>Create an object.</td></tr>
+<tr><td valign="top"><a href="#delete-2">delete/2</a></td><td>Delete an object.</td></tr>
+<tr><td valign="top"><a href="#get_domain_maps-1">get_domain_maps/1</a></td><td>Get the domain maps.</td></tr>
+<tr><td valign="top"><a href="#marshall-1">marshall/1</a></td><td>
+  Marshall the metadata into a form suitable for storage and indexing.</td></tr>
+<tr><td valign="top"><a href="#marshall-2">marshall/2</a></td><td>
+  Marshall the metadata into a form suitable for storage and indexing.</td></tr>
+<tr><td valign="top"><a href="#read-2">read/2</a></td><td>Read an object.</td></tr>
+<tr><td valign="top"><a href="#search-2">search/2</a></td><td>Search an index for objects.</td></tr>
+<tr><td valign="top"><a href="#unmarshall-1">unmarshall/1</a></td><td>
+  Unarshall metadata from the backend for user consumption.</td></tr>
+<tr><td valign="top"><a href="#update-3">update/3</a></td><td>Update an object.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="available-1">available/1</a></h3>
+<div class="spec">
+<p><tt>nebula2_db:available(Pid::pid()) -&gt; boolean()</tt><br></p>
+</div><p>Check for the availability of the metadata backend.</p>
+
+<h3 class="function"><a name="create-3">create/3</a></h3>
+<div class="spec">
+<p><tt>create(Pid::pid(), Oid::<a href="#type-object_oid">object_oid()</a>, Data::#{}) -&gt; {error, term()} | {ok, binary()}</tt><br></p>
+</div><p>Create an object.</p>
+
+<h3 class="function"><a name="delete-2">delete/2</a></h3>
+<div class="spec">
+<p><tt>delete(Pid::pid(), Oid::<a href="#type-object_oid">object_oid()</a>) -&gt; ok | {error, term()}</tt><br></p>
+</div><p>Delete an object</p>
+
+<h3 class="function"><a name="get_domain_maps-1">get_domain_maps/1</a></h3>
+<div class="spec">
+<p><tt>nebula2_db:get_domain_maps(Pid::pid()) -&gt; binary()</tt><br></p>
+</div><p>Get the domain maps.</p>
+
+<h3 class="function"><a name="marshall-1">marshall/1</a></h3>
+<div class="spec">
+<p><tt>marshall(Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>
+  Marshall the metadata into a form suitable for storage and indexing.</p>
+
+<h3 class="function"><a name="marshall-2">marshall/2</a></h3>
+<div class="spec">
+<p><tt>marshall(Data::#{}, SearchKey::list()) -&gt; #{}</tt><br></p>
+</div><p>
+  Marshall the metadata into a form suitable for storage and indexing.</p>
+
+<h3 class="function"><a name="read-2">read/2</a></h3>
+<div class="spec">
+<p><tt>read(Pid::pid(), Oid::<a href="#type-object_oid">object_oid()</a>) -&gt; {ok, #{}} | {error, term()}</tt><br></p>
+</div><p>Read an object</p>
+
+<h3 class="function"><a name="search-2">search/2</a></h3>
+<div class="spec">
+<p><tt>search(Path::string(), State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {error, term()} | {ok, #{}}</tt><br></p>
+</div><p>Search an index for objects.</p>
+
+<h3 class="function"><a name="unmarshall-1">unmarshall/1</a></h3>
+<div class="spec">
+<p><tt>unmarshall(Data::#{}) -&gt; #{}</tt><br></p>
+</div><p>
+  Unarshall metadata from the backend for user consumption.</p>
+
+<h3 class="function"><a name="update-3">update/3</a></h3>
+<div class="spec">
+<p><tt>update(Pid::pid(), Oid::<a href="#type-object_oid">object_oid()</a>, Data::#{}) -&gt; {ok, #{}} | {error, term()}</tt><br></p>
+</div><p>Update an object.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Dec 23 2015, 10:12:57.</i></p>
+</body>
+</html>

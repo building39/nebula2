@@ -1,0 +1,19 @@
+@author Michael L Martin <mmartin4242@gmail.com>
+@copyright 2015 Michael L Martin
+@version 1.0.0
+@title Nebula - A cloud data server based on the Cloud Data Management Interface (CDMI) version 1.1
+@doc
+Nebula is a Cloud Data Server based on the CDMI Version 1.1 specification, published by the Storage Network Industry
+Association ([http://www.snia.org/ SNIA]).
+
+More information on CDMI can be found [http://http://www.snia.org/cdmi here]. A PDF version of the specification can be
+downloaded from [http://www.snia.org/sites/default/files/CDMI_Spec_v1.1.1.pdf here].
+
+== Server ==
+The current implementation is very basic, allowing for the creation of domains, domain members, realm maps, containers,
+data objects, and capability objects. HTTP basic authentication is supported, but ACLs are not yet supported. ACL 
+support is a high priority task on the current roadmap. 
+
+== Clients ==
+Currently, Nebula provides only the server code - no client code. Various clients
+(web-based and mobile) are on the roadmap.

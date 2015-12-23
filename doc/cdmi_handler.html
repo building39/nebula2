@@ -1,0 +1,215 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Module cdmi_handler</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module cdmi_handler</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  Server callbacks.
+
+<p><b>Authors:</b> mmartin.</p>
+
+<h2><a name="description">Description</a></h2>
+  Server callbacks.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#allow_missing_post-2">allow_missing_post/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#allowed_methods-2">allowed_methods/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#content_types_accepted-2">content_types_accepted/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#content_types_provided-2">content_types_provided/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#delete_completed-2">delete_completed/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#delete_resource-2">delete_resource/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#expires-2">expires/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#forbidden-2">forbidden/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#from_cdmi_capability-2">from_cdmi_capability/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#from_cdmi_container-2">from_cdmi_container/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#from_cdmi_domain-2">from_cdmi_domain/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#from_cdmi_object-2">from_cdmi_object/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#from_multipart_mixed-2">from_multipart_mixed/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#generate_etag-2">generate_etag/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#init-3">init/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_authorized-2">is_authorized/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#is_conflict-2">is_conflict/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#known_methods-2">known_methods/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#last_modified-2">last_modified/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#malformed_request-2">malformed_request/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#moved_permanently-2">moved_permanently/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#moved_temporarily-2">moved_temporarily/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#multiple_choices-2">multiple_choices/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#previously_existed-2">previously_existed/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#resource_exists-2">resource_exists/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#rest_init-2">rest_init/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#service_available-2">service_available/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#to_cdmi_capability-2">to_cdmi_capability/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#to_cdmi_container-2">to_cdmi_container/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#to_cdmi_domain-2">to_cdmi_domain/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#to_cdmi_object-2">to_cdmi_object/2</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="allow_missing_post-2">allow_missing_post/2</a></h3>
+<div class="spec">
+<p><tt>allow_missing_post(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="allowed_methods-2">allowed_methods/2</a></h3>
+<div class="spec">
+<p><tt>allowed_methods(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="content_types_accepted-2">content_types_accepted/2</a></h3>
+<div class="spec">
+<p><tt>content_types_accepted(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="content_types_provided-2">content_types_provided/2</a></h3>
+<div class="spec">
+<p><tt>content_types_provided(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="delete_completed-2">delete_completed/2</a></h3>
+<div class="spec">
+<p><tt>delete_completed(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="delete_resource-2">delete_resource/2</a></h3>
+<div class="spec">
+<p><tt>delete_resource(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="expires-2">expires/2</a></h3>
+<div class="spec">
+<p><tt>expires(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="forbidden-2">forbidden/2</a></h3>
+<div class="spec">
+<p><tt>forbidden(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="from_cdmi_capability-2">from_cdmi_capability/2</a></h3>
+<div class="spec">
+<p><tt>from_cdmi_capability(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="from_cdmi_container-2">from_cdmi_container/2</a></h3>
+<div class="spec">
+<p><tt>from_cdmi_container(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="from_cdmi_domain-2">from_cdmi_domain/2</a></h3>
+<div class="spec">
+<p><tt>from_cdmi_domain(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="from_cdmi_object-2">from_cdmi_object/2</a></h3>
+<div class="spec">
+<p><tt>from_cdmi_object(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="from_multipart_mixed-2">from_multipart_mixed/2</a></h3>
+<div class="spec">
+<p><tt>from_multipart_mixed(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="generate_etag-2">generate_etag/2</a></h3>
+<div class="spec">
+<p><tt>generate_etag(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="init-3">init/3</a></h3>
+<div class="spec">
+<p><tt>init(X1, Req, Opts) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="is_authorized-2">is_authorized/2</a></h3>
+<div class="spec">
+<p><tt>is_authorized(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="is_conflict-2">is_conflict/2</a></h3>
+<div class="spec">
+<p><tt>is_conflict(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="known_methods-2">known_methods/2</a></h3>
+<div class="spec">
+<p><tt>known_methods(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="last_modified-2">last_modified/2</a></h3>
+<div class="spec">
+<p><tt>last_modified(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="malformed_request-2">malformed_request/2</a></h3>
+<div class="spec">
+<p><tt>malformed_request(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="moved_permanently-2">moved_permanently/2</a></h3>
+<div class="spec">
+<p><tt>moved_permanently(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="moved_temporarily-2">moved_temporarily/2</a></h3>
+<div class="spec">
+<p><tt>moved_temporarily(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="multiple_choices-2">multiple_choices/2</a></h3>
+<div class="spec">
+<p><tt>multiple_choices(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="previously_existed-2">previously_existed/2</a></h3>
+<div class="spec">
+<p><tt>previously_existed(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="resource_exists-2">resource_exists/2</a></h3>
+<div class="spec">
+<p><tt>resource_exists(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="rest_init-2">rest_init/2</a></h3>
+<div class="spec">
+<p><tt>rest_init(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="service_available-2">service_available/2</a></h3>
+<div class="spec">
+<p><tt>service_available(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="to_cdmi_capability-2">to_cdmi_capability/2</a></h3>
+<div class="spec">
+<p><tt>to_cdmi_capability(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="to_cdmi_container-2">to_cdmi_container/2</a></h3>
+<div class="spec">
+<p><tt>to_cdmi_container(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="to_cdmi_domain-2">to_cdmi_domain/2</a></h3>
+<div class="spec">
+<p><tt>to_cdmi_domain(Req, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="to_cdmi_object-2">to_cdmi_object/2</a></h3>
+<div class="spec">
+<p><tt>to_cdmi_object(Req, State) -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Dec 23 2015, 10:12:57.</i></p>
+</body>
+</html>
