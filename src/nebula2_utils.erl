@@ -78,7 +78,7 @@ check_base64(Data) when is_map(Data) ->
 %% Create a CDMI object.
 %% @end
 -spec create_object(cdmi_state(), object_type(), map()) ->
-          {boolean(), map()} | false.
+          {true, map()} | false.
 create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -97,7 +97,7 @@ create_object(State, ObjectType, Body) when is_binary(ObjectType), is_map(Body) 
 %% Create a CDMI object.
 %% @end
 -spec create_object(cdmi_state(), object_type(), binary(), map()) ->
-          {boolean(), map()} | false.
+          {true, map()} | false.
 create_object(State, ObjectType, DomainName, Body) when is_binary(ObjectType), is_binary(DomainName), is_map(Body) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -128,7 +128,7 @@ delete(State) ->
 %% @doc
 %% Delete an object from cache.
 %% @end
--spec delete_cache(object_oid()) -> {ok | error, deleted | notfound}.
+-spec delete_cache(object_oid()) -> {ok, deleted} | {error, notfound}.
 delete_cache(Oid) when is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     case mcd:get(?MEMCACHE, Oid) of
@@ -235,7 +235,7 @@ get_object_name(Path) when is_list(Path) ->
 %% @doc
 %% Get the object's oid.
 %% @end
--spec get_object_oid(string() | binary(), cdmi_state()) -> {ok, term()}|{notfound, string()}.
+-spec get_object_oid(string() | binary(), cdmi_state()) -> {ok | notfound, binary()}.
 get_object_oid(Path, State) when is_binary(Path), is_tuple(State) ->
     get_object_oid(binary_to_list(Path), State);
 get_object_oid(Path, State) when is_list(Path), is_tuple(State) ->
@@ -249,7 +249,7 @@ get_object_oid(Path, State) when is_list(Path), is_tuple(State) ->
                end,
     case nebula2_db:search(RealPath, State) of
         {error, _} ->
-            {notfound, ""};
+            {notfound, <<"">>};
         {ok, Data} ->
             {ok, get_value(<<"objectID">>, Data)}
     end.
@@ -288,6 +288,7 @@ get_time() ->
 %% @doc
 %% Return static time for unit tests.
 %% @end
+-spec get_time() -> string().
 get_time() ->
     "1970-01-01T00:00:00.000000Z".
 -endif.

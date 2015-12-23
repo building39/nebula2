@@ -101,7 +101,7 @@ new_capability(Req, State) when is_tuple(State) ->
 
 %% @doc Update a CDMI capability
 -spec nebula2_capabilities:update_capability(cowboy_req:req(), cdmi_state(), object_oid()) ->
-          {true, cowboy_req:req(), cdmi_state()} | {false, cowboy_req:req(), cdmi_state()}.
+          {boolean(), cowboy_req:req(), cdmi_state()}.
 update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
     {Pid, _} = State,

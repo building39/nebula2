@@ -44,9 +44,16 @@
          to_cdmi_domain/2,
          to_cdmi_object/2]).
 
+%% @doc
+%% Module initialization.
+%% @end
 init(_, _Req, _Opts) ->
     {upgrade, protocol, cowboy_rest}.
 
+%% @doc
+%% Initialize the REST interface.
+%% @end
+-spec rest_init(cowboy_req:req(), cdmi_state()) -> {ok, cowboy_req:req(), cdmi_state()}.
 rest_init(Req, _State) ->
 %    ?nebMsg("Entry"),
     PoolMember          = get_pooler(),
@@ -134,14 +141,26 @@ rest_init(Req, _State) ->
 %    ?nebFmt("Exit: ~p", [FinalMap]),
     {ok, Req9, {PoolMember, FinalMap}}.
 
+%% @doc
+%% Return a list of allowed methods.
+%% @end
+-spec allowed_methods(cowboy_req:req(), cdmi_state()) -> {list(), cowboy_req:req(), cdmi_state()}.
 allowed_methods(Req, State) ->
 %    ?nebMsg("Entry"),
     {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
 
+%% @doc
+%% Allow missing POST.
+%% @end
+-spec allow_missing_post(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 allow_missing_post(Req, State) ->
 %    ?nebMsg("Entry"),
     {true, Req, State}.
 
+%% @doc
+%% Return a list of acceptable content types.
+%% @end
+-spec content_types_accepted(cowboy_req:req(), cdmi_state()) -> {list(), cowboy_req:req(), cdmi_state()}.
 content_types_accepted(Req, State) ->
 %    ?nebMsg("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, from_cdmi_capability},
@@ -151,6 +170,10 @@ content_types_accepted(Req, State) ->
 	  {{<<"multipart">>, <<"mixed">>, '*'},             from_multipart_mixed}
      ], Req, State}.
 
+%% @doc
+%% Return a list of content types that this server provides.
+%% @end
+-spec content_types_provided(cowboy_req:req(), cdmi_state()) -> {list(), cowboy_req:req(), cdmi_state()}.
 content_types_provided(Req, State) ->
 %    ?nebMsg("Entry"),
     {[{{<<"application">>, <<"cdmi-capability">>, '*'}, to_cdmi_capability},
@@ -159,11 +182,18 @@ content_types_provided(Req, State) ->
       {{<<"application">>, <<"cdmi-object">>, '*'},     to_cdmi_object}
      ], Req, State}.
 
+%% @doc
+%% Return true if the DELETE method has completed.
+%% @end
+-spec delete_completed(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 delete_completed(Req, State) ->
     %% TODO: make this handle large deletes, like a container with lots of objects.
 %    ?nebMsg("Entry"),
     {true, Req, State}.
-
+%% @doc
+%% DELETE a resource.
+%% @end
+-spec delete_resource(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 delete_resource(Req, State) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
@@ -193,16 +223,27 @@ delete_resource(Req, State) ->
             bail(403, <<"Cannot delete this domain\n">>, Req, State)
     end.
 
+%% @doc
+%% Expires. Not yet implemented.
+%% @end
+-spec expires(cowboy_req:req(), cdmi_state()) -> {undefined, cowboy_req:req(), cdmi_state()}.
 expires(Req, State) ->
 %    ?nebMsg("Entry"),
     {undefined, Req, State}.
 
+%% @doc
+%% Check ACLs. Not yet implemented.
+%% @end
+-spec forbidden(cowboy_req:req(), cdmi_state()) -> {false, cowboy_req:req(), cdmi_state()}.
 forbidden(Req, State) ->
 %% TODO: Check ACLs here
 %    ?nebMsg("Entry"),
     {false, Req, State}.
     
-%% content types accepted
+%% @doc
+%% Process a capability object request from the client.
+%% @end
+-spec from_cdmi_capability(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_cdmi_capability(Req, State) ->
 %    ?nebMsg("Entry"),
     {_Pid, EnvMap} = State,
@@ -222,6 +263,10 @@ from_cdmi_capability(Req, State) ->
             bail(400, <<"bad encoding\n">>, Req, State)
     end.
 
+%% @doc
+%% Process a container object request from the client.
+%% @end
+-spec from_cdmi_container(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_cdmi_container(Req, State) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
@@ -250,6 +295,10 @@ from_cdmi_container(Req, State) ->
             bail(400, <<"bad encoding\n">>, Req, State)
     end.
 
+%% @doc
+%% Process a domain object request from the client.
+%% @end
+-spec from_cdmi_domain(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_cdmi_domain(Req, State) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
@@ -262,6 +311,10 @@ from_cdmi_domain(Req, State) ->
             bail(400, <<"Bad Request\n">>, Req, State)
     end.
 
+%% @doc
+%% Process a data object request from the client.
+%% @end
+-spec from_cdmi_object(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_cdmi_object(Req, State) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
@@ -298,6 +351,10 @@ from_cdmi_object(Req, State) ->
             bail(400, <<"bad encoding\n">>, Req, State)
     end.
 
+%% @doc
+%% Process a multipart mixed object request from the client.
+%% @end
+-spec from_multipart_mixed(cowboy_req:req(), cdmi_state()) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_multipart_mixed(Req, State) ->
 %    ?nebMsg("Enter"),
     {_, EnvMap} = State,
@@ -348,49 +405,27 @@ from_multipart_mixed(Req, State, ok) ->
             bail(400, <<"bad encoding\n">>, Req, State)
     end.
 
-multipart(Req, BodyParts) ->
-    case cowboy_req:part(Req) of
-        {ok, _Headers, Req2} ->
-            {ok, Body, Req3} = cowboy_req:part_body(Req2),
-            BodyParts2 = lists:append(BodyParts, [Body]),
-            multipart(Req3, BodyParts2);
-        {done, Req2} ->
-            {Req2, BodyParts}
-    end.
-
+%% @doc
+%% Generate an ETag. Not yet implemented.
+%% @end
+-spec generate_etag(cowboy_req:req(), cdmi_state()) -> {undefined, cowboy_req:req(), cdmi_state()}.
 generate_etag(Req, State) ->
 %    ?nebMsg("Entry"),
     {undefined, Req, State}.
 
+%% @doc
+%% Check if the client is authorized.
+%% @end
+-spec is_authorized(cowboy_req:req(), cdmi_state()) -> {true | {false, string()}, cowboy_req:req(), cdmi_state()}.
 is_authorized(Req, State) ->
 %    ?nebMsg("Entry"),
     {AuthString, Req2} = cowboy_req:header(<<"authorization">>, Req),
     is_authorized_handler(AuthString, Req2, State).
 
-is_authorized_handler(undefined, Req, State) ->
-%    ?nebMsg("Entry"),
-    {{false, "Basic realm=\"default\""}, Req, State};
-is_authorized_handler(AuthString, Req, State) ->
-%    ?nebMsg("Entry"),
-    {_, EnvMap} = State,
-    AuthString2 = binary_to_list(AuthString),
-    [AuthMethod, Auth] = string:tokens(AuthString2, " "),
-    {Authenticated, UserId} = case string:to_lower(AuthMethod) of
-                            "basic" ->
-                                basic(Auth, State);
-                             _Other ->
-                                 lager:error("Unknown AuthMethod: ~p", [AuthMethod]),
-                                 {false, undefined}
-                         end,
-    if
-        Authenticated==false ->
-            {{false, "Basic realm=\"default\""}, Req, State};
-        true ->
-            {Pid, EnvMap} = State,
-            NewEnvMap = nebula2_utils:put_value(<<"auth_as">>, list_to_binary(UserId), EnvMap),
-            {true, Req, {Pid, NewEnvMap}}
-    end.
-
+%% @doc
+%% Check for conflict. Not yet implemented.
+%% @end
+-spec is_conflict(cowboy_req:req(), cdmi_state()) -> {false, cowboy_req:req(), cdmi_state()}.
 is_conflict(Req, State) ->
 %    ?nebMsg("Entry"),
     {false, Req, State}.
@@ -407,17 +442,28 @@ is_conflict(Req, State) ->
 %%        % ?nebFmt("handle_is_conflict:catchall Method ~p exists is ~p", [Method, Exists]),
 %%    false.
 
+%% @doc
+%% Return a list of methods that this server is willing to handle.
+%% @end
+-spec known_methods(cowboy_req:req(), cdmi_state()) -> {list(), cowboy_req:req(), cdmi_state()}.
 known_methods(Req, State) ->
 %    ?nebMsg("Entry"),
     {[<<"GET">>, <<"HEAD">>, <<"POST">>, <<"PUT">>, <<"PATCH">>, <<"DELETE">>, <<"OPTIONS">>], Req, State}.
 
+%% @doc
+%% Last modified. Not yet implemented.
+%% @end
+-spec last_modified(cowboy_req:req(), cdmi_state()) -> {undefined, cowboy_req:req(), cdmi_state()}.
 last_modified(Req, State) ->
 %    ?nebMsg("Entry"),
     {undefined, Req, State}.
 
-%% Malformed request.
+%% @doc
+%% Check for well formed request.
 %% There must be an X-CDMI-Specification-Version header, and it
 %% must request version 1.1
+%% @end
+-spec malformed_request(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 malformed_request(Req, State) ->
 %    ?nebMsg("Entry"),
     CDMIVersion = cowboy_req:header(<<?VERSION_HEADER>>, Req, error),
@@ -432,27 +478,40 @@ malformed_request(Req, State) ->
     end,
     {Valid, Req, State}.
 
+%% @doc
 %% Has the resource moved, permanently?
 %% If the request asks for a cdmi-container or cdmi-domain, and
 %% the URL does not end with a slash, it has moved permanently.
+%% @end
+-spec moved_permanently(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 moved_permanently(Req, State) ->
 %    ?nebMsg("Entry"),
     {_Pid, EnvMap} = State,
     Moved = nebula2_utils:get_value(<<"moved_permanently">>, EnvMap, false),
     {Moved, Req, State}.
 
-%% Has the resource has moved, temporarily?
+%% @doc
+%% Has the resource has moved, temporarily? Not yet implemented.
+%% @end
+-spec moved_temporarily(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 moved_temporarily(Req, State) ->
 %    ?nebMsg("Entry"),
     {false, Req, State}.
 
+%% @doc
+%% Can this request return multiple responses? Probably won't be implemented.
+%% @end
+-spec multiple_choices(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 multiple_choices(Req, State) ->
 %    ?nebMsg("Entry"),
     {false, Req, State}.
 
+%% @doc
 %% Did the resource exist once upon a time?
 %% For non-CDMI object types or CDMI containers that lack a trailing slash,
 %% does that resource exist with a trailing slash?
+%% @end
+-spec previously_existed(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 previously_existed(Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -476,7 +535,10 @@ previously_existed(Req, State) ->
             {Response, Req3, {Pid, EnvMap5}}
     end.
 
+%% @doc
 %% Does the resource exist?
+%% @end
+-spec resource_exists(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 resource_exists(Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -487,39 +549,13 @@ resource_exists(Req, State) ->
     NewEnvMap2 = nebula2_utils:put_value(<<"exists">>, Response, NewEnvMap),
     {Response, NewReq, {Pid, NewEnvMap2}}.
 
-resource_exists_handler("/cdmi_objectid/", Req, State) ->
-%    ?nebMsg("Entry"),
-    {Pid, EnvMap} = State,
-    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
-    case nebula2_db:read(Pid, Oid) of
-        {error, _Status} ->
-            {false, Req, State};
-        {ok, Data} ->
-            nebula2_utils:set_cache(Data),
-            {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}}
-    end;
-resource_exists_handler(_, Req, State) ->
-%    ?nebMsg("Entry"),
-    {Pid, EnvMap} = State,
-%    ?nebFmt("EnvMap: ~p", [EnvMap]),
-    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
-    case Path of
-        "/" ->
-            {true, Req, State};
-        _ ->
-            SearchKey = nebula2_utils:make_search_key(EnvMap),
-            case nebula2_db:search(SearchKey, State) of
-                {ok, Data} ->
-                    {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
-                _ ->
-                    {false, Req, State}
-            end
-    end.
-    
+%% @doc
 %% if pooler says no members, kick back a 503. I
 %% do this here because a 503 seems to me the most
 %% appropriate response if database connections are
 %% <b>currently</b> unavailable.
+%% @end
+-spec service_available(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 service_available(Req, {error_no_members, _}) ->
 %    ?nebMsg("<--------------------- Request Start ---------------------------->"),
     {false, Req, undefined};
@@ -532,19 +568,34 @@ service_available(Req, State) ->
     end,
     {Available, Req, State}.
 
-%% content types provided
+%% @doc
+%% Return a capability object.
+%% @end
+-spec to_cdmi_capability(cowboy_req:req(), cdmi_state()) -> {json_value() | notfound, cowboy_req:req(), cdmi_state()}.
 to_cdmi_capability(Req, State) ->
 %    ?nebMsg("Entry"),
     to_cdmi_object(Req, State).
 
+%% @doc
+%% Return a container object.
+%% @end
+-spec to_cdmi_container(cowboy_req:req(), cdmi_state()) -> {json_value() | notfound, cowboy_req:req(), cdmi_state()}.
 to_cdmi_container(Req, State) ->
 %    ?nebMsg("Entry"),
     to_cdmi_object(Req, State).
 
+%% @doc
+%% Return a domain object.
+%% @end
+-spec to_cdmi_domain(cowboy_req:req(), cdmi_state()) -> {json_value() | notfound, cowboy_req:req(), cdmi_state()}.
 to_cdmi_domain(Req, State) ->
 %    ?nebMsg("Entry"),
     to_cdmi_object(Req, State).
 
+%% @doc
+%% Return a CDMI object.
+%% @end
+-spec to_cdmi_object(cowboy_req:req(), cdmi_state()) -> {json_value() | notfound, cowboy_req:req(), cdmi_state()}.
 to_cdmi_object(Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
@@ -553,57 +604,7 @@ to_cdmi_object(Req, State) ->
     pooler:return_member(riak_pool, Pid),
     Response.
 
--spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), cdmi_state()} | {notfound, term(), cdmi_state()}.
-to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
-%    ?nebMsg("Entry"),
-    {Pid, EnvMap} = State,
-    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
-    case nebula2_db:read(Pid, Oid) of
-        {ok, Data} ->
-            nebula2_utils:set_cache(Data),
-            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
-        {error, Status} -> 
-            {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
-    end;
-to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
-%    ?nebMsg("Entry"),
-    {_, EnvMap} = State,
-    Key = nebula2_utils:make_search_key(EnvMap),
-    case nebula2_db:search(Key, State) of
-        {ok, Data} ->
-            nebula2_utils:set_cache(Data),
-            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
-        {error, Status} ->
-            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
-    end;
-to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
-%    ?nebMsg("Entry"),
-    {_, EnvMap} = State,
-    Key = nebula2_utils:make_search_key(EnvMap),
-    case nebula2_db:search(Key, State) of
-        {ok, Data} ->
-            nebula2_utils:set_cache(Data),
-            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
-        {error, Status} ->
-            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}, Req]), State}
-    end;
-to_cdmi_object_handler(Req, State, _, _) ->
-%    ?nebMsg("Entry"),
-    {_, EnvMap} = State,
-    Key = nebula2_utils:make_search_key(EnvMap),
-    case nebula2_db:search(Key, State) of
-        {ok, Map} ->
-            {_, EnvMap} = State,
-            Qs = binary_to_list(nebula2_utils:get_value(<<"qs">>, EnvMap)),
-            Map2 = handle_query_string(Map, Qs),
-            CList = [<<"cdmi_atime">>,
-                     <<"cdmi_acount">>],
-            Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
-            nebula2_utils:set_cache(Map3),
-            {jsx:encode(nebula2_db:unmarshall(Map3)), Req, State};
-        {error, Status} ->
-            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
-    end.
+
 
 %% ====================================================================
 %% Internal functions
@@ -654,18 +655,6 @@ basic(Auth, State) ->
             Creds = binary_to_list(nebula2_utils:get_value(<<"cdmi_member_credentials">>, VMap)),
             basic_auth_handler(Creds, UserId, Password)
     end.
-
--spec parse_options(list()) -> map().
-parse_options(List) ->
-    parse_options(List, maps:new()).
-
--spec parse_options(list(), map()) -> map().
-parse_options([], Map) ->
-    Map;
-parse_options([H|T], Map) ->
-    [Option, Value] = string:tokens(H, "="),
-    Map2 = maps:put(Option, Value, Map),
-    parse_options(T, Map2).
 
 -spec basic_auth_handler(list(), nonempty_string(), nonempty_string()) -> {true|false, nonempty_string()}.
 basic_auth_handler(Creds, UserId, Password) ->
@@ -727,6 +716,30 @@ handle_query_string(Data, Qs) ->
     Parameters = string:tokens(Qs, ";"),
     map_build(Parameters, Data, maps:new()).
 
+is_authorized_handler(undefined, Req, State) ->
+%    ?nebMsg("Entry"),
+    {{false, "Basic realm=\"default\""}, Req, State};
+is_authorized_handler(AuthString, Req, State) ->
+%    ?nebMsg("Entry"),
+    {_, EnvMap} = State,
+    AuthString2 = binary_to_list(AuthString),
+    [AuthMethod, Auth] = string:tokens(AuthString2, " "),
+    {Authenticated, UserId} = case string:to_lower(AuthMethod) of
+                            "basic" ->
+                                basic(Auth, State);
+                             _Other ->
+                                 lager:error("Unknown AuthMethod: ~p", [AuthMethod]),
+                                 {false, undefined}
+                         end,
+    if
+        Authenticated==false ->
+            {{false, "Basic realm=\"default\""}, Req, State};
+        true ->
+            {Pid, EnvMap} = State,
+            NewEnvMap = nebula2_utils:put_value(<<"auth_as">>, list_to_binary(UserId), EnvMap),
+            {true, Req, {Pid, NewEnvMap}}
+    end.
+
 %% @doc Build the output data based on the query string.
 -spec map_build(list(), map(), map()) -> map().
 map_build([], _, NewMap) ->
@@ -776,6 +789,30 @@ map_domain_uri(Pid, HostUrl) ->
 %    ?nebFmt("Exit: ~p", [Domain]),
     Domain.
 
+-spec multipart(cowboy_req:req(), cdmi_state()) -> {cowboy_req:req(), cdmi_state()}.
+multipart(Req, BodyParts) ->
+    case cowboy_req:part(Req) of
+        {ok, _Headers, Req2} ->
+            {ok, Body, Req3} = cowboy_req:part_body(Req2),
+            BodyParts2 = lists:append(BodyParts, [Body]),
+            multipart(Req3, BodyParts2);
+        {done, Req2} ->
+            {Req2, BodyParts}
+    end.
+
+-spec parse_options(list()) -> map().
+parse_options(List) ->
+    parse_options(List, maps:new()).
+
+-spec parse_options(list(), map()) -> map().
+parse_options([], Map) ->
+    Map;
+parse_options([H|T], Map) ->
+    [Option, Value] = string:tokens(H, "="),
+    Map2 = maps:put(Option, Value, Map),
+    parse_options(T, Map2).
+
+
 -spec req_domain(list(), string()) -> string().
 req_domain([], _) ->
 %    ?nebMsg("Entry"),
@@ -788,6 +825,87 @@ req_domain([H|T], HostUrl) ->
             binary_to_list(Domain);
         _ ->
             req_domain(T, HostUrl)
+    end.
+
+resource_exists_handler("/cdmi_objectid/", Req, State) ->
+%    ?nebMsg("Entry"),
+    {Pid, EnvMap} = State,
+    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
+    case nebula2_db:read(Pid, Oid) of
+        {error, _Status} ->
+            {false, Req, State};
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}}
+    end;
+resource_exists_handler(_, Req, State) ->
+%    ?nebMsg("Entry"),
+    {Pid, EnvMap} = State,
+%    ?nebFmt("EnvMap: ~p", [EnvMap]),
+    Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
+    case Path of
+        "/" ->
+            {true, Req, State};
+        _ ->
+            SearchKey = nebula2_utils:make_search_key(EnvMap),
+            case nebula2_db:search(SearchKey, State) of
+                {ok, Data} ->
+                    {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
+                _ ->
+                    {false, Req, State}
+            end
+    end.
+
+-spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), cdmi_state()} | {notfound, term(), cdmi_state()}.
+to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
+%    ?nebMsg("Entry"),
+    {Pid, EnvMap} = State,
+    Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
+    case nebula2_db:read(Pid, Oid) of
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
+        {error, Status} -> 
+            {notfound, cowboy_req:reply(Status, Req, [{<<"content-type">>, <<"text/plain">>}]), State}
+    end;
+to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
+%    ?nebMsg("Entry"),
+    {_, EnvMap} = State,
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
+        {error, Status} ->
+            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
+    end;
+to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
+%    ?nebMsg("Entry"),
+    {_, EnvMap} = State,
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
+        {ok, Data} ->
+            nebula2_utils:set_cache(Data),
+            {jsx:encode(nebula2_db:unmarshall(Data)), Req, State};
+        {error, Status} ->
+            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}, Req]), State}
+    end;
+to_cdmi_object_handler(Req, State, _, _) ->
+%    ?nebMsg("Entry"),
+    {_, EnvMap} = State,
+    Key = nebula2_utils:make_search_key(EnvMap),
+    case nebula2_db:search(Key, State) of
+        {ok, Map} ->
+            {_, EnvMap} = State,
+            Qs = binary_to_list(nebula2_utils:get_value(<<"qs">>, EnvMap)),
+            Map2 = handle_query_string(Map, Qs),
+            CList = [<<"cdmi_atime">>,
+                     <<"cdmi_acount">>],
+            Map3 = nebula2_utils:update_data_system_metadata(CList, Map2, State),
+            nebula2_utils:set_cache(Map3),
+            {jsx:encode(nebula2_db:unmarshall(Map3)), Req, State};
+        {error, Status} ->
+            {notfound, cowboy_req:reply(Status, [{<<"content-type">>, <<"text/plain">>}], Req), State}
     end.
 
 %% ====================================================================

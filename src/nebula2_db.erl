@@ -110,7 +110,7 @@ read(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
     end.
 
 %% @doc Search an index for objects.
--spec search(string(), cdmi_state()) -> {error, term()} | {ok, map()}.
+-spec search(string(), cdmi_state()) -> {ok, map()} | {error, term()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),

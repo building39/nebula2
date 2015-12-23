@@ -18,198 +18,273 @@
 <h2><a name="description">Description</a></h2>
   Server callbacks.
 <h2><a name="index">Function Index</a></h2>
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#allow_missing_post-2">allow_missing_post/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#allowed_methods-2">allowed_methods/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#content_types_accepted-2">content_types_accepted/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#content_types_provided-2">content_types_provided/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#delete_completed-2">delete_completed/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#delete_resource-2">delete_resource/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#expires-2">expires/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#forbidden-2">forbidden/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#from_cdmi_capability-2">from_cdmi_capability/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#from_cdmi_container-2">from_cdmi_container/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#from_cdmi_domain-2">from_cdmi_domain/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#from_cdmi_object-2">from_cdmi_object/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#from_multipart_mixed-2">from_multipart_mixed/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#generate_etag-2">generate_etag/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#init-3">init/3</a></td><td></td></tr>
-<tr><td valign="top"><a href="#is_authorized-2">is_authorized/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#is_conflict-2">is_conflict/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#known_methods-2">known_methods/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#last_modified-2">last_modified/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#malformed_request-2">malformed_request/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#moved_permanently-2">moved_permanently/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#moved_temporarily-2">moved_temporarily/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#multiple_choices-2">multiple_choices/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#previously_existed-2">previously_existed/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#resource_exists-2">resource_exists/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#rest_init-2">rest_init/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#service_available-2">service_available/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#to_cdmi_capability-2">to_cdmi_capability/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#to_cdmi_container-2">to_cdmi_container/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#to_cdmi_domain-2">to_cdmi_domain/2</a></td><td></td></tr>
-<tr><td valign="top"><a href="#to_cdmi_object-2">to_cdmi_object/2</a></td><td></td></tr>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#allow_missing_post-2">allow_missing_post/2</a></td><td>
+  Allow missing POST.</td></tr>
+<tr><td valign="top"><a href="#allowed_methods-2">allowed_methods/2</a></td><td>
+  Return a list of allowed methods.</td></tr>
+<tr><td valign="top"><a href="#content_types_accepted-2">content_types_accepted/2</a></td><td>
+  Return a list of acceptable content types.</td></tr>
+<tr><td valign="top"><a href="#content_types_provided-2">content_types_provided/2</a></td><td>
+  Return a list of content types that this server provides.</td></tr>
+<tr><td valign="top"><a href="#delete_completed-2">delete_completed/2</a></td><td>
+  Return true if the DELETE method has completed.</td></tr>
+<tr><td valign="top"><a href="#delete_resource-2">delete_resource/2</a></td><td>
+  DELETE a resource.</td></tr>
+<tr><td valign="top"><a href="#expires-2">expires/2</a></td><td>
+  Expires.</td></tr>
+<tr><td valign="top"><a href="#forbidden-2">forbidden/2</a></td><td>
+  Check ACLs.</td></tr>
+<tr><td valign="top"><a href="#from_cdmi_capability-2">from_cdmi_capability/2</a></td><td>
+  Process a capability object request from the client.</td></tr>
+<tr><td valign="top"><a href="#from_cdmi_container-2">from_cdmi_container/2</a></td><td>
+  Process a container object request from the client.</td></tr>
+<tr><td valign="top"><a href="#from_cdmi_domain-2">from_cdmi_domain/2</a></td><td>
+  Process a domain object request from the client.</td></tr>
+<tr><td valign="top"><a href="#from_cdmi_object-2">from_cdmi_object/2</a></td><td>
+  Process a data object request from the client.</td></tr>
+<tr><td valign="top"><a href="#from_multipart_mixed-2">from_multipart_mixed/2</a></td><td>
+  Process a multipart mixed object request from the client.</td></tr>
+<tr><td valign="top"><a href="#generate_etag-2">generate_etag/2</a></td><td>
+  Generate an ETag.</td></tr>
+<tr><td valign="top"><a href="#init-3">init/3</a></td><td>
+  Module initialization.</td></tr>
+<tr><td valign="top"><a href="#is_authorized-2">is_authorized/2</a></td><td>
+  Check if the client is authorized.</td></tr>
+<tr><td valign="top"><a href="#is_conflict-2">is_conflict/2</a></td><td>
+  Check for conflict.</td></tr>
+<tr><td valign="top"><a href="#known_methods-2">known_methods/2</a></td><td>
+  Return a list of methods that this server is willing to handle.</td></tr>
+<tr><td valign="top"><a href="#last_modified-2">last_modified/2</a></td><td>
+  Last modified.</td></tr>
+<tr><td valign="top"><a href="#malformed_request-2">malformed_request/2</a></td><td>
+  Check for well formed request.</td></tr>
+<tr><td valign="top"><a href="#moved_permanently-2">moved_permanently/2</a></td><td>
+  Has the resource moved, permanently?
+  If the request asks for a cdmi-container or cdmi-domain, and
+  the URL does not end with a slash, it has moved permanently.</td></tr>
+<tr><td valign="top"><a href="#moved_temporarily-2">moved_temporarily/2</a></td><td>
+  Has the resource has moved, temporarily? Not yet implemented.</td></tr>
+<tr><td valign="top"><a href="#multiple_choices-2">multiple_choices/2</a></td><td>
+  Can this request return multiple responses? Probably won't be implemented.</td></tr>
+<tr><td valign="top"><a href="#previously_existed-2">previously_existed/2</a></td><td>
+  Did the resource exist once upon a time?
+  For non-CDMI object types or CDMI containers that lack a trailing slash,
+  does that resource exist with a trailing slash?.</td></tr>
+<tr><td valign="top"><a href="#resource_exists-2">resource_exists/2</a></td><td>
+  Does the resource exist?.</td></tr>
+<tr><td valign="top"><a href="#rest_init-2">rest_init/2</a></td><td>
+  Initialize the REST interface.</td></tr>
+<tr><td valign="top"><a href="#service_available-2">service_available/2</a></td><td>
+  if pooler says no members, kick back a 503.</td></tr>
+<tr><td valign="top"><a href="#to_cdmi_capability-2">to_cdmi_capability/2</a></td><td>
+  Return a capability object.</td></tr>
+<tr><td valign="top"><a href="#to_cdmi_container-2">to_cdmi_container/2</a></td><td>
+  Return a container object.</td></tr>
+<tr><td valign="top"><a href="#to_cdmi_domain-2">to_cdmi_domain/2</a></td><td>
+  Return a domain object.</td></tr>
+<tr><td valign="top"><a href="#to_cdmi_object-2">to_cdmi_object/2</a></td><td>
+  Return a CDMI object.</td></tr>
 </table>
 
 <h2><a name="functions">Function Details</a></h2>
 
 <h3 class="function"><a name="allow_missing_post-2">allow_missing_post/2</a></h3>
 <div class="spec">
-<p><tt>allow_missing_post(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>allow_missing_post(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Allow missing POST.</p>
 
 <h3 class="function"><a name="allowed_methods-2">allowed_methods/2</a></h3>
 <div class="spec">
-<p><tt>allowed_methods(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>allowed_methods(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {list(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a list of allowed methods.</p>
 
 <h3 class="function"><a name="content_types_accepted-2">content_types_accepted/2</a></h3>
 <div class="spec">
-<p><tt>content_types_accepted(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>content_types_accepted(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {list(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a list of acceptable content types.</p>
 
 <h3 class="function"><a name="content_types_provided-2">content_types_provided/2</a></h3>
 <div class="spec">
-<p><tt>content_types_provided(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>content_types_provided(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {list(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a list of content types that this server provides.</p>
 
 <h3 class="function"><a name="delete_completed-2">delete_completed/2</a></h3>
 <div class="spec">
-<p><tt>delete_completed(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>delete_completed(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return true if the DELETE method has completed.</p>
 
 <h3 class="function"><a name="delete_resource-2">delete_resource/2</a></h3>
 <div class="spec">
-<p><tt>delete_resource(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>delete_resource(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  DELETE a resource.</p>
 
 <h3 class="function"><a name="expires-2">expires/2</a></h3>
 <div class="spec">
-<p><tt>expires(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>expires(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {undefined, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Expires. Not yet implemented.</p>
 
 <h3 class="function"><a name="forbidden-2">forbidden/2</a></h3>
 <div class="spec">
-<p><tt>forbidden(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>forbidden(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {false, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Check ACLs. Not yet implemented.</p>
 
 <h3 class="function"><a name="from_cdmi_capability-2">from_cdmi_capability/2</a></h3>
 <div class="spec">
-<p><tt>from_cdmi_capability(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>from_cdmi_capability(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Process a capability object request from the client.</p>
 
 <h3 class="function"><a name="from_cdmi_container-2">from_cdmi_container/2</a></h3>
 <div class="spec">
-<p><tt>from_cdmi_container(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>from_cdmi_container(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Process a container object request from the client.</p>
 
 <h3 class="function"><a name="from_cdmi_domain-2">from_cdmi_domain/2</a></h3>
 <div class="spec">
-<p><tt>from_cdmi_domain(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>from_cdmi_domain(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Process a domain object request from the client.</p>
 
 <h3 class="function"><a name="from_cdmi_object-2">from_cdmi_object/2</a></h3>
 <div class="spec">
-<p><tt>from_cdmi_object(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>from_cdmi_object(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Process a data object request from the client.</p>
 
 <h3 class="function"><a name="from_multipart_mixed-2">from_multipart_mixed/2</a></h3>
 <div class="spec">
-<p><tt>from_multipart_mixed(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>from_multipart_mixed(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | halt, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Process a multipart mixed object request from the client.</p>
 
 <h3 class="function"><a name="generate_etag-2">generate_etag/2</a></h3>
 <div class="spec">
-<p><tt>generate_etag(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>generate_etag(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {undefined, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Generate an ETag. Not yet implemented.</p>
 
 <h3 class="function"><a name="init-3">init/3</a></h3>
 <div class="spec">
 <p><tt>init(X1, Req, Opts) -&gt; any()</tt></p>
-</div>
+</div><p>
+  Module initialization.</p>
 
 <h3 class="function"><a name="is_authorized-2">is_authorized/2</a></h3>
 <div class="spec">
-<p><tt>is_authorized(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>is_authorized(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {true | {false, string()}, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Check if the client is authorized.</p>
 
 <h3 class="function"><a name="is_conflict-2">is_conflict/2</a></h3>
 <div class="spec">
-<p><tt>is_conflict(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>is_conflict(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {false, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Check for conflict. Not yet implemented.</p>
 
 <h3 class="function"><a name="known_methods-2">known_methods/2</a></h3>
 <div class="spec">
-<p><tt>known_methods(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>known_methods(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {list(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a list of methods that this server is willing to handle.</p>
 
 <h3 class="function"><a name="last_modified-2">last_modified/2</a></h3>
 <div class="spec">
-<p><tt>last_modified(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>last_modified(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {undefined, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Last modified. Not yet implemented.</p>
 
 <h3 class="function"><a name="malformed_request-2">malformed_request/2</a></h3>
 <div class="spec">
-<p><tt>malformed_request(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>malformed_request(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Check for well formed request.
+  There must be an X-CDMI-Specification-Version header, and it
+  must request version 1.1</p>
 
 <h3 class="function"><a name="moved_permanently-2">moved_permanently/2</a></h3>
 <div class="spec">
-<p><tt>moved_permanently(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>moved_permanently(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Has the resource moved, permanently?
+  If the request asks for a cdmi-container or cdmi-domain, and
+  the URL does not end with a slash, it has moved permanently.</p>
 
 <h3 class="function"><a name="moved_temporarily-2">moved_temporarily/2</a></h3>
 <div class="spec">
-<p><tt>moved_temporarily(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>moved_temporarily(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Has the resource has moved, temporarily? Not yet implemented.</p>
 
 <h3 class="function"><a name="multiple_choices-2">multiple_choices/2</a></h3>
 <div class="spec">
-<p><tt>multiple_choices(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>multiple_choices(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Can this request return multiple responses? Probably won't be implemented.</p>
 
 <h3 class="function"><a name="previously_existed-2">previously_existed/2</a></h3>
 <div class="spec">
-<p><tt>previously_existed(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>previously_existed(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Did the resource exist once upon a time?
+  For non-CDMI object types or CDMI containers that lack a trailing slash,
+  does that resource exist with a trailing slash?</p>
 
 <h3 class="function"><a name="resource_exists-2">resource_exists/2</a></h3>
 <div class="spec">
-<p><tt>resource_exists(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>resource_exists(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Does the resource exist?</p>
 
 <h3 class="function"><a name="rest_init-2">rest_init/2</a></h3>
 <div class="spec">
-<p><tt>rest_init(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>rest_init(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {ok, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Initialize the REST interface.</p>
 
 <h3 class="function"><a name="service_available-2">service_available/2</a></h3>
 <div class="spec">
-<p><tt>service_available(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>service_available(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {boolean(), <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  if pooler says no members, kick back a 503. I
+  do this here because a 503 seems to me the most
+  appropriate response if database connections are
+  <b>currently</b> unavailable.</p>
 
 <h3 class="function"><a name="to_cdmi_capability-2">to_cdmi_capability/2</a></h3>
 <div class="spec">
-<p><tt>to_cdmi_capability(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>to_cdmi_capability(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {<a href="#type-json_value">json_value()</a> | notfound, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a capability object.</p>
 
 <h3 class="function"><a name="to_cdmi_container-2">to_cdmi_container/2</a></h3>
 <div class="spec">
-<p><tt>to_cdmi_container(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>to_cdmi_container(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {<a href="#type-json_value">json_value()</a> | notfound, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a container object.</p>
 
 <h3 class="function"><a name="to_cdmi_domain-2">to_cdmi_domain/2</a></h3>
 <div class="spec">
-<p><tt>to_cdmi_domain(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>to_cdmi_domain(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {<a href="#type-json_value">json_value()</a> | notfound, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a domain object.</p>
 
 <h3 class="function"><a name="to_cdmi_object-2">to_cdmi_object/2</a></h3>
 <div class="spec">
-<p><tt>to_cdmi_object(Req, State) -&gt; any()</tt></p>
-</div>
+<p><tt>to_cdmi_object(Req::<a href="cowboy_req.html#type-req">cowboy_req:req()</a>, State::<a href="#type-cdmi_state">cdmi_state()</a>) -&gt; {<a href="#type-json_value">json_value()</a> | notfound, <a href="cowboy_req.html#type-req">cowboy_req:req()</a>, <a href="#type-cdmi_state">cdmi_state()</a>}</tt><br></p>
+</div><p>
+  Return a CDMI object.</p>
 <hr>
 
 <div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
-<p><i>Generated by EDoc, Dec 23 2015, 10:12:57.</i></p>
+<p><i>Generated by EDoc, Dec 23 2015, 11:28:26.</i></p>
 </body>
 </html>
