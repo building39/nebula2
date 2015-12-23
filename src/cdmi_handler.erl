@@ -150,7 +150,7 @@ allowed_methods(Req, State) ->
     {[<<"GET">>, <<"PUT">>, <<"POST">>, <<"HEAD">>, <<"DELETE">>], Req, State}.
 
 %% @doc
-%% Allow missing POST.
+%% Allow `POST' on an object that does not exist.
 %% @end
 -spec allow_missing_post(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 allow_missing_post(Req, State) ->
@@ -183,7 +183,7 @@ content_types_provided(Req, State) ->
      ], Req, State}.
 
 %% @doc
-%% Return true if the DELETE method has completed.
+%% Return true if the `DELETE' method has completed.
 %% @end
 -spec delete_completed(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 delete_completed(Req, State) ->
@@ -224,7 +224,8 @@ delete_resource(Req, State) ->
     end.
 
 %% @doc
-%% Expires. Not yet implemented.
+%% Return the date of expiration of the resource.
+%% This date will be sent as the value of the expires header. Not yet implemented.
 %% @end
 -spec expires(cowboy_req:req(), cdmi_state()) -> {undefined, cowboy_req:req(), cdmi_state()}.
 expires(Req, State) ->
@@ -423,7 +424,8 @@ is_authorized(Req, State) ->
     is_authorized_handler(AuthString, Req2, State).
 
 %% @doc
-%% Check for conflict. Not yet implemented.
+%% Return whether the put action results in a conflict.
+%% A `409 Conflict' response will be sent if this function returns true. Not yet implemented.
 %% @end
 -spec is_conflict(cowboy_req:req(), cdmi_state()) -> {false, cowboy_req:req(), cdmi_state()}.
 is_conflict(Req, State) ->
@@ -451,7 +453,10 @@ known_methods(Req, State) ->
     {[<<"GET">>, <<"HEAD">>, <<"POST">>, <<"PUT">>, <<"PATCH">>, <<"DELETE">>, <<"OPTIONS">>], Req, State}.
 
 %% @doc
-%% Last modified. Not yet implemented.
+%% Return the date of last modification of the resource.
+%% This date will be used to test against the if-modified-since and if-unmodified-since headers
+%% and sent as the last-modified header in the response of `GET' and `HEAD' requests.
+%% Not yet implemented.
 %% @end
 -spec last_modified(cowboy_req:req(), cdmi_state()) -> {undefined, cowboy_req:req(), cdmi_state()}.
 last_modified(Req, State) ->
@@ -460,7 +465,7 @@ last_modified(Req, State) ->
 
 %% @doc
 %% Check for well formed request.
-%% There must be an X-CDMI-Specification-Version header, and it
+%% There must be an `X-CDMI-Specification-Version' header, and it
 %% must request version 1.1
 %% @end
 -spec malformed_request(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
@@ -479,7 +484,7 @@ malformed_request(Req, State) ->
     {Valid, Req, State}.
 
 %% @doc
-%% Has the resource moved, permanently?
+%% Check to see if the resource has been permanently moved.
 %% If the request asks for a cdmi-container or cdmi-domain, and
 %% the URL does not end with a slash, it has moved permanently.
 %% @end
@@ -491,7 +496,8 @@ moved_permanently(Req, State) ->
     {Moved, Req, State}.
 
 %% @doc
-%% Has the resource has moved, temporarily? Not yet implemented.
+%% Check to see if the resource has been temporarily moved.
+%% Not yet implemented.
 %% @end
 -spec moved_temporarily(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 moved_temporarily(Req, State) ->
@@ -499,7 +505,8 @@ moved_temporarily(Req, State) ->
     {false, Req, State}.
 
 %% @doc
-%% Can this request return multiple responses? Probably won't be implemented.
+%% Return whether there are multiple representations of the resource.
+%% Probably won't be implemented.
 %% @end
 -spec multiple_choices(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 multiple_choices(Req, State) ->
@@ -507,7 +514,7 @@ multiple_choices(Req, State) ->
     {false, Req, State}.
 
 %% @doc
-%% Did the resource exist once upon a time?
+%% Check to see if the resource has ever existed.
 %% For non-CDMI object types or CDMI containers that lack a trailing slash,
 %% does that resource exist with a trailing slash?
 %% @end
@@ -536,7 +543,7 @@ previously_existed(Req, State) ->
     end.
 
 %% @doc
-%% Does the resource exist?
+%% Check to see if the resource exists.
 %% @end
 -spec resource_exists(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 resource_exists(Req, State) ->
@@ -550,10 +557,8 @@ resource_exists(Req, State) ->
     {Response, NewReq, {Pid, NewEnvMap2}}.
 
 %% @doc
-%% if pooler says no members, kick back a 503. I
-%% do this here because a 503 seems to me the most
-%% appropriate response if database connections are
-%% <b>currently</b> unavailable.
+%% Check to see if the service is currently available.
+%% If `pooler' reports that it has no members, a `503 Service Unavailable' response will be returned.
 %% @end
 -spec service_available(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 service_available(Req, {error_no_members, _}) ->
