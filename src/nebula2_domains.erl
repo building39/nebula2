@@ -21,7 +21,9 @@
             update_domain/3
         ]).
 
-%% @doc Delete a CDMI domain
+%% @doc
+%% Delete a CDMI domain
+%% @throws forbidden
 %% TODO: Enforce CDMI domain deletion rules - i.e. move populated domains to metadata: cdmi_domain_delete_reassign
 %%       if the domain contains objects and then delete the domain, or fail with 400 if the domain contains objects
 %%       and metadata: cdmi_domain_delete_reassign is missing or points to a non-existent domain.
@@ -63,7 +65,10 @@ delete_domain(State) when is_tuple(State) ->
             throw(forbidden)
     end.
 
-%% @doc Create a new CDMI domain
+%% @doc
+%% Create a new CDMI domain
+%% @throws badjson
+%% @end
 -spec nebula2_domains:new_domain(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_domain(Req, State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),

@@ -20,7 +20,10 @@
             update_container/3
         ]).
 
-%% @doc Create a new CDMI container
+%% @doc
+%% Create a new CDMI container
+%% @throws badjson
+%% @end
 -spec new_container(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_container(Req, State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
@@ -41,7 +44,10 @@ new_container(Req, State) when is_tuple(State) ->
             {false, Req2, State}
     end.
 
-%% @doc Update a CDMI container
+%% @doc
+%% Update a CDMI container
+%% @throws badjson
+%% @end
 -spec update_container(cowboy_req:req(), cdmi_state(), object_oid()) -> {true|false,
                                                                          cowboy_req:req(),
                                                                          cdmi_state()}.

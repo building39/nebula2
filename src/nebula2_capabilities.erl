@@ -57,7 +57,11 @@ get_capability(Pid, Oid) ->
     {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
-%% @doc Create a new CDMI capability
+%% @doc
+%% Create a new CDMI capability
+%% @throws badjson
+%% @end
+
 -spec nebula2_capabilities:new_capability(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_capability(Req, State) when is_tuple(State) ->
 %    ?nebMsg("Entry"),
@@ -99,7 +103,10 @@ new_capability(Req, State) when is_tuple(State) ->
             {true, Req3, State}
     end.
 
-%% @doc Update a CDMI capability
+%% @doc
+%% Update a CDMI capability
+%% @throws badjson
+%% @end
 -spec nebula2_capabilities:update_capability(cowboy_req:req(), cdmi_state(), object_oid()) ->
           {boolean(), cowboy_req:req(), cdmi_state()}.
 update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
