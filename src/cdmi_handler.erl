@@ -838,10 +838,10 @@ resource_exists_handler("/cdmi_objectid/", Req, State) ->
     Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
     case nebula2_db:read(Pid, Oid) of
         {error, _Status} ->
-            {false, Req, State};
+            {<<"false">>, Req, State};
         {ok, Data} ->
             nebula2_utils:set_cache(Data),
-            {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}}
+            {<<"true">>, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}}
     end;
 resource_exists_handler(_, Req, State) ->
 %    ?nebMsg("Entry"),
@@ -855,9 +855,9 @@ resource_exists_handler(_, Req, State) ->
             SearchKey = nebula2_utils:make_search_key(EnvMap),
             case nebula2_db:search(SearchKey, State) of
                 {ok, Data} ->
-                    {true, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
+                    {<<"true">>, Req, {Pid, nebula2_utils:put_value(<<"object_map">>, Data, EnvMap)}};
                 _ ->
-                    {false, Req, State}
+                    {<<"false">>, Req, State}
             end
     end.
 
