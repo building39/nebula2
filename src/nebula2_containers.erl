@@ -34,6 +34,7 @@ new_container(Req, State) when is_tuple(State) ->
                     NewBody
             catch
                 error:badarg ->
+                    ?nebErrFmt("Bad json: ~p", [Body]),
                     throw(badjson)
             end,
     case nebula2_utils:create_object(State, ObjectType, Body2) of
@@ -59,6 +60,7 @@ update_container(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
                   NewBody -> NewBody
               catch
                   error:badarg ->
+                      ?nebErrFmt("Bad json: ~p", [Body]),
                       throw(badjson)
               end,
     {ok, OldData} = nebula2_db:read(Pid, Oid),

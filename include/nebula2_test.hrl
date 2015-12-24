@@ -97,11 +97,10 @@
     \"objectType\": \"application/cdmi-object\",
     \"parentID\": \"360d1572eccb4d44b57386d63576dbc400045241004850EF\",
     \"parentURI\": \"/system_configuration/\",
-    \"value\": [
+    \"value\":
         {
             \"(cloud)[.]fuzzcat[.]net$\": \"Fuzzcat/\"
-        }
-    ],
+        },
     \"valuerange\": \"0-1\",
     \"valuetransferencoding\": \"utf-8\"
 }">>).

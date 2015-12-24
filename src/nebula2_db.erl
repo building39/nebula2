@@ -39,7 +39,7 @@ available(Pid) when is_pid(Pid) ->
              map()           %% Data to store
             ) -> {error, term()} | {ok, binary()}.
 create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
-%%    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     Response = Mod:put(Pid, Oid, Data),
     nebula2_utils:set_cache(Data),
@@ -48,13 +48,13 @@ create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% @doc Delete an object
 -spec delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
-%%    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     nebula2_utils:delete_cache(Oid),
     Mod:delete(Pid, Oid).
 
 %% @doc Get the domain maps.
--spec nebula2_db:get_domain_maps(pid()) -> binary().
+-spec nebula2_db:get_domain_maps(pid()) -> map().
 get_domain_maps(Pid) when is_pid(Pid) ->
 %    ?nebMsg("Entry"),
     Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
@@ -62,15 +62,19 @@ get_domain_maps(Pid) when is_pid(Pid) ->
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
-            nebula2_utils:get_value(<<"value">>, Data, <<"[]">>);
+            nebula2_utils:get_value(<<"value">>, Data, maps:new());
         _ ->
             case Mod:get_domain_maps(Pid, Path) of
                 {ok, DomainMaps} ->
-                    nebula2_utils:set_cache(DomainMaps),
-                    D = nebula2_utils:get_value(<<"value">>, DomainMaps, <<"[]">>),
-                    D;
+                    D = nebula2_utils:get_value(<<"value">>, DomainMaps, maps:new()),
+                    case is_binary(D) of
+                        true ->
+                            jsx:decode(D, [return_maps]);
+                        false ->
+                            D
+                    end;
                 _ ->
-                    <<"[]">>
+                    maps:new()
             end
     end.
 
@@ -113,6 +117,7 @@ read(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 -spec search(string(), cdmi_state()) -> {ok, map()} | {error, term()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
+%    ?nebFmt("Search Path: ~p", [Path]),
     {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
@@ -221,13 +226,14 @@ nebula2_db_test_() ->
       },
       {"Test get_domain_maps/1",
        fun() ->
+            EmptyMap = maps:new(),
             Pid = self(),
             TestMap = jsx:decode(?TestDomainMaps, [return_maps]),
             Path = ?TestSystemDomainHash ++ "/system_configuration/"++ "domain_maps",
             {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
             meck:expect(nebula2_utils, get_domain_hash, [?SYSTEM_DOMAIN_URI], ?TestSystemDomainHash),
             meck:expect(nebula2_utils, get_cache, [Path], {ok, TestMap}),
-            meck:expect(nebula2_utils, get_value, [<<"value">>, TestMap, <<"[]">>], ?TestDomainMapsValue),
+            meck:expect(nebula2_utils, get_value, [<<"value">>, TestMap, maps:new()], ?TestDomainMapsValue),
             Value = ?TestDomainMapsValue,
             ?assertMatch(Value, get_domain_maps(Pid)),
             meck:expect(nebula2_utils, get_cache, [Path], {error, noconn}),
@@ -235,7 +241,7 @@ nebula2_db_test_() ->
             meck:expect(nebula2_utils, set_cache, [TestMap], {error, noconn}),
             ?assertMatch(Value, get_domain_maps(Pid)),
             meck:expect(Mod, get_domain_maps, [Pid, Path], {error, not_found}),
-            ?assertMatch(<<"[]">>, get_domain_maps(Pid)),
+            ?assertMatch(EmptyMap, get_domain_maps(Pid)),
             ?assertException(error, function_clause, get_domain_maps(not_a_pid)),
             ?assert(meck:validate(Mod)),
             ?assert(meck:validate(nebula2_utils))

@@ -63,6 +63,7 @@ get(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 -spec get_domain_maps(pid(), object_path()) -> {error, 404|500} |{ok, map()}.
 get_domain_maps(Pid, Path) when is_pid(Pid), is_list(Path) ->
 %    ?nebMsg("Entry"),
+%    ?nebFmt("Domain Maps Path: ~p", [Path]),
     execute_search(Pid, "sp:\\" ++ Path).
 
 %% @doc Put a value with content type to riak by bucket type, bucket and key. 
@@ -88,6 +89,7 @@ put(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 -spec search(string(), cdmi_state()) -> {error, term()}|{ok, map()}.
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
+%    ?nebFmt("Search Path: ~p", [Path]),
     {Pid, _} = State,
     Query = "sp:\\" ++ Path,
     Result =  execute_search(Pid, Query),
@@ -129,9 +131,14 @@ execute_search(Pid, Query) when is_pid(Pid), is_list(Query) ->
                            0 ->
                                {error, 404}; %% Return 404
                            1 ->
-                               [{_, Doc}] = Results#search_results.docs,
-                               Oid = proplists:get_value(<<"_yz_rk">>, Doc),
-                               get(Pid, Oid);
+                               List = Results#search_results.docs,
+                               case List of
+                                   undefined ->
+                                       {error, 500}; %% Something's funky - return 500
+                                   [{_, Doc}] ->
+                                       Oid = proplists:get_value(<<"_yz_rk">>, Doc),
+                                       get(Pid, Oid)
+                               end;
                            _N ->
                                {error, 500} %% Something's funky - return 500
                        end;

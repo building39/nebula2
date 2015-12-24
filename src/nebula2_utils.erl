@@ -417,6 +417,8 @@ type_of(X) ->
             <<"integer">>;
         is_list(X) ->
             <<"list">>;
+        is_map(X) ->
+            <<"map">>;
         is_number(X) ->
             <<"number">>;
         is_pid(X) ->
@@ -640,7 +642,7 @@ handle_delete(Data, State, _, []) ->
             delete_child_from_parent(Pid, ParentId, ObjectName),
             ok;
         Other ->
-            ?nebFmt("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
+            ?nebErrFmt("Delete failed for object: ~p. Reason: ~p", [Oid, Other]),
             Other
     end;
 handle_delete(Data, State, Path, [Child | Tail]) ->
@@ -1151,7 +1153,6 @@ nebula2_utils_test_() ->
                                                     ]),
                     meck:sequence(nebula2_db, update, 3, [{ok, TestNewObject}]),
                     Children = maps:get(<<"children">>, TestContainer),
-                    ?nebFmt("Children: ~p", [Children]),
                     ?assertMatch(ok, handle_delete(TestContainer,
                                                    State,
                                                    Path,

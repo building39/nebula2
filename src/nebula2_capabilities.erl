@@ -53,7 +53,7 @@
 %% @doc Get a CDMI capability
 -spec nebula2_capabilities:get_capability(pid(), object_oid()) -> map().
 get_capability(Pid, Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
@@ -80,6 +80,7 @@ new_capability(Req, State) when is_tuple(State) ->
                     NewBody
             catch
                 error:badarg ->
+                    ?nebErrFmt("Bad json: ~p", [Body]),
                     throw(badjson)
             end,
     ObjectType = ?CONTENT_TYPE_CDMI_CAPABILITY,
@@ -118,6 +119,7 @@ update_capability(Req, State, Oid) when is_tuple(State), is_binary(Oid) ->
                       nebula2_db:marshall(NewBody)
               catch
                   error:badarg ->
+                      ?nebErrFmt("Bad json: ~p", [Body]),
                       throw(badjson)
               end,
     NewCapabilities = nebula2_utils:get_value(<<"capabilities">>, NewData),
@@ -288,7 +290,7 @@ cdmi_data_retention(Doit, Data) when is_boolean(Doit), is_map(Data) ->
 -spec cdmi_encryption(list(), map()) -> map().
 cdmi_encryption(EncryptionMethods, Data) when is_list(EncryptionMethods), is_map(Data) ->
     %% ?nebMsg("Entry"),
-    ?nebFmt("Do cdmi_encryption processing here for ~p", [EncryptionMethods]),
+%    ?nebFmt("Do cdmi_encryption processing here for ~p", [EncryptionMethods]),
     Data.
 
 %% @doc Apply cdmi_geographic_placement
@@ -400,7 +402,7 @@ cdmi_RTO(Doit, Data) when is_boolean(Doit), is_map(Data) ->
 -spec cdmi_sanitization_method(list(), map()) -> map().
 cdmi_sanitization_method(Methods, Data) when is_list(Methods), is_map(Data) ->
     %% ?nebMsg("Entry"),
-    ?nebFmt("Do cdmi_sanitization_method processing here for ~p", [Methods]),
+%    ?nebFmt("Do cdmi_sanitization_method processing here for ~p", [Methods]),
     Data.
 
 %% @doc Apply cdmi_size
@@ -417,8 +419,11 @@ cdmi_size(Doit, Data) when is_boolean(Doit), is_map(Data) ->
                                     binary_to_list(Val);
                                 is_list(Val) ->
                                     Val;
+                                is_map(Val) ->
+                                    maps:to_list(Val);
                                 true ->
                                     ?nebErrFmt("Type of value is ~p", [nebula2_utils:type_of(Val)]),
+                                    ?nebErrFmt("Bad json: ~p", [Val]),
                                     throw(badjson)
                             end,
                     Size = string:len(Value),
@@ -450,8 +455,8 @@ cdmi_throughput(Doit, Data) when is_boolean(Doit), is_map(Data) ->
 %% @doc Apply cdmi_value_hash
 -spec cdmi_value_hash(list(), map()) -> map().
 cdmi_value_hash(ValueHash, Data) when is_list(ValueHash), is_map(Data) ->
-    % ?nebMsg("Entry"),
-    ?nebFmt("Do cdmi_value_hash processing here for ~p", [ValueHash]),
+%    ?nebMsg("Entry"),
+%    ?nebFmt("Do cdmi_value_hash processing here for ~p", [ValueHash]),
     Data.
 
 %% ====================================================================

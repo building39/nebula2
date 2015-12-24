@@ -617,7 +617,7 @@ class Bootstrap(object):
                'objectType': OBJECT_TYPE_DATAOBJECT,
                'parentURI': '/system_configuration/',
                'parentID': self.system_config_oid,
-               'value': '[]',
+               'value': '{}',
                'valuerange': '0-1',
                'valuetransferencoding': 'utf-8'}
         headers = HEADERS.copy()

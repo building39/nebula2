@@ -138,7 +138,7 @@ rest_init(Req, _State) ->
                    {error, _} ->
                        Map13
                end,
-%    ?nebFmt("Exit: ~p", [FinalMap]),
+%    nebFmt("Exit: ~p", [FinalMap]),
     {ok, Req9, {PoolMember, FinalMap}}.
 
 %% @doc
@@ -205,7 +205,7 @@ delete_resource(Req, State) ->
                     ok ->
                         {true, Req, State};
                     _O ->
-                        ?nebFmt("domain delete failed: ~p", [_O]),
+                        ?nebErrFmt("domain delete failed: ~p", [_O]),
                         bail(403, <<"Cannot delete this domain\n">>, Req, State)
                     end;
             false ->
@@ -280,7 +280,6 @@ from_cdmi_container(Req, State) ->
                                 <<"true">> ->
                                     ObjectMap = nebula2_utils:get_value(<<"object_map">>, EnvMap),
                                     ObjectId = nebula2_utils:get_value(<<"objectID">>, nebula2_utils:get_value(<<"object_map">>, EnvMap)),
-                                    ?nebFmt("object id: ~p", [ObjectId]),
                                     nebula2_containers:update_container(Req, State, ObjectId);
                                 <<"false">> ->
                                     nebula2_containers:new_container(Req, State)
@@ -368,6 +367,10 @@ from_multipart_mixed(Req, State) ->
             bail(501, <<"multipart not supported">>, Req, State)
     end.
 
+%% @doc
+%% Process a multipart mixed object request from the client.
+%% @end
+-spec from_multipart_mixed(cowboy_req:req(), cdmi_state(), ok) -> {true | halt, cowboy_req:req(), cdmi_state()}.
 from_multipart_mixed(Req, State, ok) ->
 %    ?nebMsg("Enter"),
     {_, EnvMap} = State,
@@ -549,12 +552,13 @@ previously_existed(Req, State) ->
 resource_exists(Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-%    ?nebFmt("EnvMap: ~p", [EnvMap]),
+%    nebFmt("EnvMap: ~p", [EnvMap]),
     ParentURI = binary_to_list(nebula2_utils:get_value(<<"parentURI">>, EnvMap)),
     {Response, NewReq, NewState} = resource_exists_handler(ParentURI, Req, State),
     {_, NewEnvMap} = NewState,
     NewEnvMap2 = nebula2_utils:put_value(<<"exists">>, Response, NewEnvMap),
-    {Response, NewReq, {Pid, NewEnvMap2}}.
+%    nebFmt("Response: ~p", [Response]),
+    {response_to_boolean(Response), NewReq, {Pid, NewEnvMap2}}.
 
 %% @doc
 %% Check to see if the service is currently available.
@@ -562,10 +566,10 @@ resource_exists(Req, State) ->
 %% @end
 -spec service_available(cowboy_req:req(), cdmi_state()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 service_available(Req, {error_no_members, _}) ->
-%    ?nebMsg("<--------------------- Request Start ---------------------------->"),
+%    ?nebMsg("<--------------------- Start Request ---------------------------->"),
     {false, Req, undefined};
 service_available(Req, State) ->
-%    ?nebMsg("<--------------------- Request Start ---------------------------->"),
+%    ?nebMsg("<--------------------- Start Request ---------------------------->"),
     {Pid, _EnvMap} = State,
     Available = case nebula2_db:available(Pid) of
         true -> true;
@@ -642,7 +646,7 @@ basic(Auth, State) ->
                                 list_to_binary("/cdmi_domains/" ++ Realm ++ "/")
                         end
                 end,
-    ?nebFmt("Realm-based domain: ~p", [DomainUri]),
+%    nebFmt("Realm-based domain: ~p", [DomainUri]),
     Domain = nebula2_utils:get_domain_hash(DomainUri),
     SearchKey = Domain ++ binary_to_list(DomainUri) ++ "cdmi_domain_members/" ++ UserId,
     Result = case nebula2_db:search(SearchKey, State) of
@@ -672,12 +676,13 @@ basic_auth_handler(Creds, UserId, Password) ->
             {false, "Basic realm=\"default\""}
     end.
 
--spec get_domain(list(), string()) -> string().
-get_domain(Maps, HostUrl) ->
+-spec get_domain(map(), string()) -> string().
+get_domain(DomainMaps, HostUrl) ->
 %    ?nebMsg("Entry"),
     {ok, UrlParts} = http_uri:parse(HostUrl),
     Url = element(3, UrlParts),
-    req_domain(Maps, Url).
+%    nebFmt("DomainMaps: ~p", [DomainMaps]),
+    req_domain(maps:to_list(DomainMaps), Url).
 
 -spec get_parent(binary() | string(), string(), cdmi_state()) -> {ok, map()} | {error, term()}.
 get_parent(ParentUri, Domain, State) when is_binary(ParentUri), is_list(Domain), is_tuple(State) ->
@@ -702,7 +707,7 @@ get_pooler() ->
 
 -spec get_pooler_retry(integer()) -> pid() | error_no_members.
 get_pooler_retry(Retries) when Retries == 0 ->
-%    ?nebMsg(error, "Out of pool connections."),
+    ?nebErrMsg("Out of pool connections."),
     error_no_members;
 get_pooler_retry(Retries) ->
     timer:sleep(1000),        %% give pooler 1 second to get more connections.
@@ -778,7 +783,8 @@ map_build_get_data(FieldName, _, Map) ->
 -spec map_domain_uri(pid(), string()) -> string().
 map_domain_uri(Pid, HostUrl) ->
 %    ?nebMsg("Entry"),
-    Maps = jsx:decode(nebula2_db:get_domain_maps(Pid)),
+%    nebFmt("domain maps: ~p", [nebula2_db:get_domain_maps(Pid)]),
+    Maps = nebula2_db:get_domain_maps(Pid),
     D = get_domain(Maps, HostUrl),
     Domain = case nebula2_utils:beginswith(D, "/cdmi_domains") of
                  true ->
@@ -791,10 +797,10 @@ map_domain_uri(Pid, HostUrl) ->
                              "/cdmi_domains/" ++ D
                      end
              end,
-%    ?nebFmt("Exit: ~p", [Domain]),
+%    nebFmt("Exit: ~p", [Domain]),
     Domain.
 
--spec multipart(cowboy_req:req(), cdmi_state()) -> {cowboy_req:req(), cdmi_state()}.
+-spec multipart(cowboy_req:req(), list()) -> {cowboy_req:req(), list()}.
 multipart(Req, BodyParts) ->
     case cowboy_req:part(Req) of
         {ok, _Headers, Req2} ->
@@ -824,7 +830,7 @@ req_domain([], _) ->
     "/cdmi_domains/system_domain/";
 req_domain([H|T], HostUrl) ->
 %    ?nebMsg("Entry"),
-    {Re, Domain} = lists:nth(1, maps:to_list(H)),
+    {Re, Domain} = H,
     case re:run(HostUrl, binary_to_list(Re)) of
         {match, _} ->
             binary_to_list(Domain);
@@ -846,7 +852,7 @@ resource_exists_handler("/cdmi_objectid/", Req, State) ->
 resource_exists_handler(_, Req, State) ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
-%    ?nebFmt("EnvMap: ~p", [EnvMap]),
+%    nebFmt("EnvMap: ~p", [EnvMap]),
     Path = binary_to_list(nebula2_utils:get_value(<<"path">>, EnvMap)),
     case Path of
         "/" ->
@@ -861,11 +867,19 @@ resource_exists_handler(_, Req, State) ->
             end
     end.
 
+response_to_boolean(Resp) when Resp == <<"true">> ->
+    true;
+response_to_boolean(Resp) when Resp == <<"false">> ->
+    false;
+response_to_boolean(Resp) when is_boolean(Resp) ->
+    Resp.
+
 -spec to_cdmi_object_handler(cowboy_req:req(), cdmi_state(), string(), string()) -> {map(), term(), cdmi_state()} | {notfound, term(), cdmi_state()}.
 to_cdmi_object_handler(Req, State, _, "/cdmi_objectid/") ->
 %    ?nebMsg("Entry"),
     {Pid, EnvMap} = State,
     Oid = nebula2_utils:get_value(<<"objectName">>, EnvMap),
+%    nebFmt("Looking for Oid: ~p", [Oid]),
     case nebula2_db:read(Pid, Oid) of
         {ok, Data} ->
             nebula2_utils:set_cache(Data),
@@ -877,6 +891,7 @@ to_cdmi_object_handler(Req, State, _Path, "/cdmi_domains/") ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
     Key = nebula2_utils:make_search_key(EnvMap),
+%    nebFmt("Looking for Key: ~p", [Key]),
     case nebula2_db:search(Key, State) of
         {ok, Data} ->
             nebula2_utils:set_cache(Data),
@@ -888,6 +903,7 @@ to_cdmi_object_handler(Req, State, _Path, "/cdmi_capabilities/") ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
     Key = nebula2_utils:make_search_key(EnvMap),
+%    nebFmt("Looking for Key: ~p", [Key]),
     case nebula2_db:search(Key, State) of
         {ok, Data} ->
             nebula2_utils:set_cache(Data),
@@ -899,6 +915,7 @@ to_cdmi_object_handler(Req, State, _, _) ->
 %    ?nebMsg("Entry"),
     {_, EnvMap} = State,
     Key = nebula2_utils:make_search_key(EnvMap),
+%    nebFmt("Looking for Key: ~p", [Key]),
     case nebula2_db:search(Key, State) of
         {ok, Map} ->
             {_, EnvMap} = State,
@@ -920,16 +937,25 @@ to_cdmi_object_handler(Req, State, _, _) ->
 
 cdmi_handler_test_() ->
     {foreach,
-     fun() ->
+        fun() ->
             ok
-     end,
-     fun(_) ->
+        end,
+        fun(_) ->
             ok
-     end,
+        end,
      [{"Test init/3",
-       fun() ->
-              ?assertMatch({upgrade, protocol, cowboy_rest}, init(term, req, opts))
-       end
+        fun() ->
+            ?assertMatch({upgrade, protocol, cowboy_rest}, init(term, req, opts))
+        end
+      },
+      {"Test response_to_boolean/1",
+        fun() ->
+            ?assertMatch(true, response_to_boolean(<<"true">>)),
+            ?assertMatch(false, response_to_boolean(<<"false">>)),
+            ?assertMatch(true, response_to_boolean(true)),
+            ?assertMatch(false, response_to_boolean(false)),
+            ?assertException(error, function_clause, response_to_boolean(not_a_boolean))
+        end
       }
      ]
     }.

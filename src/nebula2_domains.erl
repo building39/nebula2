@@ -85,6 +85,7 @@ new_domain(Req, State) when is_tuple(State) ->
                      NewBody
             catch
                 error:badarg ->
+                    ?nebErrFmt("Bad json: ~p", [Body]),
                     throw(badjson)
             end,
     case nebula2_utils:create_object(State, ObjectType, DomainName, Body2) of

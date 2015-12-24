@@ -24,7 +24,7 @@
 %% @doc Get a CDMI dataobject
 -spec nebula2_dataobjects:get_dataobject(pid(), object_oid()) -> map().
 get_dataobject(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {ok, Data} = nebula2_db:read(Pid, Oid),
     Data.
 
@@ -33,7 +33,7 @@ get_dataobject(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
                                          cdmi_state(),
                                          map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 new_dataobject(Req, State, Body) when is_tuple(State), is_map(Body) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     ObjectType = ?CONTENT_TYPE_CDMI_DATAOBJECT,
     Response = case nebula2_utils:create_object(State, ObjectType, Body) of
                    {true, Data} ->
@@ -51,7 +51,7 @@ new_dataobject(Req, State, Body) when is_tuple(State), is_map(Body) ->
                                             object_oid(),
                                             map()) -> {boolean(), cowboy_req:req(), cdmi_state()}.
 update_dataobject(Req, State, Oid, NewData) when is_tuple(State), is_binary(Oid), is_map(NewData) ->
-    ?nebMsg("Entry"),
+%    ?nebMsg("Entry"),
     {Pid, _EnvMap} = State,
     nebula2_utils:check_base64(NewData),
     {ok, CdmiData} = nebula2_db:read(Pid, Oid),
