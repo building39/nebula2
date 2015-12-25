@@ -30,6 +30,7 @@ start(_Type, _Args) ->
         [{env, [{dispatch, Dispatch}]}]
     ),
     lager:start(),
+    handle_pooler(app_config(cdmi_metadata_module, {nebula2_riak, true})),
     application:start(pooler),
     mcd:start_link(?MEMCACHE, ["localhost", 11211]),
     nebula2_sup:start_link().
@@ -43,8 +44,22 @@ stop(_State) ->
 app_config(Name, Default) ->
     handle_app_env(application:get_env(nebula2, Name), Default).
 
-handle_app_env({ok, Value}, _Default) -> Value;
-handle_app_env(undefined, Default) -> Default.
+%% ====================================================================
+%% Internal functions
+%% ====================================================================
+
+handle_app_env({ok, Value}, _Default) ->
+    Value;
+handle_app_env(undefined, Default) ->
+    Default.
+
+handle_pooler({_, true}) ->
+    application:start(pooler),
+    ok;
+handle_pooler({_, false}) ->
+    ok;
+handle_pooler(_) ->
+    ok.
 
 %% ====================================================================
 %% eunit tests
