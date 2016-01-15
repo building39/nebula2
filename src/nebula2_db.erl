@@ -30,7 +30,7 @@
 %% @doc Check for the availability of the metadata backend.
 -spec nebula2_db:available(pid()) -> boolean().
 available(Pid) when is_pid(Pid) ->
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     Mod:available(Pid).
     
 %% @doc Create an object.
@@ -40,7 +40,7 @@ available(Pid) when is_pid(Pid) ->
             ) -> {error, term()} | {ok, binary()}.
 create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     Response = Mod:put(Pid, Oid, Data),
     nebula2_utils:set_cache(Data),
     Response.
@@ -49,7 +49,7 @@ create(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 -spec delete(pid(), object_oid()) -> ok | {error, term()}.
 delete(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     nebula2_utils:delete_cache(Oid),
     Mod:delete(Pid, Oid).
 
@@ -59,7 +59,7 @@ get_domain_maps(Pid) when is_pid(Pid) ->
 %    ?nebMsg("Entry"),
     Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
     Path = Domain ++ "/system_configuration/"++ "domain_maps",
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
             nebula2_utils:get_value(<<"value">>, Data, maps:new());
@@ -99,7 +99,7 @@ marshall(Data, SearchKey) when is_map(Data), is_list(SearchKey) ->
 -spec read(pid(), object_oid()) -> {ok, map()}|{error, term()}.
 read(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 %    ?nebMsg("Entry"),
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     case nebula2_utils:get_cache(Oid) of
         {ok, Data} ->
             {ok, Data};
@@ -118,7 +118,7 @@ read(Pid, Oid) when is_pid(Pid), is_binary(Oid) ->
 search(Path, State) when is_list(Path), is_tuple(State) ->
 %    ?nebMsg("Entry"),
 %    ?nebFmt("Search Path: ~p", [Path]),
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     case nebula2_utils:get_cache(Path) of
         {ok, Data} ->
             {ok, Data};
@@ -147,7 +147,7 @@ unmarshall(Data) when is_map(Data) ->
             ) -> {ok, map()} | {error, term()}.
 update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %    ?nebMsg("Entry"),
-    {ok, Mod} = ?GET_ENV(nebula2, cdmi_metadata_module),
+    Mod = get_metadata_module(?GET_ENV(nebula2, cdmi_metadata_module)),
     case Mod:update(Pid, Oid, Data) of
         ok ->
             nebula2_utils:set_cache(Data),
@@ -159,6 +159,10 @@ update(Pid, Oid, Data) when is_pid(Pid), is_binary(Oid), is_map(Data) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+get_metadata_module({ok, {Mod, _}}) ->
+    Mod;
+get_metadata_module({ok, Mod}) ->
+    Mod.
 
 %% ====================================================================
 %% eunit tests
