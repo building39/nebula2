@@ -27,6 +27,7 @@
          generate_hash/2,
          get_cache/1,
          get_domain_hash/1,
+         get_domain_maps/2,
          get_object_name/1,
          get_object_oid/2,
          get_parent_uri/1,
@@ -213,6 +214,30 @@ get_domain_hash(Domain) when is_list(Domain) ->
 get_domain_hash(Domain) when is_binary(Domain) ->
     <<Mac:160/integer>> = crypto:hmac(sha, <<"domain">>, Domain),
     lists:flatten(io_lib:format("~40.16.0b", [Mac])).
+
+%% @doc Get the domain maps.
+-spec nebula_db:get_domain_maps(pid(), cdmi_state()) -> map().
+get_domain_maps(Pid, State) when is_pid(Pid) ->
+%    ?nebMsg("Entry"),
+    Domain = nebula2_utils:get_domain_hash(?SYSTEM_DOMAIN_URI),
+    Path = Domain ++ "/system_configuration/"++ "domain_maps",
+    case get_cache(Path) of
+        {ok, Data} ->
+            get_value(<<"value">>, Data, maps:new());
+        _ ->
+            case nebula_db:search("sp:\\" + Path, State) of
+                {ok, DomainMaps} ->
+                    D = get_value(<<"value">>, DomainMaps, maps:new()),
+                    case is_binary(D) of
+                        true ->
+                            jsx:decode(D, [return_maps]);
+                        false ->
+                            D
+                    end;
+                _ ->
+                    maps:new()
+            end
+    end.
 
 %% @doc
 %% Get the object name.
